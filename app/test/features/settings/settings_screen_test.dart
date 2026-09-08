@@ -154,7 +154,7 @@ void main() {
     }
   });
 
-  testWidgets('푸시 알림은 프리셋 없이 항목별 토글을 설정 첫 화면에서 제공한다', (tester) async {
+  testWidgets('푸시 알림은 목적 선택과 항목별 토글을 함께 제공한다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -169,6 +169,9 @@ void main() {
     expect(find.text('기본 대상'), findsOneWidget);
     expect(find.text('마이팀 선택 전'), findsOneWidget);
     expect(find.text('10개 선택됨'), findsOneWidget);
+    expect(find.text('결과 중심'), findsOneWidget);
+    expect(find.text('주요 순간'), findsOneWidget);
+    expect(find.text('직접 설정'), findsOneWidget);
     expect(
       find.text('마이팀 알림은 팀을 선택해야 시작됩니다. 직접 팔로우한 경기 알림은 별도로 동작합니다.'),
       findsOneWidget,
@@ -481,6 +484,126 @@ void main() {
     }
   });
 
+  testWidgets('알림 목적 선택은 기존 저장 경로를 쓰고 권한은 요청하지 않는다', (tester) async {
+    var permissionRequests = 0;
+    SharedPreferences.setMockInitialValues({
+      'push_notifications.all_games': true,
+    });
+    await tester.binding.setSurfaceSize(const Size(390, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: SettingsScreen(
+            pushPermissionStateLoader: () async => false,
+            pushPermissionRequester: (_) async {
+              permissionRequests += 1;
+              return true;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final results = find.byKey(const ValueKey('push_preset_results'));
+    await tester.ensureVisible(results);
+    await tester.pumpAndSettle();
+    await tester.tap(results);
+    await tester.pumpAndSettle();
+
+    var saved = await PushNotificationService.instance.loadSettings();
+    expect(PushNotificationMoment.values.where(saved.isMomentEnabled), [
+      PushNotificationMoment.gameEnd,
+    ]);
+    expect(saved.allGames, isTrue);
+    expect(tester.widget<ChoiceChip>(results).selected, isTrue);
+    expect(permissionRequests, 0);
+    expect(find.text('알림 권한을 확인해 주세요'), findsOneWidget);
+
+    final moments = find.byKey(const ValueKey('push_preset_moments'));
+    await tester.tap(moments);
+    await tester.pumpAndSettle();
+    saved = await PushNotificationService.instance.loadSettings();
+    expect(PushNotificationMoment.values.where(saved.isMomentEnabled).toSet(), {
+      PushNotificationMoment.lineupOpened,
+      PushNotificationMoment.gameStart,
+      PushNotificationMoment.scoring,
+      PushNotificationMoment.homerun,
+      PushNotificationMoment.reversal,
+      PushNotificationMoment.gameEnd,
+    });
+    expect(saved.allGames, isTrue);
+    expect(permissionRequests, 0);
+
+    final beforeCustom = saved.toJson();
+    await tester.tap(find.byKey(const ValueKey('push_preset_custom')));
+    await tester.pumpAndSettle();
+    expect(
+      (await PushNotificationService.instance.loadSettings()).toJson(),
+      beforeCustom,
+    );
+
+    final hit = find.byKey(const ValueKey('push_toggle_hit'));
+    await tester.ensureVisible(hit);
+    await tester.pumpAndSettle();
+    await tester.tap(hit);
+    await tester.pumpAndSettle();
+    expect((await PushNotificationService.instance.loadSettings()).hit, isTrue);
+    expect(
+      tester
+          .widget<ChoiceChip>(find.byKey(const ValueKey('push_preset_custom')))
+          .selected,
+      isTrue,
+    );
+    expect(permissionRequests, 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('320px 240% 알림 목적 선택을 잘림 없이 바꿀 수 있다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: MediaQuery(
+            data: const MediaQueryData(
+              size: Size(320, 844),
+              textScaler: TextScaler.linear(2.4),
+            ),
+            child: const SettingsScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    for (final preset in ['results', 'moments', 'custom']) {
+      final chip = find.byKey(ValueKey('push_preset_$preset'));
+      await tester.scrollUntilVisible(
+        chip,
+        450,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(chip);
+      await tester.pumpAndSettle();
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+      expect(tester.widget<ChoiceChip>(chip).selected, isTrue);
+      expect(tester.getSize(chip).height, greaterThanOrEqualTo(44));
+      expect(tester.takeException(), isNull);
+    }
+    for (final label in ['결과 중심', '주요 순간', '직접 설정']) {
+      expect(
+        tester
+            .renderObject<RenderParagraph>(find.text(label))
+            .didExceedMaxLines,
+        isFalse,
+      );
+    }
+  });
+
   testWidgets('푸시 알림은 항목별 토글 변경을 저장한다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -492,6 +615,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.byKey(const ValueKey('push_toggle_hit')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('push_toggle_hit')));
     await tester.pumpAndSettle();
 
@@ -541,6 +666,10 @@ void main() {
     expect(find.text('받을 알림을 선택하지 않았습니다'), findsOneWidget);
     expect(find.text('득점'), findsOneWidget);
 
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('push_toggle_scoring')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('push_toggle_scoring')));
     await tester.pumpAndSettle();
 

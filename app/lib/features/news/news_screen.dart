@@ -10,6 +10,7 @@ import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/models/home_aggregate.dart';
 import '../../data/models/schedule.dart';
+import '../../data/models/ticketing.dart';
 import '../../data/providers.dart';
 
 enum _NewsFilter {
@@ -138,7 +139,7 @@ class _NewsHeader extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '경기 · 순위 · 기록 · 마이팀 흐름을 한눈에',
+                '지금 볼 경기부터, 기록의 의미까지',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
@@ -275,9 +276,7 @@ class _NewsContent extends StatelessWidget {
     final allItems = _newsItems(aggregate);
     final leadItems = _editorialLeadItems(allItems, myTeamId: aggregate.myTeam);
     final visibleItems = filter == _NewsFilter.all
-        ? allItems.length > leadItems.length
-              ? allItems.where((item) => !leadItems.contains(item)).toList()
-              : allItems
+        ? allItems.where((item) => !leadItems.contains(item)).toList()
         : allItems.where((item) => item.filter == filter).toList();
 
     return Column(
@@ -285,35 +284,49 @@ class _NewsContent extends StatelessWidget {
       children: [
         _BriefingDisclosure(generatedAt: aggregate.generatedAt),
         const SizedBox(height: 12),
-        _EditorialLead(items: leadItems),
-        const SizedBox(height: 12),
         _FilterBar(selected: filter, onChanged: onFilterChanged),
-        const SizedBox(height: 14),
-        _NewsSectionHeader(
-          title: filter == _NewsFilter.all
-              ? '전체 데이터 흐름'
-              : '${filter.label} 데이터 흐름',
-          count: visibleItems.length,
-        ),
-        const SizedBox(height: 10),
-        if (visibleItems.isEmpty)
-          _NewsEmptyState(
-            hasAnyNews: allItems.isNotEmpty,
-            filterLabel: filter.label,
-            onShowAll: () => onFilterChanged(_NewsFilter.all),
-          )
-        else
-          for (var index = 0; index < visibleItems.length; index++) ...[
-            AppMotionListItem(
-              index: index,
-              child: _NewsCard(item: visibleItems[index]),
-            ),
-            if (index != visibleItems.length - 1) const SizedBox(height: 10),
-          ],
+        if (filter == _NewsFilter.all && leadItems.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _EditorialLead(items: leadItems),
+        ],
+        if (visibleItems.isNotEmpty ||
+            allItems.isEmpty ||
+            filter != _NewsFilter.all) ...[
+          const SizedBox(height: 18),
+          _NewsSectionHeader(
+            title: filter == _NewsFilter.all
+                ? '전체 데이터 흐름'
+                : _purposeForFilter(filter),
+            count: visibleItems.length,
+          ),
+          const SizedBox(height: 10),
+          if (visibleItems.isEmpty)
+            _NewsEmptyState(
+              hasAnyNews: allItems.isNotEmpty,
+              filterLabel: filter.label,
+              onShowAll: () => onFilterChanged(_NewsFilter.all),
+            )
+          else
+            for (var index = 0; index < visibleItems.length; index++) ...[
+              AppMotionListItem(
+                index: index,
+                child: _NewsCard(item: visibleItems[index]),
+              ),
+              if (index != visibleItems.length - 1) const SizedBox(height: 10),
+            ],
+        ],
       ],
     );
   }
 }
+
+String _purposeForFilter(_NewsFilter filter) => switch (filter) {
+  _NewsFilter.game => '지금 볼 경기',
+  _NewsFilter.standings => '순위의 의미',
+  _NewsFilter.records => '기록 이해',
+  _NewsFilter.myTeam => '내 팀의 흐름',
+  _NewsFilter.all => '함께 볼 데이터',
+};
 
 class _BriefingDisclosure extends StatelessWidget {
   final DateTime? generatedAt;
@@ -322,9 +335,13 @@ class _BriefingDisclosure extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final generatedLabel = generatedAt == null
+    final generated = generatedAt == null
+        ? null
+        : kboCivilDateTime(generatedAt);
+    final generatedLabel = generated == null
         ? '생성 시각 미제공'
-        : '${_twoDigits(kboCivilDateTime(generatedAt).hour)}:${_twoDigits(kboCivilDateTime(generatedAt).minute)} 생성';
+        : '${generated.year}.${_twoDigits(generated.month)}.${_twoDigits(generated.day)} '
+              '${_twoDigits(generated.hour)}:${_twoDigits(generated.minute)} 생성 · 한국시간';
 
     return Semantics(
       label: 'KBO 경기, 순위, 기록 데이터를 앱이 자동 정리한 브리핑. 실제 뉴스 기사가 아님. $generatedLabel',
@@ -336,27 +353,29 @@ class _BriefingDisclosure extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.divider),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              Icons.info_outline_rounded,
-              size: 17,
-              color: AppColors.textSecondary,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'KBO 데이터로 앱이 자동 정리한 브리핑입니다. 실제 뉴스 기사 아님 · $generatedLabel',
-                style: TextStyle(
-                  fontSize: 11,
-                  height: 1.35,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w700,
+        child: ExcludeSemantics(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                size: 17,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'KBO 데이터로 앱이 자동 정리 · 실제 뉴스 기사 아님\n$generatedLabel',
+                  style: TextStyle(
+                    fontSize: 11,
+                    height: 1.35,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -385,7 +404,7 @@ class _EditorialLead extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(width: 3, height: 44, color: AppColors.live),
+              Container(width: 3, height: 22, color: AppColors.live),
               const SizedBox(width: 11),
               Expanded(
                 child: Column(
@@ -393,8 +412,6 @@ class _EditorialLead extends StatelessWidget {
                   children: [
                     const Text(
                       '먼저 볼 흐름',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
@@ -431,59 +448,90 @@ class _LeadRow extends StatelessWidget {
     return AppPressable(
       onTap: () => _pushNewsRoute(context, item.route),
       pressedScale: 0.985,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 20,
-            child: Text(
-              '$rank',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                color: AppColors.live,
-                fontFeatures: [FontFeature.tabularFigures()],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 20,
+              child: Text(
+                '$rank',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  color: item.accent,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          _NewsCardVisual(item: item, size: 34),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    height: 1.25,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _purposeForFilter(item.filter),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: item.accent,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${_labelForStoryKind(item.storyKind)} · ${item.sourceLabel}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textSupporting,
-                    fontWeight: FontWeight.w700,
+                  const SizedBox(height: 4),
+                  Text(
+                    item.title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      height: 1.3,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    item.subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
+                    children: [
+                      Text(
+                        '근거 · ${item.sourceLabel}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSupporting,
+                          height: 1.35,
+                        ),
+                      ),
+                      Text(
+                        item.actionLabel,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSupporting,
+                          fontWeight: FontWeight.w800,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Icon(
-            Icons.chevron_right_rounded,
-            size: 18,
-            color: AppColors.textSupporting,
-          ),
-        ],
+            const SizedBox(width: 6),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: AppColors.textSupporting,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -526,95 +574,107 @@ class _NewsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final usesLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
     return AppPressable(
       onTap: () => _pushNewsRoute(context, item.route),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            border: Border.all(color: AppColors.divider),
-          ),
-          padding: const EdgeInsets.fromLTRB(12, 11, 10, 11),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _NewsCardVisual(item: item, size: 52),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.divider),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final stacks = usesLargeText || constraints.maxWidth < 300;
+            final body = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          _labelForStoryKind(item.storyKind),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: item.accent,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(width: 7),
-                        Expanded(
-                          child: Text(
-                            '${item.sourceLabel} · ${item.label}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSupporting,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
                     Text(
-                      item.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      item.subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      _labelForStoryKind(item.storyKind),
                       style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        height: 1.3,
+                        fontSize: 11,
+                        color: item.accent,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 7),
                     Text(
-                      item.actionLabel,
+                      item.label,
                       style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textSupporting,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 20,
-                color: AppColors.textSupporting,
-              ),
-            ],
-          ),
+                const SizedBox(height: 6),
+                Text(
+                  item.title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  item.subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 9),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '근거 · ${item.sourceLabel}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSupporting,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        item.actionLabel,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSupporting,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      size: 18,
+                      color: AppColors.textSupporting,
+                    ),
+                  ],
+                ),
+              ],
+            );
+            if (stacks) {
+              return body;
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _NewsCardVisual(item: item, size: 42),
+                const SizedBox(width: 12),
+                Expanded(child: body),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -912,7 +972,17 @@ List<_NewsCardData> _newsItems(HomeAggregate aggregate) {
     add(item);
   }
   for (final item in aggregate.quickItems) {
-    add(_NewsCardData.fromQuickItem(item));
+    final next = aggregate.myTeamBrief?.nextGame;
+    final matchesNextGame =
+        next != null &&
+        item.title == '${next.awayName} vs ${next.homeName}' &&
+        item.teamId == aggregate.myTeamBrief?.teamId;
+    add(
+      _NewsCardData.fromQuickItem(
+        item,
+        ticketInfo: matchesNextGame ? next.ticketInfo : null,
+      ),
+    );
   }
 
   return items;
@@ -1256,7 +1326,35 @@ List<_NewsCardData> _editorialLeadItems(
       }
       return a.title.compareTo(b.title);
     });
-  return ordered.take(_editorialLeadCount).toList();
+  final selected = <_NewsCardData>[];
+  for (final filter in const [
+    _NewsFilter.game,
+    _NewsFilter.standings,
+    _NewsFilter.records,
+    _NewsFilter.myTeam,
+    _NewsFilter.all,
+  ]) {
+    final candidates = ordered.where((item) => item.filter == filter).toList();
+    if (candidates.isEmpty) continue;
+    final preferred = filter == _NewsFilter.game
+        ? candidates
+              .where((item) => item.route.startsWith('/game/'))
+              .firstOrNull
+        : filter == _NewsFilter.myTeam
+        ? candidates.where((item) => item.label == '마이팀').firstOrNull
+        : null;
+    selected.add(preferred ?? candidates.first);
+    if (selected.length == _editorialLeadCount) return selected;
+  }
+  for (final item in ordered) {
+    if (!selected.contains(item)) {
+      selected.add(item);
+    }
+    if (selected.length == _editorialLeadCount) {
+      break;
+    }
+  }
+  return selected;
 }
 
 int _leadPriority(_NewsCardData item, {String? myTeamId}) {
@@ -1342,7 +1440,7 @@ class _NewsCardData {
       label: '마이팀',
       title: title,
       subtitle: subtitle,
-      sourceLabel: '개인화',
+      sourceLabel: '마이팀 경기·일정',
       actionLabel: '마이팀 보기',
       route: route,
       storyKind: 'my_team',
@@ -1384,7 +1482,7 @@ class _NewsCardData {
       label: item.eyebrow,
       title: _briefNewsTitle(item),
       subtitle: item.subtitle,
-      sourceLabel: _sourceLabelForFilter(filter),
+      sourceLabel: _sourceLabelForRoute(item.route, filter),
       actionLabel: _actionLabelForRoute(item.route),
       route: item.route,
       storyKind: _storyKindForBriefType(item.type, item.route),
@@ -1394,18 +1492,29 @@ class _NewsCardData {
     );
   }
 
-  factory _NewsCardData.fromQuickItem(HomeQuickItem item) {
+  factory _NewsCardData.fromQuickItem(
+    HomeQuickItem item, {
+    TicketInfo? ticketInfo,
+  }) {
     final filter = _filterForRoute(item.route, fallback: item.teamId);
+    final isTicket =
+        item.route.startsWith('/schedule') && item.eyebrow.contains('예매');
     return _NewsCardData(
       filter: filter,
-      label: item.eyebrow.isEmpty
-          ? _sourceLabelForFilter(filter)
+      label: isTicket
+          ? '예매 안내'
+          : item.eyebrow.isEmpty
+          ? _sourceLabelForRoute(item.route, filter)
           : item.eyebrow,
       title: item.title,
-      subtitle: item.subtitle.isEmpty
+      subtitle: isTicket
+          ? _ticketBriefSubtitle(item, ticketInfo)
+          : item.subtitle.isEmpty
           ? '관련 화면에서 최신 흐름을 이어서 확인하세요.'
           : item.subtitle,
-      sourceLabel: '추천',
+      sourceLabel: isTicket
+          ? '예매 안내'
+          : _sourceLabelForRoute(item.route, filter),
       actionLabel: _actionLabelForRoute(item.route),
       route: item.route,
       storyKind: _storyKindForRoute(item.route, filter: filter),
@@ -1616,6 +1725,7 @@ String _labelForStoryKind(String kind) {
 
 String _storyKindForBriefType(String type, String route) {
   return switch (type) {
+    'game_status' || 'final' => 'game',
     'player_performance' || 'pitcher_check' => 'player',
     'record_radar' ||
     'batting_leader' ||
@@ -1713,6 +1823,36 @@ Color _accentForFilter(_NewsFilter filter) {
     _NewsFilter.myTeam => AppColors.ballYellow,
     _NewsFilter.all => AppColors.textSecondary,
   };
+}
+
+String _ticketBriefSubtitle(HomeQuickItem item, TicketInfo? ticketInfo) {
+  String displayTime(DateTime instant) {
+    final time = kboCivilDateTime(instant);
+    return '${time.month}월 ${time.day}일 ${_twoDigits(time.hour)}:${_twoDigits(time.minute)} KST';
+  }
+
+  if (ticketInfo != null) {
+    final openAt = ticketInfo.openAt;
+    if (openAt == null) return '${ticketInfo.vendorName} · 예매 시간 미정';
+    final source = ticketInfo.isInferred ? '예상 오픈' : '공식 오픈';
+    return '${ticketInfo.vendorName} · ${displayTime(openAt)} $source';
+  }
+  final iso = RegExp(
+    r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})',
+  ).firstMatch(item.subtitle);
+  if (iso == null) return item.subtitle;
+  final instant = parseKboDateTime(iso.group(0));
+  if (instant == null) return item.subtitle;
+  return item.subtitle.replaceRange(
+    iso.start,
+    iso.end,
+    '${displayTime(instant)} 오픈 · 확정 여부 미제공',
+  );
+}
+
+String _sourceLabelForRoute(String route, _NewsFilter filter) {
+  if (route.startsWith('/schedule')) return '일정';
+  return _sourceLabelForFilter(filter);
 }
 
 String _sourceLabelForFilter(_NewsFilter filter) {

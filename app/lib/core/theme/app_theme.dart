@@ -285,7 +285,7 @@ class AppTheme {
           seedColor: colors.accent,
           brightness: brightness,
         ).copyWith(
-          primary: colors.live,
+          primary: colors.accent,
           secondary: colors.accent,
           surface: colors.background,
           onSurface: colors.textPrimary,
@@ -379,6 +379,10 @@ class AppTheme {
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: colors.card,
         surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
       ),
       dividerTheme: DividerThemeData(color: colors.divider, thickness: 0.5),
       switchTheme: SwitchThemeData(

@@ -360,7 +360,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
           teamId: _selectedTeamId,
           teamName: _selectedTeamName,
           accent: accent,
-          title: isLiveContext ? '실시간 기록 추적' : '오늘 기록 요약',
+          title: isLiveContext ? '실시간 기록 추적' : '팀 기록 요약',
           metrics: isLiveContext
               ? hasLiveBatterStats
                     ? [
@@ -384,10 +384,22 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                         const _SummaryMetric(label: '기록', value: '집계중'),
                       ]
               : [
-                  _SummaryMetric(label: '타수', value: '$totalAtBats'),
-                  _SummaryMetric(label: '득점', value: '$totalRuns'),
-                  _SummaryMetric(label: '안타', value: '$totalHits'),
-                  _SummaryMetric(label: '타점', value: '$totalRbi'),
+                  _SummaryMetric(
+                    label: '타수',
+                    value: officialBatters.isEmpty ? '–' : '$totalAtBats',
+                  ),
+                  _SummaryMetric(
+                    label: '득점',
+                    value: officialBatters.isEmpty ? '–' : '$totalRuns',
+                  ),
+                  _SummaryMetric(
+                    label: '안타',
+                    value: officialBatters.isEmpty ? '–' : '$totalHits',
+                  ),
+                  _SummaryMetric(
+                    label: '타점',
+                    value: officialBatters.isEmpty ? '–' : '$totalRbi',
+                  ),
                   _SummaryMetric(
                     label: '팀 타율',
                     value: officialBatters.isEmpty
@@ -403,13 +415,15 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
             opponentTeamName: _opponentTeamName,
             selected: selectedMetrics,
             opponent: opponentMetrics,
+            selectedRecords: selected,
+            opponentRecords: opponent,
             accent: accent,
           ),
         ],
         if (keyBatter != null || keyPitcher != null) ...[
           const SizedBox(height: 20),
           _SectionTitle(
-            title: isLiveContext ? 'LIVE 추적' : '오늘 기록 요약',
+            title: isLiveContext ? 'LIVE 추적' : '주요 선수',
             actionLabel: _selectedTeamId.isEmpty ? null : '팀 기록 보기',
             onAction: _selectedTeamId.isEmpty
                 ? null
@@ -1095,6 +1109,8 @@ class _TeamComparisonStrip extends StatelessWidget {
   final String opponentTeamName;
   final _BoxscoreTeamMetrics selected;
   final _BoxscoreTeamMetrics opponent;
+  final TeamBoxscoreData selectedRecords;
+  final TeamBoxscoreData opponentRecords;
   final Color accent;
 
   const _TeamComparisonStrip({
@@ -1102,11 +1118,25 @@ class _TeamComparisonStrip extends StatelessWidget {
     required this.opponentTeamName,
     required this.selected,
     required this.opponent,
+    required this.selectedRecords,
+    required this.opponentRecords,
     required this.accent,
   });
 
   @override
   Widget build(BuildContext context) {
+    final selectedAvailable = _hasOfficialBatters(selectedRecords);
+    final opponentAvailable = _hasOfficialBatters(opponentRecords);
+    final values = [
+      (label: '득점', selected: selected.runs, opponent: opponent.runs),
+      (label: '안타', selected: selected.hits, opponent: opponent.hits),
+      (label: '타점', selected: selected.rbi, opponent: opponent.rbi),
+      (
+        label: '장타',
+        selected: selected.extraBaseHits,
+        opponent: opponent.extraBaseHits,
+      ),
+    ];
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
@@ -1125,53 +1155,73 @@ class _TeamComparisonStrip extends StatelessWidget {
               fontWeight: FontWeight.w900,
             ),
           ),
+          const SizedBox(height: 4),
+          Text(
+            '$selectedTeamName : $opponentTeamName',
+            style: TextStyle(fontSize: 11, color: AppColors.textSupporting),
+          ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              _ComparisonMetric(
-                label: '득점',
-                selectedValue: selected.runs,
-                opponentValue: opponent.runs,
-                selectedTeamName: selectedTeamName,
-                opponentTeamName: opponentTeamName,
-                accent: accent,
-              ),
-              _ComparisonMetric(
-                label: '안타',
-                selectedValue: selected.hits,
-                opponentValue: opponent.hits,
-                selectedTeamName: selectedTeamName,
-                opponentTeamName: opponentTeamName,
-                accent: accent,
-              ),
-              _ComparisonMetric(
-                label: '타점',
-                selectedValue: selected.rbi,
-                opponentValue: opponent.rbi,
-                selectedTeamName: selectedTeamName,
-                opponentTeamName: opponentTeamName,
-                accent: accent,
-              ),
-              _ComparisonMetric(
-                label: '장타',
-                selectedValue: selected.extraBaseHits,
-                opponentValue: opponent.extraBaseHits,
-                selectedTeamName: selectedTeamName,
-                opponentTeamName: opponentTeamName,
-                accent: accent,
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final textScale = MediaQuery.textScalerOf(context).scale(1);
+              final columns = textScale >= 1.5
+                  ? 1
+                  : constraints.maxWidth < 300
+                  ? 2
+                  : 4;
+              final width =
+                  (constraints.maxWidth - (columns - 1) * 8) / columns;
+              return Wrap(
+                spacing: 8,
+                runSpacing: 12,
+                children: [
+                  for (final metric in values)
+                    SizedBox(
+                      width: width,
+                      child: _ComparisonMetric(
+                        label: metric.label,
+                        selectedValue: metric.selected,
+                        opponentValue: metric.opponent,
+                        selectedAvailable:
+                            selectedAvailable &&
+                            (metric.label != '장타' ||
+                                _hasCompleteExtraBaseDetail(selectedRecords)),
+                        opponentAvailable:
+                            opponentAvailable &&
+                            (metric.label != '장타' ||
+                                _hasCompleteExtraBaseDetail(opponentRecords)),
+                        selectedTeamName: selectedTeamName,
+                        opponentTeamName: opponentTeamName,
+                        accent: accent,
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
     );
   }
+
+  bool _hasOfficialBatters(TeamBoxscoreData team) =>
+      team.batters.isNotEmpty &&
+      team.batters.every((batter) => !batter.liveContext);
+
+  bool _hasCompleteExtraBaseDetail(TeamBoxscoreData team) => team.batters.every(
+    (batter) =>
+        batter.doubles != null &&
+        batter.triples != null &&
+        batter.homeRuns != null,
+  );
 }
 
 class _ComparisonMetric extends StatelessWidget {
   final String label;
   final int selectedValue;
   final int opponentValue;
+  final bool selectedAvailable;
+  final bool opponentAvailable;
   final String selectedTeamName;
   final String opponentTeamName;
   final Color accent;
@@ -1180,6 +1230,8 @@ class _ComparisonMetric extends StatelessWidget {
     required this.label,
     required this.selectedValue,
     required this.opponentValue,
+    required this.selectedAvailable,
+    required this.opponentAvailable,
     required this.selectedTeamName,
     required this.opponentTeamName,
     required this.accent,
@@ -1187,8 +1239,19 @@ class _ComparisonMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selectedLeading = selectedValue > opponentValue;
-    return Expanded(
+    final canCompare = selectedAvailable && opponentAvailable;
+    final selectedLeading = canCompare && selectedValue > opponentValue;
+    final comparison = !canCompare
+        ? '비교 대기'
+        : selectedValue == opponentValue
+        ? '같음'
+        : '${selectedLeading ? selectedTeamName : opponentTeamName} 우세';
+    return Semantics(
+      key: ValueKey('boxscore-comparison-$label'),
+      label:
+          '$label, $selectedTeamName ${selectedAvailable ? selectedValue : '미제공'}, '
+          '$opponentTeamName ${opponentAvailable ? opponentValue : '미제공'}, $comparison',
+      excludeSemantics: true,
       child: Column(
         children: [
           Text(
@@ -1201,9 +1264,8 @@ class _ComparisonMetric extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '$selectedValue : $opponentValue',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            '${selectedAvailable ? selectedValue : '–'} : ${opponentAvailable ? opponentValue : '–'}',
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 15,
               color: selectedLeading ? accent : AppColors.textPrimary,
@@ -1213,9 +1275,8 @@ class _ComparisonMetric extends StatelessWidget {
           ),
           const SizedBox(height: 3),
           Text(
-            selectedLeading ? selectedTeamName : opponentTeamName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            comparison,
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 9,
               color: AppColors.textSecondary,
@@ -1283,8 +1344,16 @@ class _RecordHighlightRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final useNarrowLayout = MediaQuery.sizeOf(context).width <= 340;
+    return LayoutBuilder(
+      builder: (context, constraints) => _buildRow(
+        useNarrowLayout:
+            constraints.maxWidth < 560 ||
+            MediaQuery.textScalerOf(context).scale(1) >= 1.5,
+      ),
+    );
+  }
 
+  Widget _buildRow({required bool useNarrowLayout}) {
     return AppPressable(
       pressedScale: onTap == null ? 1 : 0.985,
       onTap: onTap,
@@ -1345,8 +1414,8 @@ class _RecordHighlightRow extends StatelessWidget {
     final nameAndRole = Text(
       key: ValueKey('record-highlight-name-$name'),
       '$name  $role',
-      maxLines: useNarrowLayout ? 2 : 1,
-      overflow: TextOverflow.ellipsis,
+      maxLines: useNarrowLayout ? null : 1,
+      overflow: useNarrowLayout ? null : TextOverflow.ellipsis,
       style: const TextStyle(
         fontSize: 15,
         fontWeight: FontWeight.w900,
@@ -1372,8 +1441,8 @@ class _RecordHighlightRow extends StatelessWidget {
         const SizedBox(height: 7),
         Text(
           summary,
-          maxLines: useNarrowLayout ? 2 : 1,
-          overflow: TextOverflow.ellipsis,
+          maxLines: useNarrowLayout ? null : 1,
+          overflow: useNarrowLayout ? null : TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: 13,
             color: AppColors.textSecondary,
@@ -1396,8 +1465,6 @@ class _RecordHighlightRow extends StatelessWidget {
           Text(
             key: ValueKey('record-highlight-metric-$name'),
             metricLabel,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: metricLabel.length > 10 ? 12 : 15,
               height: 1.15,
@@ -1420,8 +1487,8 @@ class _RecordTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 9),
+      constraints: const BoxConstraints(minHeight: 28),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.14),

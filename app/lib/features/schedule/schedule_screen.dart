@@ -761,7 +761,11 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     }
 
     if (_viewMode == ScheduleViewMode.calendar) {
-      return _buildCalendarModeBody(scheduleAsync, selectedSchedule);
+      return _buildCalendarModeBody(
+        scheduleAsync,
+        selectedSchedule,
+        filteredDays,
+      );
     }
 
     if (_viewMode == ScheduleViewMode.stadium) {
@@ -786,6 +790,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   Widget _buildCalendarModeBody(
     AsyncValue<List<ScheduleDay>> scheduleAsync,
     ScheduleDay? selectedSchedule,
+    List<ScheduleDay> filteredDays,
   ) {
     final isInitialLoading =
         scheduleAsync.isLoading && scheduleAsync.asData == null;
@@ -813,7 +818,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           ...scheduleAsync.when<List<Widget>>(
             loading: () => [_buildGameListLoadingSection()],
             error: (error, _) => [_buildScheduleErrorContent(error)],
-            data: (_) => _buildGameListItems(selectedSchedule),
+            data: (_) => _buildGameListItems(selectedSchedule, filteredDays),
           ),
         ],
       ),
@@ -1706,19 +1711,38 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     return DateTime(now.year, now.month + delta);
   }
 
-  List<Widget> _buildGameListItems(ScheduleDay? schedule) {
+  List<Widget> _buildGameListItems(
+    ScheduleDay? schedule,
+    List<ScheduleDay> filteredDays,
+  ) {
     if (_selectedDay == null) {
       return [
-        _buildScheduleEmptyArtwork(
-          title: '일정 선택',
-          message: '날짜를 탭해 경기 일정을 보세요',
-        ),
+        _buildScheduleEmptyState(title: '일정 선택', message: '날짜를 탭해 경기 일정을 보세요'),
       ];
     }
 
     if (schedule == null || schedule.games.isEmpty) {
+      final nextDate = _nextScheduledDate(filteredDays);
+      final myTeamId = ref.watch(myTeamProvider);
+      final hasTeamFilter =
+          myTeamId != null && _teamFilter != ScheduleTeamFilter.all;
       return [
-        _buildScheduleEmptyArtwork(title: '경기 없음', message: '선택한 날짜에 경기가 없습니다'),
+        _buildScheduleEmptyState(
+          title: '경기 없는 날',
+          message: hasTeamFilter
+              ? '선택한 날짜에 현재 팀 조건으로 볼 경기가 없습니다.'
+              : '선택한 날짜에 경기가 없습니다.',
+          actionLabel: nextDate == null
+              ? '다음 달 보기'
+              : '${nextDate.month}월 ${nextDate.day}일 경기 보기',
+          onAction: nextDate == null
+              ? () => _goToMonth(
+                  DateTime(_currentMonth.year, _currentMonth.month + 1),
+                  selectedDay: 1,
+                  animateCalendar: true,
+                )
+              : () => _selectDate(nextDate),
+        ),
       ];
     }
 
@@ -1765,31 +1789,101 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     ];
   }
 
-  Widget _buildScheduleEmptyArtwork({
+  DateTime? _nextScheduledDate(List<ScheduleDay> days) {
+    final now = kboCivilDateTime();
+    final today = DateTime(now.year, now.month, now.day);
+    final selectedDate = DateTime(
+      _currentMonth.year,
+      _currentMonth.month,
+      _selectedDay ?? 1,
+    );
+    final earliestDate = selectedDate.isAfter(today) ? selectedDate : today;
+    final candidates = <DateTime>[];
+    for (final day in days) {
+      final date = DateTime.tryParse(day.date);
+      if (date == null ||
+          date.year != _currentMonth.year ||
+          date.month != _currentMonth.month ||
+          date.isBefore(earliestDate)) {
+        continue;
+      }
+      if (day.games.any((game) => game.status.toUpperCase() == 'SCHEDULED')) {
+        candidates.add(date);
+      }
+    }
+    candidates.sort();
+    return candidates.firstOrNull;
+  }
+
+  Widget _buildScheduleEmptyState({
     required String title,
     required String message,
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
-    final textScale = MediaQuery.textScalerOf(context).scale(1);
-    final cardHeight = 178 + (textScale - 1).clamp(0.0, 1.4) * 42;
+    final colors = AppTheme.colorsOf(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
-      child: AppArtworkCard(
-        assetName: VisualAssets.scheduleEmptyCalendar,
-        height: cardHeight,
-        alignment: Alignment.center,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Container(
+        key: const ValueKey('schedule-empty-state'),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: colors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.divider),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            Row(
+              children: [
+                Icon(
+                  Icons.event_available_rounded,
+                  size: 22,
+                  color: colors.textSupporting,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               message,
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.45,
+                color: colors.textSecondary,
+              ),
             ),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  key: const ValueKey('schedule-empty-next'),
+                  onPressed: onAction,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(44, 44),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    foregroundColor: colors.textPrimary,
+                    side: BorderSide(color: colors.divider),
+                  ),
+                  child: Text(actionLabel, textAlign: TextAlign.center),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -1861,7 +1955,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            _buildScheduleEmptyArtwork(
+            _buildScheduleEmptyState(
               title: '구장별 일정 없음',
               message: '표시할 경기가 없습니다',
             ),
@@ -1966,7 +2060,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               gameCount: 0,
               season: season,
             ),
-            _buildScheduleEmptyArtwork(
+            _buildScheduleEmptyState(
               title: '매치업 일정 없음',
               message: '$matchupLabel 남은 경기가 이번 시즌 일정에 없습니다',
             ),

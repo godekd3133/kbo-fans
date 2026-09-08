@@ -237,6 +237,7 @@ HomeMyTeamBrief? _buildLocalMyTeamBrief({
       .where((entry) => entry.$1.compareTo(today) >= 0)
       .where((entry) => entry.$2.awayId == myTeam || entry.$2.homeId == myTeam)
       .where((entry) => entry.$2.gameId != todayGame?.gameId)
+      .where((entry) => entry.$2.status.toUpperCase() == 'SCHEDULED')
       .map((entry) => entry.$2)
       .firstOrNull;
 
@@ -376,7 +377,7 @@ HomeKboBrief _buildLocalKboBrief({
   final activeGames = [
     ...liveGames,
     ...finalGames,
-  ].where((game) => game.hasVerifiedScore && _totalScore(game) > 0).toList();
+  ].where((game) => game.hasVerifiedScore).toList();
 
   final title = _kboBriefTitle(
     date: date,
@@ -418,7 +419,11 @@ HomeKboBrief _buildLocalKboBrief({
     add(
       HomeKboBriefItem(
         type: 'game_flow',
-        eyebrow: game.status == GameStatus.live ? '접전 진행 중' : '1점 승부',
+        eyebrow: game.status == GameStatus.live
+            ? '접전 진행 중'
+            : game.away.score == game.home.score
+            ? '무승부'
+            : '1점 승부',
         title: _scoreLine(game),
         subtitle: '${_gameTimeLabel(game)} · ${game.stadium}',
         route: '/game/${game.gameId}',
@@ -428,8 +433,9 @@ HomeKboBrief _buildLocalKboBrief({
     );
   }
 
-  final highestScoreGames = [...activeGames]
-    ..sort((a, b) => _totalScore(b).compareTo(_totalScore(a)));
+  final highestScoreGames =
+      activeGames.where((game) => _totalScore(game) > 0).toList()
+        ..sort((a, b) => _totalScore(b).compareTo(_totalScore(a)));
   if (highestScoreGames.isNotEmpty) {
     final game = highestScoreGames.first;
     add(
@@ -545,7 +551,20 @@ HomeKboBrief _buildLocalKboBrief({
     add(avgItem);
   }
 
-  if (items.isEmpty) {
+  if (items.isEmpty && games.isNotEmpty) {
+    final game = games.first;
+    add(
+      HomeKboBriefItem(
+        type: 'game_status',
+        eyebrow: '경기 상황 확인',
+        title: '${game.away.shortName} vs ${game.home.shortName}',
+        subtitle: '${_gameTimeLabel(game)} · ${game.stadium}',
+        route: '/game/${game.gameId}',
+        gameId: game.gameId,
+        teamIds: [game.away.teamId, game.home.teamId],
+      ),
+    );
+  } else if (items.isEmpty) {
     add(
       const HomeKboBriefItem(
         type: 'offday',

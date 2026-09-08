@@ -667,6 +667,122 @@ def test_kbo_brief_deprioritizes_my_team_when_league_items_exist() -> None:
     assert brief["items"][0]["route"] == "/game/20260520NCOB0"
 
 
+@pytest.mark.parametrize("missing_side", ["away", "home"])
+def test_kbo_brief_does_not_derive_scores_from_missing_team_score(missing_side) -> None:
+    service = HomeService.__new__(HomeService)
+    game = {
+        "gameId": "20260906HTLG0",
+        "status": "LIVE",
+        "inning": "8회말",
+        "stadium": "잠실",
+        "away": {"teamId": "HT", "score": 1},
+        "home": {"teamId": "LG", "score": 1},
+    }
+    game[missing_side]["score"] = None
+
+    brief = service._build_kbo_brief(
+        today="2026-09-06",
+        my_team="LG",
+        games=[game],
+        standings=[],
+        overview={"leaders": {}},
+    )
+
+    assert len(brief["items"]) == 1
+    assert brief["items"][0]["type"] == "game_status"
+    assert brief["items"][0]["title"] == "KIA vs LG"
+    assert brief["items"][0]["route"] == "/game/20260906HTLG0"
+    assert game[missing_side]["score"] is None
+
+
+@pytest.mark.parametrize("home_score", [0, 1])
+@pytest.mark.parametrize("game_status", ["LIVE", "FINAL"])
+def test_kbo_brief_keeps_verified_zero_score_as_close_game(home_score, game_status) -> None:
+    service = HomeService.__new__(HomeService)
+    game = {
+        "gameId": "20260906HTLG0",
+        "status": game_status,
+        "inning": "8회말",
+        "stadium": "잠실",
+        "away": {"teamId": "HT", "score": 0},
+        "home": {"teamId": "LG", "score": home_score},
+    }
+
+    brief = service._build_kbo_brief(
+        today="2026-09-06",
+        my_team=None,
+        games=[game],
+        standings=[],
+        overview={"leaders": {}},
+    )
+
+    expected_label = (
+        "접전 진행 중" if game_status == "LIVE" else "무승부" if home_score == 0 else "1점 승부"
+    )
+    assert brief["items"][0]["eyebrow"] == expected_label
+    assert brief["items"][0]["title"] == f"KIA 0 : {home_score} LG"
+    if home_score == 0:
+        assert len(brief["items"]) == 1
+
+
+@pytest.mark.parametrize("excluded_status", ["FINAL", "LIVE", "CANCELLED", "SUSPENDED"])
+def test_my_team_next_game_skips_non_scheduled_games(excluded_status) -> None:
+    service = HomeService.__new__(HomeService)
+    prior_game = {
+        "gameId": "20260907HTLG0",
+        "awayId": "HT",
+        "homeId": "LG",
+        "status": excluded_status,
+    }
+    next_game = {
+        "gameId": "20260908HTLG0",
+        "awayId": "HT",
+        "homeId": "LG",
+        "status": "SCHEDULED",
+    }
+
+    brief = service._build_my_team_brief(
+        my_team="LG",
+        games=[],
+        schedule_days=[
+            {"date": "2026-09-07", "games": [prior_game]},
+            {"date": "2026-09-08", "games": [next_game]},
+        ],
+        standings=[],
+        today="2026-09-07",
+    )
+
+    assert brief["nextGame"] == next_game
+
+
+def test_my_team_next_game_keeps_today_scheduled_doubleheader_and_empty_state() -> None:
+    service = HomeService.__new__(HomeService)
+    first_game = {
+        "gameId": "20260907HTLG1",
+        "awayId": "HT",
+        "homeId": "LG",
+        "status": "SCHEDULED",
+    }
+    second_game = {**first_game, "gameId": "20260907HTLG2"}
+    arguments = {
+        "my_team": "LG",
+        "games": [{"gameId": first_game["gameId"], "home": {"teamId": "LG"}}],
+        "standings": [],
+        "today": "2026-09-07",
+    }
+
+    brief = service._build_my_team_brief(
+        **arguments,
+        schedule_days=[{"date": "2026-09-07", "games": [first_game, second_game]}],
+    )
+    assert brief["nextGame"] == second_game
+    brief_without_next = service._build_my_team_brief(
+        **arguments,
+        schedule_days=[{"date": "2026-09-07", "games": [first_game]}],
+    )
+    assert brief_without_next["nextGame"] is None
+
+
 def test_my_team_brief_excludes_scheduled_zero_score_from_recent_results() -> None:
     service = HomeService.__new__(HomeService)
 

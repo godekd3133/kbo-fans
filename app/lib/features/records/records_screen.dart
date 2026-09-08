@@ -12,6 +12,7 @@ import '../../core/utils/kbo_player_image_cache.dart';
 import '../../core/utils/kbo_time.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
+import '../../core/widgets/baseball_metric_guide.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/api/api_client.dart';
@@ -21,6 +22,7 @@ import '../../data/models/team_records_bundle.dart';
 import '../../data/models/team_stats.dart';
 import '../../data/providers.dart';
 import 'records_area_switcher.dart';
+import 'player_comparison_sheet.dart';
 
 enum PlayerListFilter { all, entryOnly, reserveOnly }
 
@@ -35,8 +37,15 @@ TextStyle get _tableHeaderStyle => TextStyle(
 
 class RecordsScreen extends ConsumerStatefulWidget {
   final String? teamId;
+  final int? initialSeason;
+  final bool followsCurrentSeason;
 
-  const RecordsScreen({super.key, this.teamId});
+  const RecordsScreen({
+    super.key,
+    this.teamId,
+    this.initialSeason,
+    this.followsCurrentSeason = true,
+  });
 
   @override
   ConsumerState<RecordsScreen> createState() => _RecordsScreenState();
@@ -62,7 +71,13 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     super.initState();
     _currentSeason =
         kboSeasonFromDateKey(ref.read(kboDateProvider)) ?? kboCurrentSeason();
-    _selectedSeason = _currentSeason;
+    _selectedSeason =
+        widget.initialSeason?.clamp(
+          firstSupportedRecordsSeason,
+          _currentSeason,
+        ) ??
+        _currentSeason;
+    _followsCurrentSeason = widget.followsCurrentSeason;
     ref.listenManual<String>(kboDateProvider, (_, nextDate) {
       final nextSeason = kboSeasonFromDateKey(nextDate);
       if (!mounted || nextSeason == null || nextSeason == _currentSeason) {
@@ -85,6 +100,24 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             : PlayerSortOption.era;
       });
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant RecordsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialSeason != widget.initialSeason ||
+        oldWidget.followsCurrentSeason != widget.followsCurrentSeason ||
+        oldWidget.teamId != widget.teamId) {
+      _selectedSeason =
+          widget.initialSeason?.clamp(
+            firstSupportedRecordsSeason,
+            _currentSeason,
+          ) ??
+          _currentSeason;
+      _followsCurrentSeason = widget.followsCurrentSeason;
+      _filter = PlayerListFilter.all;
+      _searchQuery = '';
+    }
   }
 
   @override
@@ -135,6 +168,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _buildTeamChooser() {
     final myTeamId = ref.watch(myTeamProvider);
+    final myTeam = KboTeams.byId(myTeamId ?? '');
     final overviewAsync = ref.watch(recordsOverviewProvider(_selectedSeason));
     final showRecordsAreaSwitcher = MediaQuery.sizeOf(context).width < 700;
     final orderedTeams = [...KboTeams.teams]
@@ -143,10 +177,13 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         if (b.id == myTeamId) return 1;
         return a.name.compareTo(b.name);
       });
+    final searchQuery = _searchQuery.trim().toLowerCase();
     final visibleTeams = orderedTeams.where((team) {
-      if (_searchQuery.isEmpty) return true;
-      return team.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          team.shortName.toLowerCase().contains(_searchQuery.toLowerCase());
+      // The shortcut above the asynchronous overview owns the normal my-team
+      // entry. Searching still returns every matching team, including my team.
+      if (searchQuery.isEmpty) return team.id != myTeam?.id;
+      return team.name.toLowerCase().contains(searchQuery) ||
+          team.shortName.toLowerCase().contains(searchQuery);
     }).toList();
 
     return Scaffold(
@@ -171,7 +208,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'RECORDS',
+                                  '기록으로 보는 야구',
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w900,
@@ -183,14 +220,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                                 Text(
                                   '기록실',
                                   style: TextStyle(
-                                    fontSize: 32,
+                                    fontSize: 28,
                                     fontWeight: FontWeight.w900,
                                     height: 1.05,
                                   ),
                                 ),
                                 SizedBox(height: 6),
                                 Text(
-                                  '한눈에 보는 리그 리더와 팀&선수 기록',
+                                  '리그를 살펴보고, 내 팀 선수를 나란히 비교하세요.',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textSecondary,
@@ -226,6 +263,19 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       ],
                       _seasonSelector(),
                       const SizedBox(height: 10),
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: BaseballMetricGuideButton(),
+                      ),
+                      if (myTeam != null) ...[
+                        const SizedBox(height: 6),
+                        _teamChooserCard(
+                          myTeam,
+                          isMyTeam: true,
+                          isShortcut: true,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       overviewAsync.when(
                         loading: () => const SizedBox.shrink(),
                         error: (error, stackTrace) =>
@@ -238,7 +288,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                             const SizedBox(height: 8),
                             _recordsSectionHeader(
                               title: '리그 리더보드',
-                              subtitle: '핵심 지표별 TOP 5를 빠르게 비교합니다.',
+                              subtitle: '지표의 뜻과 함께 리그 선두를 살펴보세요.',
                               actionLabel: '전체 보기',
                               onActionTap: () => context.push(
                                 _recordsChildLocation(
@@ -257,7 +307,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                             const SizedBox(height: 18),
                             _recordsSectionHeader(
                               title: '팀 기록실',
-                              subtitle: '마이팀을 먼저 배치하고 팀별 선수 기록으로 이어집니다.',
+                              subtitle: '팀을 고르면 선수 기록과 비교로 이어집니다.',
                             ),
                             const SizedBox(height: 12),
                           ],
@@ -321,11 +371,19 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     );
   }
 
-  Widget _teamChooserCard(KboTeam team, {required bool isMyTeam}) {
+  Widget _teamChooserCard(
+    KboTeam team, {
+    required bool isMyTeam,
+    bool isShortcut = false,
+  }) {
     final colors = AppTheme.colorsOf(context);
     final accent = colors.readableAccent(team.primaryColor);
     return AppPressable(
-      onTap: () => context.push('/records/team/${team.id}'),
+      key: ValueKey(
+        isShortcut ? 'records-my-team-shortcut' : 'records-team-${team.id}',
+      ),
+      onTap: () =>
+          context.push(_recordsChildLocation('/records/team/${team.id}')),
       pressedScale: 0.97,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -384,7 +442,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    isMyTeam ? '마이팀 기록실 열기' : '선수 기록 보기',
+                    isShortcut
+                        ? '내 팀 선수 기록 · 나란히 비교'
+                        : isMyTeam
+                        ? '마이팀 기록실 열기'
+                        : '선수 기록 보기',
                     style: TextStyle(
                       fontSize: 12,
                       color: isMyTeam
@@ -431,7 +493,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                         button: true,
                         child: IconButton(
                           tooltip: '뒤로',
-                          onPressed: () => context.go('/records'),
+                          onPressed: () {
+                            final router = GoRouter.of(context);
+                            if (router.canPop()) {
+                              router.pop();
+                            } else {
+                              router.go(_recordsChildLocation('/records'));
+                            }
+                          },
                           icon: const Icon(Icons.arrow_back),
                         ),
                       ),
@@ -758,6 +827,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
       children: [
+        if (filtered.isNotEmpty) ...[
+          _comparisonEntry(filtered),
+          const SizedBox(height: 12),
+        ],
         _summaryCard(entryPlayers.length, reservePlayers.length),
         if (entryPlayers.isNotEmpty) ...[
           const SizedBox(height: 18),
@@ -794,6 +867,63 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             ),
           ),
       ],
+    );
+  }
+
+  Widget _comparisonEntry(List<PlayerProfile> players) {
+    final team = KboTeams.byId(widget.teamId!);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.28)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '선수 기록 비교',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '$_selectedSeason 시즌 · 현재 필터의 ${players.length}명에서 두 선수를 골라보세요.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              FilledButton.icon(
+                key: const ValueKey('records-compare-players'),
+                onPressed: players.length < 2
+                    ? null
+                    : () => showPlayerComparison(
+                        context,
+                        players: players,
+                        teamId: widget.teamId!,
+                        teamName: team?.name ?? widget.teamId!,
+                        season: _selectedSeason,
+                        playerType: _tabController.index == 0
+                            ? PlayerType.hitter
+                            : PlayerType.pitcher,
+                      ),
+                icon: const Icon(Icons.compare_arrows_rounded, size: 18),
+                label: const Text('선수 비교'),
+              ),
+              BaseballMetricGuideButton(
+                metric: _tabController.index == 0 ? 'AVG' : 'ERA',
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -1313,6 +1443,12 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     final battingAvg = teamStats.hitting['AVG'] ?? '-';
     final teamEra = teamStats.pitching['ERA'] ?? '-';
     final winPct = teamStats.pitching['WPCT'] ?? '-';
+    final ops = teamStats.hitting['OPS']?.trim();
+    final numericOps = double.tryParse(ops ?? '');
+    final opsDetail =
+        numericOps != null && numericOps.isFinite && numericOps >= 0
+        ? 'OPS $ops'
+        : '';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1323,21 +1459,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         children: [
           Row(
             children: [
-              Expanded(
-                child: _heroTeamMetric(
-                  '팀 타율',
-                  battingAvg,
-                  'OPS ${teamStats.hitting['OPS'] ?? '-'} · 홈런 ${teamStats.hitting['HR'] ?? '-'}',
-                ),
-              ),
+              Expanded(child: _heroTeamMetric('팀 타율', battingAvg, opsDetail)),
               Container(width: 1, height: 56, color: AppColors.divider),
-              Expanded(
-                child: _heroTeamMetric(
-                  '팀 승률',
-                  winPct,
-                  '팀 ERA $teamEra · WHIP ${teamStats.pitching['WHIP'] ?? '-'}',
-                ),
-              ),
+              Expanded(child: _heroTeamMetric('팀 승률', winPct, '')),
             ],
           ),
           const SizedBox(height: 14),
@@ -1374,18 +1498,20 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           value,
           style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 6),
-        Text(
-          detail,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-            height: 1.35,
+        if (detail.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            detail,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              height: 1.35,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -2105,7 +2231,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         orElse: () => snapshots.first,
       ),
     );
-    final leaders = selected.leaders.take(3).toList();
+    final leaders = selected.leaders.take(5).toList();
 
     return Container(
       key: const ValueKey('records-leaderboard-hub'),
@@ -2179,6 +2305,16 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               ),
             ),
           Container(height: 1, color: AppColors.divider),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: BaseballMetricGuideButton(
+                metric: selected.metric.key,
+                label: '${selected.metric.shortLabel} 이해하기',
+              ),
+            ),
+          ),
           if (!useLargeText) _leaderboardHeader(),
           if (leaders.isEmpty)
             Padding(
@@ -2741,7 +2877,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       _MetricSnapshot(
         metric: LeaderboardMetric.avg,
         title: '타율(AVG) 리더',
-        description: '컨택과 출루 흐름의 첫 기준',
+        description: '타수 중 안타의 비율',
         leaders: overview.avgLeaders,
         color: colors.readableAccent(AppColors.accent),
       ),
@@ -2769,14 +2905,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       _MetricSnapshot(
         metric: LeaderboardMetric.era,
         title: '평균자책(ERA) 마운드',
-        description: '낮을수록 강한 선발 경쟁',
+        description: '투구 이닝과 함께 보는 자책점',
         leaders: overview.eraLeaders,
         color: colors.readableAccent(AppColors.live),
       ),
       _MetricSnapshot(
         metric: LeaderboardMetric.wins,
         title: '다승',
-        description: '선발 승수 흐름',
+        description: '승리 투수 누적 기록',
         leaders: overview.winLeaders,
         color: colors.readableAccent(AppColors.positive),
       ),
@@ -2790,7 +2926,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       _MetricSnapshot(
         metric: LeaderboardMetric.strikeouts,
         title: '탈삼진',
-        description: '구위 지표',
+        description: '삼진과 투구 이닝을 함께',
         leaders: overview.strikeoutLeaders,
         color: colors.readableAccent(AppColors.accent),
       ),

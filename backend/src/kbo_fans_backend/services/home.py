@@ -365,6 +365,7 @@ class HomeService:
                 if date_key >= today
                 and (game.get("awayId") == my_team or game.get("homeId") == my_team)
                 and game.get("gameId") != (today_game or {}).get("gameId")
+                and str(game.get("status") or "").upper() == "SCHEDULED"
             ),
             None,
         )
@@ -413,7 +414,7 @@ class HomeService:
         final_games = [game for game in games if game.get("status") == "FINAL"]
         scheduled_games = [game for game in games if game.get("status") == "SCHEDULED"]
         active_games = [
-            game for game in [*live_games, *final_games] if self._game_total_score(game) > 0
+            game for game in [*live_games, *final_games] if self._has_verified_scores(game)
         ]
 
         items: List[Dict[str, Any]] = []
@@ -443,7 +444,13 @@ class HomeService:
             add(
                 self._kbo_brief_item(
                     item_type="game_flow",
-                    eyebrow="접전 진행 중" if game.get("status") == "LIVE" else "1점 승부",
+                    eyebrow=(
+                        "접전 진행 중"
+                        if game.get("status") == "LIVE"
+                        else "무승부"
+                        if self._team_score(game, "away") == self._team_score(game, "home")
+                        else "1점 승부"
+                    ),
                     title=self._score_line(game),
                     subtitle=f"{self._game_time_label(game)} · {game.get('stadium') or ''}".strip(
                         " ·"
@@ -454,7 +461,7 @@ class HomeService:
             )
 
         highest_score_games = sorted(
-            active_games,
+            [game for game in active_games if self._game_total_score(game) > 0],
             key=lambda game: self._game_total_score(game),
             reverse=True,
         )
@@ -580,7 +587,24 @@ class HomeService:
         if avg_item is not None:
             add(avg_item)
 
-        if not items:
+        if not items and games:
+            game = games[0]
+            add(
+                self._kbo_brief_item(
+                    item_type="game_status",
+                    eyebrow="경기 상황 확인",
+                    title=(
+                        f"{self._team_short_name(game, 'away')} vs "
+                        f"{self._team_short_name(game, 'home')}"
+                    ),
+                    subtitle=f"{self._game_time_label(game)} · {game.get('stadium') or ''}".strip(
+                        " ·"
+                    ),
+                    route=f"/game/{game.get('gameId')}",
+                    game=game,
+                )
+            )
+        elif not items:
             add(
                 {
                     "type": "offday",
@@ -626,11 +650,7 @@ class HomeService:
             None,
         )
         if today_game is not None:
-            away = today_game.get("away", {})
-            home = today_game.get("home", {})
-            away_score = away.get("score")
-            home_score = home.get("score")
-            if away_score is None or home_score is None:
+            if not self._has_verified_scores(today_game):
                 title = (
                     f"{self._team_short_name(today_game, 'away')} vs "
                     f"{self._team_short_name(today_game, 'home')}"
@@ -1082,6 +1102,13 @@ class HomeService:
         except ValueError:
             return "현재"
         return f"{target.month}월"
+
+    @staticmethod
+    def _has_verified_scores(game: Dict[str, Any]) -> bool:
+        return all(
+            isinstance(score, int) and not isinstance(score, bool) and score >= 0
+            for score in ((game.get(side) or {}).get("score") for side in ("away", "home"))
+        )
 
     @staticmethod
     def _game_total_score(game: Dict[str, Any]) -> int:

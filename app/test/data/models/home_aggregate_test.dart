@@ -5,6 +5,97 @@ import 'package:kbo_fans/data/models/records_overview.dart';
 import 'package:kbo_fans/data/models/schedule.dart';
 
 void main() {
+  for (final missingSide in ['away', 'home']) {
+    test('missing $missingSide score does not become a scoring headline', () {
+      final aggregate = _aggregateForGame(
+        awayScore: 1,
+        homeScore: 1,
+        awayScoreAvailable: missingSide != 'away',
+        homeScoreAvailable: missingSide != 'home',
+      );
+
+      final item = aggregate.kboBrief!.items.single;
+      expect(item.type, 'game_status');
+      expect(item.title, 'KIA vs LG');
+      expect(item.route, '/game/20260906HTLG0');
+    });
+  }
+
+  for (final homeScore in [0, 1]) {
+    for (final status in [GameStatus.live, GameStatus.final_]) {
+      test('verified $status 0:$homeScore remains a close game', () {
+        final aggregate = _aggregateForGame(
+          awayScore: 0,
+          homeScore: homeScore,
+          status: status,
+        );
+        final item = aggregate.kboBrief!.items.first;
+        expect(
+          item.eyebrow,
+          status == GameStatus.live
+              ? '접전 진행 중'
+              : homeScore == 0
+              ? '무승부'
+              : '1점 승부',
+        );
+        expect(item.title, 'KIA 0 : $homeScore LG');
+        if (homeScore == 0) {
+          expect(aggregate.kboBrief!.items, hasLength(1));
+        }
+      });
+    }
+  }
+
+  for (final status in ['FINAL', 'LIVE', 'CANCELLED', 'SUSPENDED']) {
+    test('next game skips today $status for next scheduled game', () {
+      final aggregate = buildLocalHomeAggregate(
+        date: '2026-09-07',
+        myTeam: 'LG',
+        games: const [],
+        scheduleDays: [
+          ScheduleDay(
+            date: '2026-09-07',
+            games: [_scheduleGame('20260907HTLG0', status: status)],
+          ),
+          ScheduleDay(
+            date: '2026-09-08',
+            games: [_scheduleGame('20260908HTLG0')],
+          ),
+        ],
+        standings: const [],
+        overview: _emptyOverview(),
+      );
+
+      expect(aggregate.myTeamBrief!.nextGame!.gameId, '20260908HTLG0');
+    });
+  }
+
+  test('next game keeps scheduled doubleheader and no-next-game state', () {
+    for (final hasSecondGame in [true, false]) {
+      final aggregate = buildLocalHomeAggregate(
+        date: '2026-09-06',
+        myTeam: 'LG',
+        games: [_liveGame(awayScore: 1, homeScore: 1)],
+        scheduleDays: [
+          ScheduleDay(
+            date: '2026-09-06',
+            games: [
+              _scheduleGame('20260906HTLG0'),
+              if (hasSecondGame) _scheduleGame('20260906HTLG2'),
+            ],
+          ),
+        ],
+        standings: const [],
+        overview: _emptyOverview(),
+      );
+
+      expect(
+        aggregate.myTeamBrief!.nextGame?.gameId,
+        hasSecondGame ? '20260906HTLG2' : null,
+      );
+    }
+  });
+
   test('home run quick item carries player image and detail route', () {
     final aggregate = buildLocalHomeAggregate(
       date: '2026-05-20',
@@ -619,6 +710,76 @@ void main() {
     expect(milestoneItems.first.route, '/records/player/78224?season=2026');
     expect(milestoneItems.first.teamIds, ['HT']);
   });
+}
+
+HomeAggregate _aggregateForGame({
+  required int awayScore,
+  required int homeScore,
+  GameStatus status = GameStatus.live,
+  bool awayScoreAvailable = true,
+  bool homeScoreAvailable = true,
+}) {
+  return buildLocalHomeAggregate(
+    date: '2026-09-06',
+    myTeam: null,
+    games: [
+      _liveGame(
+        awayScore: awayScore,
+        homeScore: homeScore,
+        status: status,
+        awayScoreAvailable: awayScoreAvailable,
+        homeScoreAvailable: homeScoreAvailable,
+      ),
+    ],
+    scheduleDays: const [],
+    standings: const [],
+    overview: _emptyOverview(),
+  );
+}
+
+Game _liveGame({
+  required int awayScore,
+  required int homeScore,
+  GameStatus status = GameStatus.live,
+  bool awayScoreAvailable = true,
+  bool homeScoreAvailable = true,
+}) {
+  return Game(
+    gameId: '20260906HTLG0',
+    status: status,
+    inning: '8회말',
+    away: TeamScore(
+      teamId: 'HT',
+      teamName: 'KIA 타이거즈',
+      shortName: 'KIA',
+      score: awayScore,
+      scoreAvailable: awayScoreAvailable,
+      innings: const [],
+    ),
+    home: TeamScore(
+      teamId: 'LG',
+      teamName: 'LG 트윈스',
+      shortName: 'LG',
+      score: homeScore,
+      scoreAvailable: homeScoreAvailable,
+      innings: const [],
+    ),
+    stadium: '잠실',
+    startTime: '18:30',
+  );
+}
+
+ScheduleGame _scheduleGame(String gameId, {String status = 'SCHEDULED'}) {
+  return ScheduleGame(
+    gameId: gameId,
+    time: '18:30',
+    awayId: 'HT',
+    awayName: 'KIA',
+    homeId: 'LG',
+    homeName: 'LG',
+    stadium: '잠실',
+    status: status,
+  );
 }
 
 RecordsOverview _emptyOverview() {

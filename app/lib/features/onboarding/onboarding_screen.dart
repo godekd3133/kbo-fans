@@ -83,7 +83,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ? (usesLargeText ? 2 : 3)
         : (usesCompactLayout ? 1 : 2);
     final teamCardHeight = usesLargeText
-        ? 80.0 + (textScaleFactor * 20.0)
+        ? 100.0 + (textScaleFactor * 36.0)
         : (viewportWidth >= 900 ? 88.0 : 74.0);
     final topSpacer = widget.isEditMode
         ? 10.0
@@ -98,6 +98,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             slivers: [
               SliverToBoxAdapter(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(height: topSpacer),
                     if (widget.isEditMode)
@@ -115,21 +116,30 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       ),
                     Text(
                       'KBO Fans',
-                      style: Theme.of(context).textTheme.headlineLarge
-                          ?.copyWith(
-                            fontSize: 34,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0,
-                            height: 1.06,
-                          ),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontSize: 15,
+                        color: AppColors.textSupporting,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0,
+                        height: 1.06,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.isEditMode ? '응원 팀을 선택하세요' : '응원팀을 고르면\n경기에서 기록까지',
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        height: 1.2,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '응원 팀을 선택하세요',
+                      '내 팀을 먼저 보고, 언제든 바꿀 수 있어요.',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 12,
                         color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w700,
+                        height: 1.4,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -167,6 +177,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     _OnboardingPrimaryButton(
                       width: double.infinity,
                       height: 52,
+                      accent: selectedTeam?.primaryColor ?? AppColors.live,
                       enabled: effectiveSelectedTeamId != null,
                       isLoading: _isSubmitting,
                       label: _isSubmitting
@@ -223,102 +234,55 @@ class _SelectedTeamPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppTheme.colorsOf(context);
     final accent = colors.readableAccent(team?.primaryColor ?? colors.live);
-    final title = team?.name ?? '마이팀 미리보기';
-    final logoTeamId = team?.id;
-    final fallback = team?.shortName ?? 'KBO';
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 9, 14, 9),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.card.withValues(alpha: 0.92),
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.background.withValues(alpha: 0.32),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        border: Border.all(color: accent.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'MY TEAM',
-            style: TextStyle(
-              fontSize: 11,
-              color: accent,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
-            ),
-          ),
-          const SizedBox(height: 8),
           Row(
             children: [
               _TeamLogoCircle(
-                teamId: logoTeamId,
-                fallback: fallback,
+                teamId: team?.id,
+                fallback: team?.shortName ?? 'KBO',
                 accent: accent,
-                size: 58,
-                logoSize: 45,
+                size: 36,
+                logoSize: 30,
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  team?.name ?? '내 팀을 먼저 보여드려요',
                   style: const TextStyle(
-                    fontSize: 21,
+                    fontSize: 15,
                     fontWeight: FontWeight.w900,
-                    height: 1.08,
+                    height: 1.3,
                   ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              const gap = 8.0;
-              final textScale = MediaQuery.textScalerOf(context).scale(1);
-              final columns = textScale >= 1.4
-                  ? 1
-                  : constraints.maxWidth >= 350
-                  ? 3
-                  : constraints.maxWidth >= 260
-                  ? 2
-                  : 1;
-              final width =
-                  (constraints.maxWidth - (gap * (columns - 1))) / columns;
-              const benefits = [
-                _PreviewBenefit(
-                  icon: Icons.emoji_events_outlined,
-                  title: '경기 우선',
-                  subtitle: '홈에서 먼저 보기',
-                ),
-                _PreviewBenefit(
-                  icon: Icons.notifications_none_rounded,
-                  title: '득점 알림',
-                  subtitle: '실시간 알림 받기',
-                ),
-                _PreviewBenefit(
-                  icon: Icons.bar_chart_rounded,
-                  title: '순위 추적',
-                  subtitle: '팀 순위 확인',
-                ),
-              ];
-              return Wrap(
-                spacing: gap,
-                runSpacing: 7,
-                children: [
-                  for (final benefit in benefits)
-                    SizedBox(width: width, child: benefit),
-                ],
-              );
-            },
+          Wrap(
+            spacing: 14,
+            runSpacing: 8,
+            children: const [
+              _PreviewBenefit(
+                icon: Icons.sports_baseball_outlined,
+                title: '오늘 경기',
+              ),
+              _PreviewBenefit(
+                icon: Icons.calendar_today_outlined,
+                title: '다음 일정',
+              ),
+              _PreviewBenefit(icon: Icons.bar_chart_rounded, title: '팀 기록'),
+            ],
           ),
         ],
       ),
@@ -329,62 +293,27 @@ class _SelectedTeamPreview extends StatelessWidget {
 class _PreviewBenefit extends StatelessWidget {
   final IconData icon;
   final String title;
-  final String subtitle;
 
-  const _PreviewBenefit({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
+  const _PreviewBenefit({required this.icon, required this.title});
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      label: '$title, $subtitle',
-      child: ExcludeSemantics(
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 42),
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.cardSub.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.divider),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 17, color: AppColors.textPrimary),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      maxLines: 2,
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: AppColors.textSupporting),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -393,6 +322,7 @@ class _OnboardingPrimaryButton extends StatelessWidget {
   final double width;
   final double height;
   final bool enabled;
+  final Color accent;
   final bool isLoading;
   final String label;
   final VoidCallback onTap;
@@ -401,6 +331,7 @@ class _OnboardingPrimaryButton extends StatelessWidget {
     required this.width,
     required this.height,
     required this.enabled,
+    required this.accent,
     required this.isLoading,
     required this.label,
     required this.onTap,
@@ -408,27 +339,22 @@ class _OnboardingPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final foreground = AppTheme.colorsOf(context).readableForegroundOn(accent);
     return AppPressable(
       onTap: enabled && !isLoading ? onTap : null,
       pressedScale: 0.982,
       child: Container(
         width: width,
-        height: height,
+        constraints: BoxConstraints(minHeight: height),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          gradient: enabled
-              ? const LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [Color(0xFFFF1F2F), Color(0xFFE90023)],
-                )
-              : null,
-          color: enabled ? null : AppColors.divider,
+          color: enabled ? accent : AppColors.divider,
           borderRadius: BorderRadius.circular(8),
           boxShadow: enabled
               ? [
                   BoxShadow(
-                    color: AppColors.live.withValues(alpha: 0.18),
+                    color: accent.withValues(alpha: 0.18),
                     blurRadius: 18,
                     offset: const Offset(0, 8),
                   ),
@@ -448,19 +374,19 @@ class _OnboardingPrimaryButton extends StatelessWidget {
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.2,
-                    color: AppColors.textPrimary,
+                    color: foreground,
                   ),
                 ),
                 const SizedBox(width: 8),
               ],
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: enabled
-                      ? AppColors.textPrimary
-                      : AppColors.textDisabled,
-                  fontWeight: FontWeight.w900,
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: enabled ? foreground : AppColors.textDisabled,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
@@ -486,6 +412,7 @@ class _OnboardingTeamCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppTheme.colorsOf(context);
     final accent = colors.readableAccent(team.primaryColor);
+    final usesLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.5;
     return Semantics(
       selected: isSelected,
       child: AppPressable(
@@ -501,13 +428,13 @@ class _OnboardingTeamCard extends StatelessWidget {
             color: AppColors.card,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isSelected ? AppColors.live : AppColors.divider,
+              color: isSelected ? accent : AppColors.divider,
               width: isSelected ? 1.5 : 1,
             ),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: AppColors.live.withValues(alpha: 0.16),
+                      color: accent.withValues(alpha: 0.16),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -533,8 +460,10 @@ class _OnboardingTeamCard extends StatelessWidget {
                       children: [
                         Text(
                           team.shortName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          maxLines: usesLargeText ? null : 1,
+                          overflow: usesLargeText
+                              ? TextOverflow.visible
+                              : TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 17,
                             color: AppColors.textPrimary,
@@ -545,8 +474,10 @@ class _OnboardingTeamCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           team.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          maxLines: usesLargeText ? null : 1,
+                          overflow: usesLargeText
+                              ? TextOverflow.visible
+                              : TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -566,13 +497,13 @@ class _OnboardingTeamCard extends StatelessWidget {
                     width: 30,
                     height: 30,
                     decoration: BoxDecoration(
-                      color: AppColors.live,
+                      color: accent,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.check_rounded,
                       size: 20,
-                      color: AppColors.textPrimary,
+                      color: colors.readableForegroundOn(accent),
                     ),
                   ),
                 ),

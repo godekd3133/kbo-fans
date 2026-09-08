@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
@@ -11,6 +12,118 @@ import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/game_detail/tabs/boxscore_tab.dart';
 
 void main() {
+  for (final fixture in [
+    (
+      name: '확인된 0 동률',
+      awayDoubles: 0,
+      awayTriples: 0,
+      homeDoubles: 0,
+      values: '0 : 0',
+      comparison: '같음',
+    ),
+    (
+      name: '장타 미제공',
+      awayDoubles: null,
+      awayTriples: null,
+      homeDoubles: null,
+      values: '– : –',
+      comparison: '비교 대기',
+    ),
+    (
+      name: '일부 장타 미제공',
+      awayDoubles: 0,
+      awayTriples: null,
+      homeDoubles: 1,
+      values: '– : 1',
+      comparison: '비교 대기',
+    ),
+    (
+      name: '확인된 장타 차이',
+      awayDoubles: 2,
+      awayTriples: 0,
+      homeDoubles: 1,
+      values: '2 : 1',
+      comparison: 'KT 우세',
+    ),
+  ]) {
+    testWidgets('팀 비교는 ${fixture.name}를 구분한다', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await _pumpBoxscoreTab(
+        tester,
+        boxscore: _comparisonBoxscore(
+          awayDoubles: fixture.awayDoubles,
+          awayTriples: fixture.awayTriples,
+          homeDoubles: fixture.homeDoubles,
+        ),
+        players: const [],
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      final extraBases = find.byKey(const ValueKey('boxscore-comparison-장타'));
+      expect(
+        find.descendant(of: extraBases, matching: find.text(fixture.values)),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: extraBases,
+          matching: find.text(fixture.comparison),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: extraBases, matching: find.text('LG 우세')),
+        findsNothing,
+      );
+      expect(find.text('KT : LG'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('팀 장타는 한 선수라도 미제공이면 전체 합계를 0으로 채우지 않는다', (tester) async {
+    final complete = _comparisonBoxscore(
+      awayDoubles: 1,
+      awayTriples: 0,
+      homeDoubles: 0,
+    );
+    await _pumpBoxscoreTab(
+      tester,
+      boxscore: GameBoxscoreData(
+        gameId: complete.gameId,
+        away: TeamBoxscoreData(
+          teamId: complete.away.teamId,
+          batters: [
+            ...complete.away.batters,
+            const BatterRecord(
+              order: 2,
+              position: '2B',
+              name: '미제공선수',
+              atBats: 1,
+              runs: 0,
+              hits: 0,
+              rbi: 0,
+            ),
+          ],
+          pitchers: const [],
+        ),
+        home: complete.home,
+      ),
+      players: const [],
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    final extraBases = find.byKey(const ValueKey('boxscore-comparison-장타'));
+    expect(
+      find.descendant(of: extraBases, matching: find.text('– : 0')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: extraBases, matching: find.text('비교 대기')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('예정 경기 박스스코어 빈 상태는 카드 하단으로 밀리지 않는다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -190,6 +303,26 @@ void main() {
       find.descendant(of: battingAverage, matching: find.text('0.000')),
       findsNothing,
     );
+    for (final label in ['득점', '안타', '타점', '장타']) {
+      final comparison = find.byKey(ValueKey('boxscore-comparison-$label'));
+      expect(
+        find.descendant(of: comparison, matching: find.text('– : –')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: comparison, matching: find.text('비교 대기')),
+        findsOneWidget,
+      );
+    }
+    for (var index = 0; index < 4; index++) {
+      expect(
+        find.descendant(
+          of: find.byKey(ValueKey('boxscore-summary-metric-$index')),
+          matching: find.text('–'),
+        ),
+        findsOneWidget,
+      );
+    }
   });
 
   testWidgets('매칭된 박스스코어 선수는 CTA와 선수 사진을 렌더한다', (tester) async {
@@ -207,7 +340,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('오늘 기록 요약'), findsWidgets);
+    expect(find.text('팀 기록 요약'), findsOneWidget);
+    expect(find.text('주요 선수'), findsOneWidget);
+    expect(find.text('오늘 기록 요약'), findsNothing);
     expect(find.text('팀 비교'), findsOneWidget);
     expect(find.text('2 : 1'), findsOneWidget);
     expect(find.text('선수 기록 보기'), findsWidgets);
@@ -225,46 +360,62 @@ void main() {
     expect(find.byType(CachedNetworkImage), findsWidgets);
   });
 
-  testWidgets('320px 박스스코어 활약 행은 선수명과 앱 계산 지표를 세로로 보존한다', (tester) async {
-    tester.view.physicalSize = const Size(320, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    await _pumpBoxscoreTab(
+  for (final width in <double>[320, 390]) {
+    testWidgets('${width.toInt()}px 박스스코어 활약 행은 선수명과 앱 계산 지표를 세로로 보존한다', (
       tester,
-      boxscore: _officialBoxscore,
-      players: const [_matchedBatter],
-    );
+    ) async {
+      tester.view.physicalSize = Size(width, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+      await _pumpBoxscoreTab(
+        tester,
+        boxscore: _officialBoxscore,
+        players: const [_matchedBatter],
+      );
 
-    final batterName = find.byKey(const ValueKey('record-highlight-name-노시환'));
-    final batterMetric = find.byKey(
-      const ValueKey('record-highlight-metric-노시환'),
-    );
-    final pitcherName = find.byKey(const ValueKey('record-highlight-name-엄상백'));
-    final pitcherMetric = find.byKey(
-      const ValueKey('record-highlight-metric-엄상백'),
-    );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
-    expect(batterName, findsOneWidget);
-    expect(batterMetric, findsOneWidget);
-    expect(pitcherName, findsOneWidget);
-    expect(pitcherMetric, findsOneWidget);
-    expect(tester.getSize(batterName).width, greaterThanOrEqualTo(100));
-    expect(
-      tester.getTopLeft(batterMetric).dy,
-      greaterThan(tester.getTopLeft(batterName).dy),
-    );
-    expect(
-      tester.getTopLeft(pitcherMetric).dy,
-      greaterThan(tester.getTopLeft(pitcherName).dy),
-    );
-    expect(find.textContaining('앱 기준 투구 효율'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      final batterName = find.byKey(
+        const ValueKey('record-highlight-name-노시환'),
+      );
+      final batterMetric = find.byKey(
+        const ValueKey('record-highlight-metric-노시환'),
+      );
+      final pitcherName = find.byKey(
+        const ValueKey('record-highlight-name-엄상백'),
+      );
+      final pitcherMetric = find.byKey(
+        const ValueKey('record-highlight-metric-엄상백'),
+      );
+
+      expect(batterName, findsOneWidget);
+      expect(batterMetric, findsOneWidget);
+      expect(pitcherName, findsOneWidget);
+      expect(pitcherMetric, findsOneWidget);
+      expect(tester.getSize(batterName).width, greaterThanOrEqualTo(100));
+      expect(
+        tester.renderObject<RenderParagraph>(batterName).didExceedMaxLines,
+        isFalse,
+      );
+      expect(
+        tester.renderObject<RenderParagraph>(pitcherName).didExceedMaxLines,
+        isFalse,
+      );
+      expect(
+        tester.getTopLeft(batterMetric).dy,
+        greaterThan(tester.getTopLeft(batterName).dy),
+      );
+      expect(
+        tester.getTopLeft(pitcherMetric).dy,
+        greaterThan(tester.getTopLeft(pitcherName).dy),
+      );
+      expect(find.textContaining('앱 기준 투구 효율'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   for (final width in <double>[280, 320]) {
     testWidgets('${width.toInt()}px·240% 박스스코어는 긴 선수명과 5개 지표를 리플로우한다', (
@@ -303,6 +454,29 @@ void main() {
         );
 
         expect(tester.takeException(), isNull);
+        for (final name in [batterName, '대한민국프로야구최장투수이름']) {
+          for (final prefix in [
+            'record-highlight-name-',
+            'record-highlight-metric-',
+          ]) {
+            final paragraph = tester.renderObject<RenderParagraph>(
+              find.byKey(ValueKey('$prefix$name')),
+            );
+            expect(paragraph.didExceedMaxLines, isFalse);
+          }
+        }
+        for (final label in ['득점', '안타', '타점', '장타']) {
+          final metric = find.byKey(ValueKey('boxscore-comparison-$label'));
+          for (final text
+              in find
+                  .descendant(of: metric, matching: find.byType(Text))
+                  .evaluate()) {
+            expect(
+              (text.renderObject! as RenderParagraph).didExceedMaxLines,
+              isFalse,
+            );
+          }
+        }
         expect(batterIdentity, findsOneWidget);
         expect(batterMetrics, findsOneWidget);
         expect(
@@ -558,9 +732,41 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('오늘 기록 요약'), findsWidgets);
+    expect(find.text('팀 기록 요약'), findsOneWidget);
+    expect(find.text('주요 선수'), findsOneWidget);
     expect(find.text('선수 기록 보기'), findsNothing);
   });
+}
+
+GameBoxscoreData _comparisonBoxscore({
+  required int? awayDoubles,
+  required int? awayTriples,
+  required int? homeDoubles,
+}) {
+  TeamBoxscoreData team(String teamId, int? doubles, int? triples) =>
+      TeamBoxscoreData(
+        teamId: teamId,
+        batters: [
+          BatterRecord(
+            order: 1,
+            position: '1B',
+            name: '$teamId 타자',
+            atBats: 4,
+            runs: 0,
+            hits: 2,
+            rbi: 0,
+            doubles: doubles,
+            triples: triples,
+            homeRuns: 0,
+          ),
+        ],
+        pitchers: const [],
+      );
+  return GameBoxscoreData(
+    gameId: '20260613KTLG0',
+    away: team('KT', awayDoubles, awayTriples),
+    home: team('LG', homeDoubles, 0),
+  );
 }
 
 Future<void> _pumpBoxscoreTab(

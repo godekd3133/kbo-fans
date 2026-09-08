@@ -905,12 +905,40 @@ void main() {
 
     expect(find.text('안타 1'), findsOneWidget);
     expect(find.text('홈런 1'), findsOneWidget);
-    expect(find.text('교체 1'), findsOneWidget);
+    expect(find.text('핵심 장면 2'), findsOneWidget);
     expect(
       tester.widget<Text>(find.text('안타 1')).style?.color,
       AppTheme.darkColors.textSupporting,
     );
 
+    await tester.tap(find.text('핵심 장면 2'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('오스틴: 좌월 홈런'),
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byType(CustomScrollView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('오스틴: 좌월 홈런'), findsOneWidget);
+    expect(find.text('대주자 김헌곤'), findsOneWidget);
+    expect(find.text('구자욱: 중견수 플라이 아웃'), findsNothing);
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('relay-moment-filters')),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byKey(const ValueKey('relay-moment-filters')),
+      const Offset(-300, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('교체 1'), findsOneWidget);
+    expect(find.text('김성윤: 중전 안타'), findsNothing);
+    await tester.ensureVisible(find.text('홈런 1'));
     await tester.tap(find.text('홈런 1'));
     await tester.pumpAndSettle();
 

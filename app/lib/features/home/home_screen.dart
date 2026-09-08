@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,6 +33,7 @@ import '../../data/repositories/game_repository.dart';
 import '../../services/game_event_alert_service.dart';
 import '../../services/live_activity_service.dart';
 import '../../services/widget_sync_service.dart';
+import 'widgets/game_day_focus_card.dart';
 
 String gameDetailLocationForGameId({
   required String gameId,
@@ -859,15 +859,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     required bool isFresh,
     required bool refreshFailed,
   }) {
-    Game? myGame;
-    if (myTeamId != null) {
-      for (final game in games) {
-        if (game.away.teamId == myTeamId || game.home.teamId == myTeamId) {
-          myGame = game;
-          break;
-        }
-      }
-    }
+    final myGame = selectMyTeamFocusGame(games, myTeamId);
     final liveMyTeamGame = _liveMyTeamGameFor(games, myTeamId);
     return RefreshIndicator(
       onRefresh: () => _invalidateTodayScoreboard(forceNetwork: true),
@@ -943,22 +935,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                   return Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-                        child: _secondarySectionsEnabled
-                            ? _MyTeamBriefCard(
-                                myTeamId: myTeamId,
-                                brief: myTeamBrief,
-                                todayGame: myGame,
-                                teamStatsAsync: teamStatsAsync,
-                                teamPlayersAsync: teamPlayersAsync,
-                                onOpenGame: _openGameDetail,
-                              )
-                            : const _DeferredSectionCard(
-                                title: '마이팀 브리프',
-                                subtitle: '홈 첫 화면을 먼저 띄우는 중입니다.',
-                              ),
-                      ),
                       if (liveMyTeamGame != null)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
@@ -969,6 +945,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               liveMyTeamGame,
                               tab: 'relay',
                               focusRelay: true,
+                            ),
+                          ),
+                        ),
+                      if (liveMyTeamGame == null)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                          child: GameDayFocusCard(
+                            myTeamId: myTeamId,
+                            game: myGame,
+                            nextGame: aggregate?.myTeamBrief?.nextGame,
+                            todayGameCount: games.length,
+                            nextGameLoading:
+                                aggregateAsync == null ||
+                                aggregateAsync.isLoading,
+                            onOpenGame: () {
+                              if (myGame != null) {
+                                _openGameDetail(
+                                  myGame,
+                                  tab: myGame.isPregameLineupOpen
+                                      ? 'lineup'
+                                      : null,
+                                );
+                              }
+                            },
+                            onOpenSchedule: () => context.go('/schedule'),
+                            onSelectTeam: () => context.go(
+                              '/onboarding?mode=edit&redirect=/home',
                             ),
                           ),
                         ),
@@ -1001,6 +1004,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             );
                           },
                         ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                        child: _secondarySectionsEnabled
+                            ? _MyTeamBriefCard(
+                                myTeamId: myTeamId,
+                                brief: myTeamBrief,
+                                todayGame: myGame,
+                                teamStatsAsync: teamStatsAsync,
+                                teamPlayersAsync: teamPlayersAsync,
+                                onOpenGame: _openGameDetail,
+                              )
+                            : const _DeferredSectionCard(
+                                title: '마이팀 브리프',
+                                subtitle: '우리 팀의 기록을 준비하고 있어요.',
+                              ),
                       ),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
@@ -1608,21 +1627,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    if (kIsWeb) {
-      return Column(
-        children: [
-          const _ReferenceStatusBar(),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: const _HeaderBar(height: 34),
-          ),
-        ],
-      );
-    }
-
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
-      child: const _HeaderBar(height: 48),
+      padding: const EdgeInsets.fromLTRB(20, 18, 16, 8),
+      child: _HeaderBar(height: 56, date: ref.watch(kboDateProvider)),
     );
   }
 
@@ -1852,47 +1859,11 @@ class _HeaderIconButton extends StatelessWidget {
   }
 }
 
-class _ReferenceStatusBar extends StatelessWidget {
-  const _ReferenceStatusBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 36,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(23, 10, 22, 0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '9:41',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-                height: 1,
-              ),
-            ),
-            const Spacer(),
-            Image.asset(
-              'assets/visuals/reference_status_icons.png',
-              width: 74,
-              height: 13,
-              fit: BoxFit.contain,
-              alignment: Alignment.topRight,
-              filterQuality: FilterQuality.high,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _HeaderBar extends StatelessWidget {
   final double height;
+  final String date;
 
-  const _HeaderBar({required this.height});
+  const _HeaderBar({required this.height, required this.date});
 
   @override
   Widget build(BuildContext context) {
@@ -1901,47 +1872,41 @@ class _HeaderBar extends StatelessWidget {
         ? 'assets/visuals/kbo_header_logo_light.png'
         : 'assets/visuals/kbo_header_logo.png';
 
-    return SizedBox(
-      height: height,
-      child: Stack(
-        alignment: Alignment.center,
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: height),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Image.asset(
-              logoAsset,
-              key: const ValueKey('home-header-logo'),
-              width: 64,
-              height: 28,
-              fit: BoxFit.contain,
-            ),
-          ),
-          const Text(
-            '홈',
-            style: TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
-            ),
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _HeaderIconButton(
-                  icon: Icons.notifications_none_rounded,
-                  tooltip: '알림 설정',
-                  onPressed: () => context.push('/notifications'),
+                Image.asset(
+                  logoAsset,
+                  key: const ValueKey('home-header-logo'),
+                  width: 74,
+                  height: 24,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.centerLeft,
                 ),
-                const SizedBox(width: 8),
-                _HeaderIconButton(
-                  icon: Icons.search_rounded,
-                  tooltip: '기록 검색',
-                  onPressed: () => context.go('/records'),
+                const SizedBox(height: 6),
+                Text(
+                  '${DateFormat('M월 d일').format(DateTime.parse(date))}의 야구',
+                  style: const TextStyle(fontSize: 20, height: 1.2),
                 ),
               ],
             ),
+          ),
+          _HeaderIconButton(
+            icon: Icons.notifications_none_rounded,
+            tooltip: '알림함',
+            onPressed: () => context.push('/notifications'),
+          ),
+          const SizedBox(width: 4),
+          _HeaderIconButton(
+            icon: Icons.search_rounded,
+            tooltip: '기록 검색',
+            onPressed: () => context.go('/records'),
           ),
         ],
       ),
@@ -2088,9 +2053,6 @@ class _MyTeamBriefCard extends StatelessWidget {
 
     return _sectionCard(
       padding: const EdgeInsets.all(11),
-      backgroundAssetName: VisualAssets.myTeamBriefCommand,
-      backgroundAlignment: Alignment.centerRight,
-      backgroundOpacity: 0.14,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2203,7 +2165,7 @@ class _MyTeamBriefCard extends StatelessWidget {
               children: [
                 _compactActionButton(
                   icon: Icons.calendar_month_rounded,
-                  label: '경기 일정',
+                  label: _primaryDestinationLabel(todayGame),
                   onPressed: openPrimaryDestination,
                   filled: false,
                 ),
@@ -2222,7 +2184,7 @@ class _MyTeamBriefCard extends StatelessWidget {
                 Expanded(
                   child: _compactActionButton(
                     icon: Icons.calendar_month_rounded,
-                    label: '경기 일정',
+                    label: _primaryDestinationLabel(todayGame),
                     onPressed: openPrimaryDestination,
                     filled: false,
                   ),
@@ -2242,6 +2204,14 @@ class _MyTeamBriefCard extends StatelessWidget {
       ),
     );
   }
+
+  String _primaryDestinationLabel(Game? game) => switch (game?.status) {
+    GameStatus.live => '문자중계 보기',
+    GameStatus.scheduled => '경기 프리뷰',
+    GameStatus.final_ => '경기 결과',
+    GameStatus.cancelled || GameStatus.suspended => '경기 상태',
+    null => '경기 일정',
+  };
 
   Widget _wideBriefMetrics({
     required String recentGamesLabel,

@@ -1228,6 +1228,9 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                   ScoreTab(
                     gameId: gameId,
                     game: game,
+                    onOpenRelay: () => _tabController.animateTo(1),
+                    onOpenBoxscore: () => _tabController.animateTo(2),
+                    onOpenLineup: () => _tabController.animateTo(3),
                     onRefresh: () => _refreshGameDetail(userInitiated: true),
                     footer: game.status == GameStatus.final_
                         ? _HighlightSection(game: game, gameId: gameId)

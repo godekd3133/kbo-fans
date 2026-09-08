@@ -15,12 +15,12 @@ iOS와 Android를 대상으로 하며, 오늘 경기 스코어보드와 마이�
 
 ## Current Scope
 
-MVP Phase 1 기준 핵심 범위:
+현재 구현된 핵심 범위:
 
-- 오늘 경기 스코어보드
+- 내 팀 상태가 먼저 보이는 오늘 경기 스코어보드와 다음 경기 안내
 - 경기 상세
-  - 스코어
-  - 문자중계
+  - 스코어와 검증된 이닝 기록으로 읽는 경기 한눈에
+  - 문자중계와 득점·홈런·교체·종료 핵심 장면 필터
   - 박스스코어
   - 라인업
   - KBO 공식 + 유튜브 하이라이트 연결
@@ -30,16 +30,21 @@ MVP Phase 1 기준 핵심 범위:
   - 선수 프로필 / 최근 기록
   - 투수 / 야수 탭 분리
   - 타율 / OPS / ERA / WHIP 정렬
+  - 기록 읽는 법: 9개 지표 정의·해석·표본 안내
+  - 같은 팀·시즌·현재 필터의 선수 2명 비교(주요 비율과 제공되는 누적 기록)
+  - 과거 시즌을 보존하는 팀·선수·리더보드 탐색
 - 마이팀 선택
 - 일정
   - 경기별 예매처 / 예매 오픈 시간 표시
   - 경기 상세에서 예매처 바로가기 / 예매 오픈 알림
 - 순위
-- 푸시 알림
+- 푸시 알림: 결과 중심/주요 순간/직접 설정과 개별 이벤트 선택
 - 홈/잠금화면 위젯, iOS Live Activity / Dynamic Island 연동
 
 현재 `app/`은 Flutter 프로젝트로 생성되어 있으며, 주요 화면 구조와 라우팅, 라이트/다크/시스템 화면 모드, 일정/기록실/경기 상세가 포함되어 있습니다.
 `backend/`는 FastAPI API service, KBO crawler/service layer, snapshot tooling, push notification, Live Activity / Dynamic Island sync worker를 포함합니다.
+
+2026-09-07 리뉴얼의 전체 기능·경쟁 조사·검증 범위는 [리뉴얼 작업 문서](docs/RENEWAL_2026-09-07.md), [기능 감사](docs/RENEWAL_FEATURE_AUDIT_2026-09-07.md), [시장 조사](docs/RENEWAL_MARKET_2026-09-07.md)에 기록합니다. 이 소스 변경은 서명 배포·TestFlight·실기기 푸시 검증과 별도입니다.
 
 ## Repository Structure
 

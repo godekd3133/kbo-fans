@@ -148,7 +148,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => _shellTransitionPage(
               state,
               tabIndex: mainNavigationIndexForLocation(state.uri.path),
-              child: const RecordsScreen(),
+              child: RecordsScreen(
+                initialSeason: int.tryParse(
+                  state.uri.queryParameters['season'] ?? '',
+                ),
+                followsCurrentSeason: recordsRouteFollowsCurrentSeason(
+                  state.uri,
+                ),
+              ),
             ),
           ),
           GoRoute(
@@ -156,7 +163,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => _shellTransitionPage(
               state,
               tabIndex: mainNavigationIndexForLocation(state.uri.path),
-              child: RecordsScreen(teamId: state.pathParameters['teamId']!),
+              child: RecordsScreen(
+                teamId: state.pathParameters['teamId']!,
+                initialSeason: int.tryParse(
+                  state.uri.queryParameters['season'] ?? '',
+                ),
+                followsCurrentSeason: recordsRouteFollowsCurrentSeason(
+                  state.uri,
+                ),
+              ),
             ),
           ),
           GoRoute(

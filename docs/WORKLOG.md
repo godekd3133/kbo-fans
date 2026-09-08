@@ -2,6 +2,43 @@
 
 ---
 
+## 2026-09-07: 경기 확인과 기록 이해를 연결하는 리뉴얼
+
+### 요청과 근거
+
+전체 기능·기획·디자인 점검과 시장 차별화 개선 요청에 따라 19개 제품 영역, 앱/백엔드 데이터 경로, 8개 경쟁 서비스의 공식 자료를 조사했다. 사장님이 선택한 중심 가치는 내 팀 경기 경험의 빠른 확인과 깊은 기록 분석·야구 이해다. 경쟁 서비스의 명칭/기능은 현재 공식 소개로 확인했고, 이전 기획의 근거 없는 지연 수치·기능 부재·페르소나 비율은 현재 시장 사실에서 제외했다.
+
+현재 모바일 390×844 화면을 직접 확인한 결과, 홈의 통계 우선 배치, 큰 일정 빈 상태 이미지, 기록 로딩 후 내 팀 위치 이동, 비교 선택기 glyph 잘림, 박스스코어 동률/미제공 표시를 개선 대상으로 확정했다.
+
+### 반영
+
+- 홈을 내 경기 상태→전 경기→팀 기록 순서로 변경. 더블헤더 우선순위, 상태에 맞는 CTA, 실제 KST 날짜, 휴식일 다음 경기 이동.
+- 경기 한눈에와 검증된 득점 이닝 흐름, 기존 상세 탭 연결, 문자중계 핵심 장면 필터.
+- 9개 지표 가이드, 시즌을 보존하는 탐색, 같은 팀/시즌/선수군/필터의 두 선수 비교. 원자료가 있는 누적 기록·표본도 함께 표시. 추가 API fan-out 없음.
+- 온보딩 간결화, 브리핑 목적별 필터/리드·중복 제거·생성 날짜/한국시간·본문 읽기성.
+- 일정 빈 날짜의 다음 예정일/다음달1일 이동, 알림 목적 프리셋과 기존 토글·권한/등록 계약 유지.
+- 박스스코어의 동률/미제공 비교 구분과 주요 선수 이름의 모바일 배치 수정.
+- backend/local home aggregate의 누락 점수 파생 헤드라인과 SCHEDULED nextGame 계약을 정합화.
+
+### 검증 중 발견한 기존 테스트 문제
+
+전체 backend에서 실패한 push 7개는 변경 전 HEAD `27bcbaed`에서도 동일하게 재현됐다. fixture의 2026-06-04 시계와 registry 보존기간의 실제 2026-09-07 시계가 달라 90일 TTL에서 상태가 삭제됐다. 테스트 생성자에 같은 runtime_state_now_provider를 명시해 해결했으며, production TTL/clock/retention은 수정하지 않았다. 같은 assertion을 유지한 전체 backend 615개가 통과했다.
+
+### Release decision
+
+- [x] 사용자-visible 앱/API 동작 변경이므로 `0.1.32+100` / numeric tag `0.1.32` 릴리즈로 승격한다.
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`, `README.md`, `CLAUDE.md`, `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `docs/PLANNING.md`, `docs/WORKLOG.md`를 릴리즈 기준으로 동기화했다.
+- [ ] 현재 작업 트리에서 허용 목록만 stage하여 커밋하고 `origin/main`에 push한다.
+- [ ] pushed SHA의 clean worktree에서 backend Lightsail bundle과 release web/Android/iOS artifact를 생성한다.
+- [ ] Lightsail API·worker 및 GitHub Release/tag checkpoint를 배포 후 기록한다.
+- [ ] Apple Distribution signing/TestFlight와 Google Play 업로드는 자격증명·외부 콘솔 상태를 별도 확인한다.
+
+### 인수와 배포 경계
+
+최종 Flutter 분석·전체 테스트·웹 빌드·실제 화면 확인 결과는 [리뉴얼 통합 인수](RENEWAL_2026-09-07.md)에 정본으로 기록한다. [기능 감사](RENEWAL_FEATURE_AUDIT_2026-09-07.md), [시장 조사](RENEWAL_MARKET_2026-09-07.md), `artifacts/renewal-2026-09-07/`에 세부 근거를 보관한다. API 연결과 로컬 웹 시각 검증은 실기기/FCM/APNs/서명/TestFlight 성공을 뜻하지 않는다. 이번 릴리즈는 `0.1.32+100`으로 승격하며, 커밋·푸시·백엔드·아티팩트·스토어 배포 checkpoint를 실제 결과와 함께 갱신한다.
+
+---
+
 ## 2026-09-02: 박스스코어·라인업 자동 재시도와 current cache 보강
 
 ### 진단

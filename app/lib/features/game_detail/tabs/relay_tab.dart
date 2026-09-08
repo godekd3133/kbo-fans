@@ -484,6 +484,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     return SizedBox(
       height: useLargeText ? 64 : AppPressable.minimumHitTargetSize,
       child: ListView.separated(
+        key: const ValueKey('relay-moment-filters'),
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: 16),
         itemCount: filters.length,
@@ -3858,6 +3859,7 @@ class _RelayMoment {
 
 enum _RelayMomentFilter {
   all('전체'),
+  keyPlays('핵심 장면'),
   scoring('득점'),
   hit('안타'),
   homerun('홈런'),
@@ -3871,6 +3873,12 @@ enum _RelayMomentFilter {
     switch (this) {
       case _RelayMomentFilter.all:
         return true;
+      case _RelayMomentFilter.keyPlays:
+        return moment.isScoring ||
+            moment.lead.event == 'RUNS' ||
+            moment.lead.event == 'HOMERUN' ||
+            moment.isSubstitution ||
+            moment.isGameEnd;
       case _RelayMomentFilter.scoring:
         return moment.isScoring || moment.lead.event == 'RUNS';
       case _RelayMomentFilter.hit:

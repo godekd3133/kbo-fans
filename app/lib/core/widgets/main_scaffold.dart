@@ -10,7 +10,7 @@ class MainScaffold extends StatelessWidget {
 
   static const _mobileDestinations = [
     (icon: Icons.home_rounded, label: '홈', path: '/home'),
-    (icon: Icons.sports_baseball_rounded, label: '일정', path: '/schedule'),
+    (icon: Icons.calendar_month_outlined, label: '일정', path: '/schedule'),
     (icon: Icons.bar_chart_rounded, label: '기록', path: '/records'),
     (icon: Icons.article_outlined, label: '브리핑', path: '/news'),
     (icon: Icons.settings_rounded, label: '설정', path: '/settings'),
@@ -18,7 +18,7 @@ class MainScaffold extends StatelessWidget {
 
   static const _wideDestinations = [
     (icon: Icons.home_rounded, label: '홈', path: '/home'),
-    (icon: Icons.sports_baseball_rounded, label: '일정', path: '/schedule'),
+    (icon: Icons.calendar_month_outlined, label: '일정', path: '/schedule'),
     (icon: Icons.leaderboard_rounded, label: '순위', path: '/standings'),
     (icon: Icons.bar_chart_rounded, label: '기록', path: '/records'),
     (icon: Icons.article_outlined, label: '브리핑', path: '/news'),
@@ -50,14 +50,17 @@ class MainScaffold extends StatelessWidget {
                     : NavigationRailLabelType.all,
                 groupAlignment: -1,
                 backgroundColor: colors.background.withValues(alpha: 0.98),
-                indicatorColor: colors.live.withValues(alpha: 0.18),
-                selectedIconTheme: IconThemeData(color: colors.live, size: 24),
+                indicatorColor: colors.accent.withValues(alpha: 0.18),
+                selectedIconTheme: IconThemeData(
+                  color: colors.accent,
+                  size: 24,
+                ),
                 unselectedIconTheme: IconThemeData(
                   color: colors.textSecondary,
                   size: 23,
                 ),
                 selectedLabelTextStyle: TextStyle(
-                  color: colors.live,
+                  color: colors.accent,
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
                 ),
@@ -185,8 +188,8 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colorsOf(context);
-    final iconColor = selected ? colors.live : colors.textSecondary;
-    final labelColor = selected ? colors.live : colors.textSecondary;
+    final iconColor = selected ? colors.accent : colors.textSecondary;
+    final labelColor = selected ? colors.accent : colors.textSecondary;
     final animationDuration = MediaQuery.of(context).disableAnimations
         ? Duration.zero
         : const Duration(milliseconds: 180);
@@ -204,8 +207,16 @@ class _NavItem extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
+            AnimatedContainer(
+              duration: animationDuration,
+              width: 48,
               height: 28,
+              decoration: BoxDecoration(
+                color: selected
+                    ? colors.accent.withValues(alpha: 0.14)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: Center(
                 child: AnimatedScale(
                   duration: animationDuration,

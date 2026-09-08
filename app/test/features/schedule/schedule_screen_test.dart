@@ -25,6 +25,136 @@ void main() {
     AppConfig.initialize();
   });
 
+  testWidgets('경기 없는 날은 로드된 일정에서 팀 조건에 맞는 다음 예정 경기로 이동한다', (tester) async {
+    final now = kboCivilDateTime();
+    final nextMonth = DateTime(now.year, now.month + 1);
+    final requests = <String>[];
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+          scheduleProvider.overrideWith((_, yearMonth) async {
+            requests.add(yearMonth);
+            return _renewalScheduleForMonth(yearMonth);
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const ScheduleScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('다음 달'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('마이팀만'));
+    await tester.tap(
+      find.byKey(
+        ValueKey('schedule-date-${nextMonth.year}-${nextMonth.month}-1'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final action = find.byKey(const ValueKey('schedule-empty-next'));
+    expect(find.text('${nextMonth.month}월 6일 경기 보기'), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('schedule-empty-state'))).height,
+      lessThan(220),
+    );
+    final requestsBefore = List<String>.of(requests);
+    await tester.ensureVisible(action);
+    await tester.pumpAndSettle();
+    await tester.tap(action);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('schedule-game-renewal-lg')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('schedule-game-renewal-other')),
+      findsNothing,
+    );
+    expect(requests, requestsBefore);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('월말 빈 일정의 다음 달 CTA는 1일부터 예정 경기를 찾는다', (tester) async {
+    final now = kboCivilDateTime();
+    final lastDay = DateTime(now.year, now.month + 1, 0).day;
+    final nextMonth = DateTime(now.year, now.month + 1);
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+          scheduleProvider.overrideWith((_, yearMonth) async {
+            return yearMonth == _yearMonthKey(nextMonth)
+                ? _renewalScheduleForMonth(yearMonth)
+                : const [];
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const ScheduleScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('마이팀만'));
+    await tester.tap(
+      find.byKey(ValueKey('schedule-date-${now.year}-${now.month}-$lastDay')),
+    );
+    await tester.pumpAndSettle();
+    final action = find.byKey(const ValueKey('schedule-empty-next'));
+    await tester.ensureVisible(action);
+    await tester.pumpAndSettle();
+    expect(find.text('다음 달 보기'), findsOneWidget);
+    await tester.tap(action);
+    await tester.pumpAndSettle();
+
+    expect(find.text(_monthLabel(nextMonth)), findsOneWidget);
+    expect(find.text('${nextMonth.month}월 6일 경기 보기'), findsOneWidget);
+    expect(find.text('선택한 날짜에 현재 팀 조건으로 볼 경기가 없습니다.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('320px 240% 빈 일정은 필터를 유지하며 다음 달로 이동한다', (tester) async {
+    final now = kboCivilDateTime();
+    final nextMonth = DateTime(now.year, now.month + 1);
+    await tester.binding.setSurfaceSize(const Size(320, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    tester.platformDispatcher.textScaleFactorTestValue = 2.4;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+          scheduleProvider.overrideWith((_, _) async => const []),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const ScheduleScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('마이팀만'));
+    await tester.pumpAndSettle();
+
+    final action = find.byKey(const ValueKey('schedule-empty-next'));
+    await tester.scrollUntilVisible(
+      action,
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(action);
+    await tester.pumpAndSettle();
+    expect(find.text('다음 달 보기'), findsOneWidget);
+    expect(tester.getSize(action).height, greaterThanOrEqualTo(44));
+    expect(tester.getSize(action).width, lessThanOrEqualTo(320));
+    await tester.tap(action);
+    await tester.pumpAndSettle();
+
+    expect(find.text(_monthLabel(nextMonth)), findsOneWidget);
+    expect(find.text('선택한 날짜에 현재 팀 조건으로 볼 경기가 없습니다.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test('예매 시각은 KST와 공식·예상 출처를 구분한다', () {
     expect(
       formatScheduleTicketSummary(
@@ -415,7 +545,12 @@ void main() {
 
     expect(find.text(_monthLabel(nextMonth)), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.sports_baseball_rounded));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationRail),
+        matching: find.text('일정'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text(_monthLabel(nextMonth)), findsOneWidget);
@@ -1219,6 +1354,38 @@ List<ScheduleDay> _myTeamScheduleForToday(DateTime today, String yearMonth) {
           status: 'SCHEDULED',
         ),
       ],
+    ),
+  ];
+}
+
+List<ScheduleDay> _renewalScheduleForMonth(String yearMonth) {
+  ScheduleGame game(String id, String status, {bool myTeam = true}) {
+    return ScheduleGame(
+      gameId: id,
+      time: '18:30',
+      awayId: myTeam ? 'LG' : 'NC',
+      awayName: myTeam ? 'LG' : 'NC',
+      homeId: 'KT',
+      homeName: 'KT',
+      stadium: '수원',
+      status: status,
+    );
+  }
+
+  return [
+    ScheduleDay(
+      date: '$yearMonth-02',
+      games: [game('renewal-cancelled', 'CANCELLED')],
+    ),
+    ScheduleDay(date: '$yearMonth-03', games: [game('renewal-final', 'FINAL')]),
+    ScheduleDay(date: '$yearMonth-04', games: [game('renewal-live', 'LIVE')]),
+    ScheduleDay(
+      date: '$yearMonth-05',
+      games: [game('renewal-other', 'SCHEDULED', myTeam: false)],
+    ),
+    ScheduleDay(
+      date: '$yearMonth-06',
+      games: [game('renewal-lg', 'SCHEDULED')],
     ),
   ];
 }

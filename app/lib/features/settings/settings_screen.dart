@@ -22,6 +22,20 @@ typedef PushNotificationSettingsLoader =
 typedef PushPermissionStateLoader = Future<bool> Function();
 typedef PushPermissionRequester = Future<bool> Function(String? myTeam);
 
+enum _NotificationPreset { results, moments, custom }
+
+const _notificationPresetMoments = {
+  _NotificationPreset.results: {PushNotificationMoment.gameEnd},
+  _NotificationPreset.moments: {
+    PushNotificationMoment.lineupOpened,
+    PushNotificationMoment.gameStart,
+    PushNotificationMoment.scoring,
+    PushNotificationMoment.homerun,
+    PushNotificationMoment.reversal,
+    PushNotificationMoment.gameEnd,
+  },
+};
+
 class SettingsScreen extends ConsumerStatefulWidget {
   final PushNotificationSettingsLoader? pushSettingsLoader;
   final PushPermissionStateLoader? pushPermissionStateLoader;
@@ -572,6 +586,7 @@ class _PushNotificationSettingsCardState
   bool _requestingPermission = false;
   String? _permissionError;
   bool _saving = false;
+  bool _customPresetSelected = false;
   String? _error;
 
   @override
@@ -684,7 +699,40 @@ class _PushNotificationSettingsCardState
     if (_saving) {
       return;
     }
+    _customPresetSelected = true;
     unawaited(_save(current.withMomentEnabled(moment, value)));
+  }
+
+  void _selectPreset(_NotificationPreset preset) {
+    if (_saving) {
+      return;
+    }
+    if (preset == _NotificationPreset.custom) {
+      setState(() => _customPresetSelected = true);
+      return;
+    }
+    final enabledMoments = _notificationPresetMoments[preset]!;
+    var next = _settings ?? const PushNotificationSettings.defaults();
+    for (final moment in PushNotificationMoment.values) {
+      next = next.withMomentEnabled(moment, enabledMoments.contains(moment));
+    }
+    _customPresetSelected = false;
+    unawaited(_save(next));
+  }
+
+  _NotificationPreset _presetForSettings(PushNotificationSettings settings) {
+    if (_customPresetSelected) {
+      return _NotificationPreset.custom;
+    }
+    for (final entry in _notificationPresetMoments.entries) {
+      if (PushNotificationMoment.values.every(
+        (moment) =>
+            settings.isMomentEnabled(moment) == entry.value.contains(moment),
+      )) {
+        return entry.key;
+      }
+    }
+    return _NotificationPreset.custom;
   }
 
   @override
@@ -727,6 +775,13 @@ class _PushNotificationSettingsCardState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _NotificationPresetSelector(
+                selected: _presetForSettings(settings),
+                enabled: !_saving,
+                accent: accent,
+                onSelected: _selectPreset,
+              ),
+              const SizedBox(height: 16),
               FutureBuilder<bool>(
                 future: _permissionStateFuture,
                 builder: (context, permissionSnapshot) {
@@ -852,6 +907,88 @@ class _PushNotificationSettingsCardState
           ),
         );
       },
+    );
+  }
+}
+
+class _NotificationPresetSelector extends StatelessWidget {
+  final _NotificationPreset selected;
+  final bool enabled;
+  final Color accent;
+  final ValueChanged<_NotificationPreset> onSelected;
+
+  const _NotificationPresetSelector({
+    required this.selected,
+    required this.enabled,
+    required this.accent,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    const labels = {
+      _NotificationPreset.results: '결과 중심',
+      _NotificationPreset.moments: '주요 순간',
+      _NotificationPreset.custom: '직접 설정',
+    };
+    final description = switch (selected) {
+      _NotificationPreset.results => '경기 종료와 취소 결과만 선택했어요.',
+      _NotificationPreset.moments => '라인업·시작·득점·홈런·역전·종료를 선택했어요.',
+      _NotificationPreset.custom => '아래에서 받을 알림을 하나씩 고르세요.',
+    };
+    return Column(
+      key: const ValueKey('push_notification_presets'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '내 관전 스타일에 맞게',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: colors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final preset in _NotificationPreset.values)
+              ChoiceChip(
+                key: ValueKey('push_preset_${preset.name}'),
+                label: Text(labels[preset]!),
+                selected: preset == selected,
+                onSelected: enabled ? (_) => onSelected(preset) : null,
+                selectedColor: accent.withValues(alpha: 0.15),
+                backgroundColor: colors.cardSub,
+                showCheckmark: false,
+                side: BorderSide(
+                  color: preset == selected ? accent : colors.divider,
+                ),
+                labelStyle: TextStyle(
+                  color: preset == selected ? accent : colors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 10,
+                ),
+                materialTapTargetSize: MaterialTapTargetSize.padded,
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          description,
+          key: const ValueKey('push_notification_preset_description'),
+          style: TextStyle(
+            fontSize: 12,
+            height: 1.45,
+            color: colors.textSecondary,
+          ),
+        ),
+      ],
     );
   }
 }

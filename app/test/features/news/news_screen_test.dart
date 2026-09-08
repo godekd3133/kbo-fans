@@ -6,10 +6,51 @@ import 'package:kbo_fans/core/router/app_router.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/data/models/home_aggregate.dart';
 import 'package:kbo_fans/data/models/schedule.dart';
+import 'package:kbo_fans/data/models/ticketing.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/news/news_screen.dart';
 
 void main() {
+  testWidgets('점수 미확정 및 종료 브리핑을 라이브로 표시하지 않는다', (tester) async {
+    for (final type in ['game_status', 'final']) {
+      await tester.pumpWidget(
+        ProviderScope(
+          key: ValueKey(type),
+          retry: (_, _) => null,
+          overrides: [
+            homeAggregateProvider.overrideWith(
+              (ref, key) async => HomeAggregate(
+                date: key.split('|').first,
+                myTeam: null,
+                myTeamBrief: null,
+                quickItems: const [],
+                kboBrief: HomeKboBrief(
+                  title: '브리핑',
+                  subtitle: '',
+                  items: [
+                    HomeKboBriefItem(
+                      type: type,
+                      eyebrow: '경기 확인',
+                      title: '삼성 vs LG',
+                      subtitle: '제공된 경기 상태 확인',
+                      route: '/game/20260906SSLG0',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          child: MaterialApp(theme: AppTheme.dark, home: const NewsScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('경기').first);
+      await tester.pumpAndSettle();
+      expect(find.text('삼성 vs LG'), findsOneWidget);
+      expect(find.text('라이브'), findsNothing);
+    }
+  });
+
   testWidgets('news requests the current KBO civil date', (tester) async {
     String? requestedKey;
     final expectedDate = _kboDateKey(DateTime.now());
@@ -43,7 +84,7 @@ void main() {
       find.text('${expectedDate.replaceAll('-', '.')} 기준'),
       findsOneWidget,
     );
-    expect(find.textContaining('07:13 생성'), findsOneWidget);
+    expect(find.textContaining('2023.11.15 07:13 생성 · 한국시간'), findsOneWidget);
   });
 
   testWidgets('브리핑은 KST 자정 rollover와 즉시 새로고침에 최신 날짜 key를 쓴다', (tester) async {
@@ -137,6 +178,165 @@ void main() {
     }
     expect(tester.takeException(), isNull);
   });
+
+  for (final width in [280.0, 320.0]) {
+    testWidgets('${width.toInt()}px·240% 브리핑 본문과 계산 근거가 잘리지 않는다', (
+      tester,
+    ) async {
+      tester.view.physicalSize = Size(width, 844);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 2.4;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            homeAggregateProvider.overrideWith(
+              (ref, key) async => _purposeBrief(),
+            ),
+          ],
+          child: MaterialApp(theme: AppTheme.dark, home: const NewsScreen()),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(tester.takeException(), isNull);
+      for (final label in [
+        'LG와 삼성의 오늘 경기',
+        '2위와 1.5G차 · 현재 시즌 순위표 기준',
+        '앱 계산 · 팀 56경기 기준 · 현재 20홈런',
+        '한화 이글스 김태연의 시즌 타율 .301',
+      ]) {
+        final text = tester.widget<Text>(find.text(label));
+        expect(text.maxLines, isNull);
+        expect(text.overflow, isNot(TextOverflow.ellipsis));
+      }
+      await tester.ensureVisible(find.text('기록').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('기록').first);
+      await tester.pumpAndSettle();
+      expect(find.text('먼저 볼 흐름'), findsNothing);
+      expect(find.text('LG와 삼성의 오늘 경기'), findsNothing);
+      expect(find.text('한화 이글스 김태연의 시즌 타율 .301'), findsOneWidget);
+      expect(find.text('김도영, 지금 페이스면 51홈런'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('전체 브리핑은 다른 목적을 먼저 보여주고 각 사실을 한 번만 표시한다', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          homeAggregateProvider.overrideWith(
+            (ref, key) async => _purposeBrief(),
+          ),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const NewsScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    for (final label in ['지금 볼 경기', '순위의 의미', '기록 이해']) {
+      expect(find.text(label), findsOneWidget);
+    }
+    for (final label in [
+      'LG와 삼성의 오늘 경기',
+      '선두가 위태로운 LG 트윈스',
+      '김도영, 지금 페이스면 51홈런',
+      '한화 이글스 김태연의 시즌 타율 .301',
+    ]) {
+      expect(find.text(label), findsOneWidget);
+    }
+    expect(find.textContaining('생성 시각 미제공'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final source in [TicketSource.inferred, TicketSource.official, null]) {
+    testWidgets('예매 브리핑은 KST와 $source 출처를 보존하고 핵심 리드를 밀어내지 않는다', (
+      tester,
+    ) async {
+      final ticketInfo = source == null
+          ? null
+          : TicketInfo(
+              vendorKey: 'interpark',
+              vendorName: '인터파크 티켓',
+              openAt: DateTime.utc(2026, 9, 1, 2),
+              source: source,
+            );
+      await tester.pumpWidget(
+        ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            homeAggregateProvider.overrideWith(
+              (ref, key) async => HomeAggregate(
+                date: '2026-09-07',
+                myTeam: 'LG',
+                myTeamBrief: HomeMyTeamBrief(
+                  teamId: 'LG',
+                  teamLabel: 'LG 트윈스',
+                  standing: null,
+                  todayGameId: '20260907SSLG0',
+                  nextGame: ScheduleGame(
+                    gameId: '20260908WOLG0',
+                    time: '18:30',
+                    awayId: 'WO',
+                    awayName: '키움',
+                    homeId: 'LG',
+                    homeName: 'LG',
+                    stadium: '잠실',
+                    ticketInfo: ticketInfo,
+                  ),
+                  recentWins: 2,
+                  recentLosses: 1,
+                  recentDraws: 0,
+                  recentGamesCount: 3,
+                  recentSummaries: const [],
+                ),
+                kboBrief: _purposeBrief().kboBrief,
+                quickItems: const [
+                  HomeQuickItem(
+                    eyebrow: '예매 오픈 임박',
+                    title: '키움 vs LG',
+                    subtitle: '인터파크 티켓 · 2026-09-01T11:00:00+09:00',
+                    route: '/schedule',
+                    teamId: 'LG',
+                  ),
+                ],
+              ),
+            ),
+          ],
+          child: MaterialApp(theme: AppTheme.dark, home: const NewsScreen()),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      final suffix = source == TicketSource.official
+          ? '공식 오픈'
+          : source == TicketSource.inferred
+          ? '예상 오픈'
+          : '오픈 · 확정 여부 미제공';
+      expect(find.text('인터파크 티켓 · 9월 1일 11:00 KST $suffix'), findsOneWidget);
+      expect(find.text('근거 · 예매 안내'), findsOneWidget);
+      expect(find.text('예매 오픈 임박'), findsNothing);
+      expect(find.textContaining('T11:00:00+09:00'), findsNothing);
+      for (final label in ['지금 볼 경기', '순위의 의미', '기록 이해']) {
+        expect(find.text(label), findsOneWidget);
+      }
+      expect(find.text('내 팀의 흐름'), findsNothing);
+      expect(find.text('LG 트윈스 최근 3경기 2승 1패'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('LG와 삼성의 오늘 경기')).dy,
+        lessThan(tester.getTopLeft(find.text('키움 vs LG')).dy),
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('news cards push shell screens with iOS swipe-back routes', (
     tester,
@@ -240,7 +440,9 @@ void main() {
     expect(find.text('지금 KBO'), findsNothing);
     expect(find.text('2경기 진행 중'), findsNothing);
     expect(find.text('오늘의 3분 브리핑'), findsNothing);
-    expect(find.text('전체 데이터 흐름'), findsOneWidget);
+    expect(find.text('전체 데이터 흐름'), findsNothing);
+    expect(find.text('순위의 의미'), findsOneWidget);
+    expect(find.text('기록 이해'), findsOneWidget);
     expect(find.text('선두가 위태로운 LG 트윈스'), findsWidgets);
     expect(find.text('선두가 위태로운 선두가 위태로운 LG 트윈스'), findsNothing);
     expect(find.text('김도영 13개'), findsWidgets);
@@ -330,7 +532,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('선수'), findsWidgets);
+    expect(find.text('기록 이해'), findsOneWidget);
     expect(find.text('마이팀'), findsWidgets);
     expect(find.text('LG 트윈스 승 · 롯데전 5:2'), findsOneWidget);
     expect(find.text('선두 지키는 KIA 타이거즈'), findsWidgets);
@@ -542,7 +744,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
 
-    expect(find.text('최형우 2000루타 달성'), findsNWidgets(2));
+    expect(find.text('최형우 2000루타 달성'), findsOneWidget);
+    expect(find.text('먼저 볼 흐름'), findsNothing);
   });
 
   testWidgets(
@@ -610,9 +813,9 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.text('김도영 20홈런'), findsNWidgets(2));
-      expect(find.text('김도영 타율 .351'), findsNWidgets(2));
-      expect(find.text('김도영 1000안타 달성'), findsNWidgets(2));
+      expect(find.text('김도영 20홈런'), findsOneWidget);
+      expect(find.text('김도영 타율 .351'), findsOneWidget);
+      expect(find.text('김도영 1000안타 달성'), findsOneWidget);
       expect(find.text('김도영 20개'), findsNothing);
     },
   );
@@ -836,3 +1039,44 @@ String _kboDateKey(DateTime instant) {
       '${kbo.month.toString().padLeft(2, '0')}-'
       '${kbo.day.toString().padLeft(2, '0')}';
 }
+
+HomeAggregate _purposeBrief() => const HomeAggregate(
+  date: '2026-09-07',
+  myTeam: null,
+  myTeamBrief: null,
+  quickItems: [],
+  kboBrief: HomeKboBrief(
+    title: '지금 KBO',
+    subtitle: '경기와 기록',
+    items: [
+      HomeKboBriefItem(
+        type: 'game',
+        eyebrow: '오늘 경기',
+        title: 'LG와 삼성의 오늘 경기',
+        subtitle: '18:30 · 잠실 · 경기 전',
+        route: '/game/20260907SSLG0',
+      ),
+      HomeKboBriefItem(
+        type: 'standings',
+        eyebrow: '선두권',
+        title: 'LG 트윈스 1위 유지',
+        subtitle: '2위와 1.5G차 · 현재 시즌 순위표 기준',
+        route: '/standings',
+      ),
+      HomeKboBriefItem(
+        type: 'record_radar',
+        eyebrow: '홈런 페이스',
+        title: '김도영, 지금 페이스면 51홈런',
+        subtitle: '앱 계산 · 팀 56경기 기준 · 현재 20홈런',
+        route: '/records/player/52605?season=2026',
+      ),
+      HomeKboBriefItem(
+        type: 'batting_leader',
+        eyebrow: '현재 타율',
+        title: '한화 이글스 김태연의 시즌 타율 .301',
+        subtitle: '현재 시즌의 공식 기록을 확인하세요.',
+        route: '/records/player/66704?season=2026',
+      ),
+    ],
+  ),
+);

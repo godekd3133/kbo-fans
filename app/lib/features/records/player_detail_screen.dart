@@ -10,6 +10,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/kbo_time.dart';
 import '../../core/utils/kbo_player_image_cache.dart';
 import '../../core/widgets/app_motion.dart';
+import '../../core/widgets/baseball_metric_guide.dart';
 import '../../data/models/player.dart';
 import '../../data/providers.dart';
 
@@ -69,6 +70,13 @@ class PlayerDetailScreen extends ConsumerWidget {
           ),
         ),
         title: Text('선수 프로필 · $effectiveSeason'),
+        actions: [
+          IconButton(
+            tooltip: '기록 읽는 법',
+            onPressed: () => showBaseballMetricGuide(context),
+            icon: const Icon(Icons.help_outline_rounded),
+          ),
+        ],
       ),
       body: SafeArea(
         child: RefreshIndicator(
@@ -127,7 +135,7 @@ class PlayerDetailScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: AppColors.card,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -575,46 +583,72 @@ class _PlayerMetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final guide = baseballMetricGuideFor(metric.label);
+    void openGuide() => showBaseballMetricGuide(context, metric: guide!.key);
     return Semantics(
       container: true,
       label: '${metric.label}, ${metric.value}',
+      hint: guide == null ? null : '지표 설명 보기',
+      button: guide != null,
+      onTap: guide == null ? null : openGuide,
       excludeSemantics: true,
-      child: Container(
-        constraints: BoxConstraints(minHeight: emphasized ? 82 : 68),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        decoration: BoxDecoration(
-          color: AppColors.cardSub,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: emphasized
-                ? AppColors.accent.withValues(alpha: 0.38)
-                : AppColors.divider,
+      child: InkWell(
+        onTap: guide == null ? null : openGuide,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          constraints: BoxConstraints(minHeight: emphasized ? 82 : 68),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(
+            color: AppColors.cardSub,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: emphasized
+                  ? AppColors.accent.withValues(alpha: 0.38)
+                  : AppColors.divider,
+            ),
           ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              metric.label,
-              style: TextStyle(
-                fontSize: 11,
-                height: 1.25,
-                color: emphasized ? AppColors.accent : AppColors.textSecondary,
-                fontWeight: FontWeight.w800,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      metric.label,
+                      style: TextStyle(
+                        fontSize: 11,
+                        height: 1.25,
+                        color: emphasized
+                            ? AppColors.accent
+                            : AppColors.textSecondary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  if (guide != null) ...[
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.help_outline_rounded,
+                      size: 15,
+                      color: AppColors.textSecondary,
+                    ),
+                  ],
+                ],
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              metric.value,
-              softWrap: true,
-              style: TextStyle(
-                fontSize: emphasized ? 17 : 15,
-                height: 1.25,
-                fontWeight: FontWeight.w900,
+              const SizedBox(height: 4),
+              Text(
+                metric.value,
+                softWrap: true,
+                style: TextStyle(
+                  fontSize: emphasized ? 17 : 15,
+                  height: 1.25,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

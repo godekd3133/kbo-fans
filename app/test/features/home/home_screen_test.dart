@@ -24,6 +24,33 @@ import 'package:kbo_fans/services/live_activity_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  testWidgets('공개된 라인업 CTA는 실제 라인업 탭으로 바로 연결한다', (tester) async {
+    _ensureAppConfigInitialized();
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    final router = _homeInteractionRouter();
+    addTearDown(router.dispose);
+    final game = _scheduledGame(
+      gameId: '20260908SSLG0',
+      awayTeamId: 'SS',
+      awayShortName: '삼성',
+      homeTeamId: 'LG',
+      homeShortName: 'LG',
+      stadium: '잠실',
+      lineupOpened: true,
+    );
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: router),
+        scoreboardGames: [game],
+      ),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('공개된 라인업 보기'));
+    await tester.pumpAndSettle();
+    expect(find.text('game-detail-20260908SSLG0-tab-lineup'), findsOneWidget);
+  });
+
   testWidgets('home requests the current KBO civil date', (tester) async {
     _ensureAppConfigInitialized();
     SharedPreferences.setMockInitialValues({});
@@ -727,7 +754,7 @@ void main() {
 
     await tester.pump();
 
-    expect(find.text('홈 첫 화면을 먼저 띄우는 중입니다.'), findsOneWidget);
+    expect(find.text('우리 팀의 기록을 준비하고 있어요.'), findsOneWidget);
     expect(find.text('일정 보기'), findsAtLeastNWidgets(1));
     expect(find.text('순위'), findsOneWidget);
     expect(aggregateCalls, 0);
@@ -989,7 +1016,10 @@ void main() {
       final todayHeader = find.byKey(const ValueKey('home-today-games-header'));
       expect(liveCard, findsOneWidget);
       expect(find.text('내 경기 진행 중'), findsOneWidget);
-      expect(find.text('문자중계 보기'), findsOneWidget);
+      expect(
+        find.descendant(of: liveCard, matching: find.text('문자중계 보기')),
+        findsOneWidget,
+      );
       expect(
         tester.getTopLeft(liveCard).dy,
         lessThan(tester.getTopLeft(todayHeader).dy),
@@ -1327,7 +1357,7 @@ void main() {
     expect(avgRect.width, greaterThanOrEqualTo(60));
     expect(eraRect.width, greaterThanOrEqualTo(60));
     expect(avgRect.right, lessThanOrEqualTo(eraRect.left));
-    for (final copy in ['LG 트윈스', '1위 · 51승 34패 2무', '경기 일정', '팀 기록']) {
+    for (final copy in ['LG 트윈스', '1위 · 51승 34패 2무', '경기 프리뷰', '팀 기록']) {
       final paragraph = tester.renderObject<RenderParagraph>(find.text(copy));
       expect(
         paragraph.didExceedMaxLines,
@@ -1650,6 +1680,8 @@ void main() {
     expect(find.text('최근 5경기'), findsWidgets);
     expect(find.text('최근 흐름'), findsNothing);
 
+    await tester.ensureVisible(find.text('4연승'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('4연승'));
     await tester.pumpAndSettle();
 
@@ -1820,7 +1852,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('알림 설정'));
+    await tester.tap(find.byTooltip('알림함'));
     await tester.pumpAndSettle();
 
     expect(find.text('notifications'), findsOneWidget);
@@ -3237,10 +3269,12 @@ Game _scheduledGame({
   required String homeTeamId,
   required String homeShortName,
   required String stadium,
+  bool lineupOpened = false,
 }) {
   return Game(
     gameId: gameId,
     status: GameStatus.scheduled,
+    lineupOpened: lineupOpened,
     inning: '18:30 예정',
     away: TeamScore(
       teamId: awayTeamId,

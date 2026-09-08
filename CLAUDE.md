@@ -19,7 +19,7 @@ KBO 프로야구 팬을 위한 실시간 경기 정보 모바일 앱 (iOS/Androi
 - **상태관리**: Riverpod
 - **네비게이션**: go_router
 - **HTTP**: dio
-- **인프라**: AWS (EC2/ECS + RDS PostgreSQL + ElastiCache Redis)
+- **인프라 방향**: 저비용 테스터 운영은 AWS Lightsail native systemd, 확장 배포는 ECS/Fargate. 실제 운영 상태는 runbook과 런타임에서 확인한다.
 - **푸시**: Firebase Cloud Messaging + APNs ActivityKit Live Activity push
 
 ## 프로젝트 구조
@@ -53,6 +53,7 @@ kbo_fans/
 - 구현 인사이트/배포 메모: `docs/ENGINEERING_NOTES.md`
 - Figma 화면 구성, 다크 테마, 컬러/레이아웃 기준: `docs/FIGMA_PROMPT.md`
 - 최신 작업 이력과 결정 사항: `docs/WORKLOG.md`
+- 2026-09-07 리뉴얼의 기능/경쟁/구현/검증 범위: `docs/RENEWAL_2026-09-07.md` 및 연결된 기능 감사·시장 조사. 내 팀 경기 우선, 기록 가이드/동일 팀·시즌 선수 비교, 핵심 중계, 다음 예정일, 알림 프리셋은 미배포 작업 트리에 반영된 범위이며 실기기/테스터 배포 증거와 구분한다.
 - 정책 충돌은 `AGENTS.md`와 가장 가까운 적용 스킬/명세로 해결한다. 현재 동작은 실제 코드·생성 산출물·런타임을 우선하고, `docs/WORKLOG.md`는 결정 이력으로 사용한다
 
 ## Git 설정

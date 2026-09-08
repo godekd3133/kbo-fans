@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/kbo_time.dart';
 import '../../core/utils/kbo_player_image_cache.dart';
 import '../../core/widgets/app_motion.dart';
+import '../../core/widgets/baseball_metric_guide.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/api/api_client.dart';
 import '../../data/models/records_overview.dart';
@@ -87,6 +88,15 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
           ),
         ),
         title: const Text('리그 리더보드'),
+        actions: [
+          if (baseballMetricGuideFor(_selectedMetric.key) != null)
+            IconButton(
+              tooltip: '선택한 지표 이해하기',
+              onPressed: () =>
+                  showBaseballMetricGuide(context, metric: _selectedMetric.key),
+              icon: const Icon(Icons.help_outline_rounded),
+            ),
+        ],
       ),
       body: SafeArea(
         child: Padding(
@@ -140,6 +150,25 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                 const SizedBox(height: 10),
                 _metricDisclosure(_selectedMetric.disclosure!),
               ],
+              if (baseballMetricGuideFor(_selectedMetric.key) case final guide?)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    key: const ValueKey('leaderboard-metric-guide'),
+                    onPressed: () => showBaseballMetricGuide(
+                      context,
+                      metric: _selectedMetric.key,
+                    ),
+                    icon: const Icon(Icons.info_outline_rounded, size: 16),
+                    label: Text(
+                      guide.formula,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    style: TextButton.styleFrom(
+                      alignment: Alignment.centerLeft,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 12),
               if (!_selectedMetric.supportedByOfficialSource)
                 Expanded(child: _unsupportedMetricCard(metric: _selectedMetric))

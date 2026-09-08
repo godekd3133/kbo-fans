@@ -4,6 +4,7 @@ import '../../../core/constants/visual_assets.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_artwork_card.dart';
 import '../../../data/models/game.dart';
+import '../widgets/game_reading_card.dart';
 
 class ScoreTab extends StatelessWidget {
   static const _teamColumnWidth = 64.0;
@@ -15,6 +16,9 @@ class ScoreTab extends StatelessWidget {
   final Game game;
   final Future<void> Function()? onRefresh;
   final Widget? footer;
+  final VoidCallback? onOpenRelay;
+  final VoidCallback? onOpenBoxscore;
+  final VoidCallback? onOpenLineup;
 
   const ScoreTab({
     super.key,
@@ -22,6 +26,9 @@ class ScoreTab extends StatelessWidget {
     required this.game,
     this.onRefresh,
     this.footer,
+    this.onOpenRelay,
+    this.onOpenBoxscore,
+    this.onOpenLineup,
   });
 
   @override
@@ -35,6 +42,13 @@ class ScoreTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            GameReadingCard(
+              game: game,
+              onOpenRelay: onOpenRelay,
+              onOpenBoxscore: onOpenBoxscore,
+              onOpenLineup: onOpenLineup,
+            ),
+            const SizedBox(height: 16),
             if (_hasAnyInningData)
               _buildInningTable()
             else

@@ -1,13 +1,13 @@
 # Versioning And Release Policy
 
 > Created: 2026-05-20
-> Updated: 2026-09-02
+> Updated: 2026-09-08
 
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.31+99`
-- Current release tag: `0.1.31`
+- Flutter app version: `0.1.32+100`
+- Current release tag: `0.1.32`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -62,6 +62,8 @@ Every version or release change must update these surfaces in the same work unit
 - When the Director says "이어서 해", decide autonomously whether the current work deserves a new numeric version or should only amend/rewrite the current GitHub release notes. Prefer a new version when app behavior, API behavior, user-visible UI, or in-app update notes change.
 
 ## Numeric Release Map
+
+- `0.1.32`: 경기 우선 홈, 경기 한눈에와 핵심 중계 장면, 9개 지표 가이드·같은 팀/시즌 선수 비교, 시즌 보존 기록 탐색, 일정·알림 프리셋, 점수/예매 근거 표시를 포함한 전면 리뉴얼 current app build `0.1.32+100`.
 
 - `0.1.31`: 박스스코어·라인업의 첫 일시 오류를 탭 내부에서 자동 재시도하고, 완전한 current 응답을 앱 local cache에서 제한적으로 fallback하는 current app build `0.1.31+99`.
 

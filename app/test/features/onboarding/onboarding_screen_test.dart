@@ -21,14 +21,7 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
-    for (final label in [
-      '경기 우선',
-      '홈에서 먼저 보기',
-      '득점 알림',
-      '실시간 알림 받기',
-      '순위 추적',
-      '팀 순위 확인',
-    ]) {
+    for (final label in ['오늘 경기', '다음 일정', '팀 기록']) {
       final text = tester.widget<Text>(find.text(label));
       expect(text.style?.fontSize, greaterThanOrEqualTo(10));
       expect(
@@ -48,7 +41,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('280px·240% 글자 크기에서 혜택 설명은 한 열로 온전히 흐른다', (tester) async {
+  testWidgets('280px·240% 글자 크기에서 개인화 미리보기는 온전히 흐른다', (tester) async {
     final semantics = tester.ensureSemantics();
     try {
       await _pumpOnboarding(
@@ -59,21 +52,36 @@ void main() {
 
       expect(tester.takeException(), isNull);
       final titleRects = [
-        tester.getRect(find.text('경기 우선')),
-        tester.getRect(find.text('득점 알림')),
-        tester.getRect(find.text('순위 추적')),
+        tester.getRect(find.text('오늘 경기')),
+        tester.getRect(find.text('다음 일정')),
+        tester.getRect(find.text('팀 기록')),
       ];
       expect(titleRects[1].top, greaterThan(titleRects[0].bottom));
       expect(titleRects[2].top, greaterThan(titleRects[1].bottom));
-      expect(find.text('홈에서 먼저 보기'), findsOneWidget);
-      expect(find.text('실시간 알림 받기'), findsOneWidget);
-      expect(find.text('팀 순위 확인'), findsOneWidget);
-
-      final benefitSemantics = tester.getSemantics(find.text('경기 우선'));
-      expect(benefitSemantics.label, contains('홈에서 먼저 보기'));
+      for (final label in ['오늘 경기', '다음 일정', '팀 기록']) {
+        expect(tester.widget<Text>(find.text(label)).maxLines, isNull);
+      }
+      final benefitSemantics = tester.getSemantics(find.text('오늘 경기'));
+      expect(benefitSemantics.label, contains('오늘 경기'));
     } finally {
       semantics.dispose();
     }
+  });
+
+  testWidgets('390px 첫 화면은 개인화 가치와 팀 선택을 함께 보여준다', (tester) async {
+    await _pumpOnboarding(
+      tester,
+      physicalSize: const Size(390, 844),
+      textScaleFactor: 1,
+    );
+
+    expect(find.text('응원팀을 고르면\n경기에서 기록까지'), findsOneWidget);
+    expect(tester.getRect(find.text('LG')).bottom, lessThan(420));
+    expect(find.text('실시간 알림 받기'), findsNothing);
+    await tester.tap(find.text('LG'));
+    await tester.pumpAndSettle();
+    expect(find.text('LG 트윈스'), findsWidgets);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('선택한 응원 팀은 스크린리더에 선택 상태를 노출한다', (tester) async {

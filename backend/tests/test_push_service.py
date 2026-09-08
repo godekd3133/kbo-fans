@@ -1931,6 +1931,7 @@ def test_push_registry_live_score_correction_candidate_resets_and_skips_noop_wri
         str(registry_path),
         score_correction_confirmation_seconds=8,
         score_correction_now_provider=lambda: now[0],
+        runtime_state_now_provider=lambda: now[0],
     )
 
     def apply_score(away_score: int, home_score: int) -> bool:
@@ -1992,6 +1993,7 @@ def test_push_registry_concurrent_lower_score_observations_cannot_confirm_immedi
         registry_path,
         score_correction_confirmation_seconds=8,
         score_correction_now_provider=lambda: now[0],
+        runtime_state_now_provider=lambda: now[0],
     )
     assert baseline_registry.replace_scoreboard_state_and_enqueue_if_current(
         "20260604LGKT0",
@@ -2014,6 +2016,7 @@ def test_push_registry_concurrent_lower_score_observations_cannot_confirm_immedi
             registry_path,
             score_correction_confirmation_seconds=8,
             score_correction_now_provider=lambda: now[0],
+            runtime_state_now_provider=lambda: now[0],
         )
         barrier.wait(timeout=5)
         return registry.replace_scoreboard_state_and_enqueue_if_current(
@@ -2045,6 +2048,7 @@ def test_push_registry_never_confirms_live_inning_regression(tmp_path) -> None:
         str(tmp_path / "push_registry.json"),
         score_correction_confirmation_seconds=8,
         score_correction_now_provider=lambda: now[0],
+        runtime_state_now_provider=lambda: now[0],
     )
     assert registry.replace_scoreboard_state_and_enqueue_if_current(
         "20260604LGKT0",
@@ -2117,6 +2121,7 @@ def test_push_registry_terminal_score_correction_bypasses_confirmation_window(
         str(tmp_path / "push_registry.json"),
         score_correction_confirmation_seconds=8,
         score_correction_now_provider=lambda: now[0],
+        runtime_state_now_provider=lambda: now[0],
     )
     assert registry.replace_scoreboard_state_and_enqueue_if_current(
         "20260604LGKT0",
@@ -4210,6 +4215,7 @@ def test_scoreboard_sync_accepts_persisted_live_score_correction_after_window(
         str(tmp_path / "push_registry.json"),
         score_correction_confirmation_seconds=8,
         score_correction_now_provider=lambda: now[0],
+        runtime_state_now_provider=lambda: now[0],
     )
     sender = FakeLiveActivitySender()
     push_service = FakePushService(
@@ -4846,6 +4852,7 @@ def test_scoreboard_sync_retries_failed_relay_moment_after_last_seq_advances(
 def test_scoreboard_sync_rebaselines_stale_relay_state_without_backfill(
     tmp_path,
 ) -> None:
+    now = datetime(2026, 6, 4, 9, 0, tzinfo=timezone.utc)
     registry_path = tmp_path / "push_registry.json"
     registry_path.write_text(
         json.dumps(
@@ -4883,7 +4890,10 @@ def test_scoreboard_sync_rebaselines_stale_relay_state_without_backfill(
         ),
         encoding="utf-8",
     )
-    registry = PushRegistry(str(registry_path))
+    registry = PushRegistry(
+        str(registry_path),
+        runtime_state_now_provider=lambda: now,
+    )
     push_service = FakePushService(
         registry=registry,
         live_activity_sender=FakeLiveActivitySender(),
@@ -4927,7 +4937,7 @@ def test_scoreboard_sync_rebaselines_stale_relay_state_without_backfill(
         ),
         push_service=push_service,
         relay_service=relay_service,
-        now_provider=lambda: datetime(2026, 6, 4, 9, 0, tzinfo=timezone.utc),
+        now_provider=lambda: now,
     )
 
     first_response = sync_service.sync_date("2026-06-04")
