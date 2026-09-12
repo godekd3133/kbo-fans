@@ -2,6 +2,33 @@
 
 ---
 
+## 2026-09-13: 0.1.34 배포 증거
+
+### 빌드·업로드
+
+- [x] pushed SHA `92f97d75`(tag `0.1.34`)의 clean worktree `/tmp/kbo-fans-release-0.1.34`에서 release artifact를 생성했다. gitignore된 로컬 시크릿(`key.properties`, `kbo-fans-upload.jks`, `google-services.json`, `GoogleService-Info.plist`)은 작업 트리에서 복사했다.
+- [x] Android: `fvm flutter build appbundle --release --dart-define=APP_ENV=release --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=https://3-39-79-1.sslip.io/api` → `app-release.aab` 59.4MB, upload keystore(`CN=KBO Fans, OU=Bagelcode`) 서명 검증 통과. SHA-256 `7324a8208dcff00697e56d6a418bf1619e1c70923f2276b18db0ce89ffb619fa`.
+- [x] iOS: `fvm flutter build ipa --release --export-method app-store`(동일 dart-define) → `kbo_fans.ipa` 36.9MB, version `0.1.34` build `102`. export 결과물은 `Apple Distribution: MIN KYU KIM (A23ZPKGMW9)` 서명, `get-task-allow=false`. SHA-256 `61d5918da76eeef0972e2b0795f19876823863f64e60003e090b9a9466f42b89`.
+- [x] `xcodebuild -exportArchive -exportOptionsPlist`(destination=upload)로 App Store Connect 업로드 성공(`Uploaded Runner`, `EXPORT SUCCEEDED`). `altool`의 `@keychain:DRAuth` 앱 전용 비밀번호 인증은 `-22910`으로 실패해 Xcode 세션 업로드 경로를 사용했다. dSYM `objective_c.framework` 누락 경고는 심볼 업로드 한정이며 업로드 결과와 무관하다.
+- [x] 산출물 보존: `output/release-0.1.34/app-release.aab`, `output/release-0.1.34/kbo_fans.ipa`(미추적 디렉터리).
+
+### TestFlight 체크포인트(ASC API, secret 값 미출력)
+
+- [x] build `102`: `processingState=VALID`, `expired=false`, `usesNonExemptEncryption=false` — Apple 처리 완료.
+- [x] 내부 `Tester` 그룹: `hasAccessToAllBuilds=true`로 build 102 자동 연결 확인.
+- [x] 외부 `External Testers` 그룹: build 102 연결(`204`) 확인. 이전 승인 build(97 등)는 규칙대로 제거하지 않고 유지.
+- [x] Beta App Review: submission 생성 → `betaReviewState=WAITING_FOR_REVIEW`.
+- [ ] 외부 테스터 installability: Apple 심사 승인 대기 중 — 승인 확인과 실제 설치 확인은 별도 checkpoint.
+
+### Android 배포 경계
+
+- [ ] Play Console internal testing 업로드는 콘솔 접근 권한이 필요해 미완료. 서명된 `app-release.aab`는 `output/release-0.1.34/`에서 바로 업로드 가능하다.
+
+### 검증
+
+- release API health gate: `release-api-health-check.sh https://3-39-79-1.sslip.io/api` 전 endpoint HTTP 200 통과
+- ASC API 경로: `~/.appstoreconnect/private_keys/AuthKey_*.p8` + issuer env로 조회/그룹 연결/심사 제출 수행. secret 값은 출력하지 않음
+
 ## 2026-09-13: 0.1.34 릴리즈 절단
 
 ### 결정
