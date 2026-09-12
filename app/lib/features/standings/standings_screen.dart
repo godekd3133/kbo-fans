@@ -324,7 +324,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
           final team = KboTeams.byId(s.teamId);
           final colors = AppTheme.colorsOf(context);
           final teamColor = colors.readableAccent(
-            team?.primaryColor ?? colors.live,
+            team?.primaryColor ?? colors.accent,
           );
           final screenWidth = MediaQuery.sizeOf(context).width;
           final useCompactTeamName = screenWidth <= 430;
@@ -642,7 +642,9 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
   }) {
     final team = KboTeams.byId(standing.teamId);
     final colors = AppTheme.colorsOf(context);
-    final teamColor = colors.readableAccent(team?.primaryColor ?? colors.live);
+    final teamColor = colors.readableAccent(
+      team?.primaryColor ?? colors.accent,
+    );
     final rowTint = Color.alphaBlend(
       teamColor.withValues(alpha: 0.2),
       AppColors.card,
@@ -950,7 +952,7 @@ class _StandingsPulseRail extends StatelessWidget {
             ? AppColors.textSecondary
             : AppTheme.colorsOf(context).readableAccent(
                 KboTeams.byId(myTeam.teamId)?.primaryColor ??
-                    AppTheme.colorsOf(context).live,
+                    AppTheme.colorsOf(context).accent,
               ),
       ),
       _StandingsPulseItem(

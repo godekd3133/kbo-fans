@@ -272,7 +272,7 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                                 data: compareData,
                                 awayAccent: colors.readableAccent(
                                   KboTeams.byId(awayTeamId)?.primaryColor ??
-                                      colors.live,
+                                      colors.accent,
                                 ),
                                 homeAccent: colors.readableAccent(
                                   KboTeams.byId(homeTeamId)?.primaryColor ??

@@ -158,6 +158,8 @@
 
 - `TeamScore.scoreAvailable`은 모델 보조 플래그가 아니라 숫자 표시의 truth gate다. ScoreTab 합계·접근성 문구·relay score strip·home my-team LIVE card는 모두 `displayScore`를 사용하고, backend schedule fallback은 score/H/E/B를 실제 원천 값이 없을 때 `null`로 유지한다.
 - `/scoreboard/home`의 lightweight builder는 `SCHEDULED`/`CANCELLED`에서 schedule·Main 목록의 `0`을 score로 merge하지 않는다. `/home` quick item도 해당 상태를 verified score로 인정하지 않아 legacy `팀 0 : 0 팀` payload가 남아도 `팀 vs 팀`으로 표시한다. 확인된 LIVE/FINAL 0:0은 그대로 유지한다.
+- `/home` quick item의 예매 subtitle은 backend에서 KST 사용자 표시로 만들고, 앱 Home consumer는 오래된 ISO subtitle도 `월 일 시각 KST`로 정규화한다. KBO 브리프의 예정 `big_match`는 `예정 · 팀 vs 팀 · 시작 시각`으로 표시하며 일반 insight title을 덮어쓰지 않는다.
+- 홈 최근 5경기 오류·빈 상태의 CTA는 순위가 아니라 일정 화면으로 이동한다. 결과의 authoritative source가 schedule이므로 오류 안내와 다음 행동의 소유 화면을 일치시킨다.
 - `LiveActivityScoreboardSyncService.sync_date`는 registry에 device/live/start registration이 없으면 KBO warm-up·pending moment scan·heartbeat full rewrite를 하지 않고 `idle=true, warmed=false`를 반환한다. 이 경계는 등록 사용자가 있는 cadence를 줄이는 것이 아니라 0-user worker의 불필요한 upstream/EFS 작업만 제거한다.
 - 에러 화면은 pull-to-refresh만으로 복구를 암시하지 않는다. leaderboard는 provider key를 캡처한 명시 `다시 시도` button으로 invalidate하고, large-text relay fallback은 fixed height 대신 `minHeight`만 둬 안내가 natural height로 늘어난다. profile metadata는 trim 후 non-empty 값만 pill로 만든다.
 - 공개 client metrics는 운영 telemetry이므로 임의 JSON을 그대로 받지 않는다. route가 raw body를 먼저 16 KiB로 제한하고 JSON object만 logger에 기록해 oversized body가 Pydantic/log serialization까지 도달하지 않게 한다.

@@ -150,7 +150,7 @@ class AppColors {
   static const _textSecondary = Color(0xFFA6B0BD);
   static const _textDisabled = Color(0xFF6E7784);
   static const _live = Color(0xFFFF4444);
-  static const _positive = Color(0xFF18C67A);
+  static const _positive = Color(0xFF00C853);
   static const _accent = Color(0xFF2979FF);
   static const _ballYellow = Color(0xFFFFD600);
 

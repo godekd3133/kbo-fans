@@ -840,6 +840,9 @@ class _RelayGameSummary extends StatelessWidget {
     final scoreLabel =
         '${game.away.shortName} ${game.away.displayScore} : '
         '${game.home.displayScore} ${game.home.shortName}';
+    final inningColor = game.status == GameStatus.live
+        ? AppColors.live
+        : AppColors.textSecondary;
 
     return Container(
       width: double.infinity,
@@ -866,7 +869,7 @@ class _RelayGameSummary extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.live,
+                    color: inningColor,
                   ),
                 ),
               ],
@@ -885,7 +888,7 @@ class _RelayGameSummary extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.live,
+                    color: inningColor,
                   ),
                 ),
               ],
@@ -1298,7 +1301,7 @@ class _RelayBroadcastScorebug extends StatelessWidget {
       KboTeams.byId(game.away.teamId)?.primaryColor ?? colors.accent,
     );
     final homeColor = colors.readableAccent(
-      KboTeams.byId(game.home.teamId)?.primaryColor ?? colors.live,
+      KboTeams.byId(game.home.teamId)?.primaryColor ?? colors.accent,
     );
     final inningLabel = atBat.inningText.isEmpty
         ? _safeDetail(game.inning, '경기 중')
@@ -1931,7 +1934,7 @@ class _CurrentAtBatHero extends StatelessWidget {
       offenseTeam?.primaryColor ?? colors.accent,
     );
     final pitcherAccent = colors.readableAccent(
-      defenseTeam?.primaryColor ?? colors.live,
+      defenseTeam?.primaryColor ?? colors.accent,
     );
 
     return LayoutBuilder(

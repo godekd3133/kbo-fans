@@ -403,7 +403,7 @@ class _EditorialLead extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(width: 3, height: 22, color: AppColors.live),
+              Container(width: 3, height: 22, color: AppColors.accent),
               const SizedBox(width: 11),
               Expanded(
                 child: Column(

@@ -161,7 +161,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     _OnboardingPrimaryButton(
                       width: double.infinity,
                       height: 52,
-                      accent: selectedTeam?.primaryColor ?? AppColors.live,
+                      accent: selectedTeam?.primaryColor ?? AppColors.accent,
                       enabled: effectiveSelectedTeamId != null,
                       isLoading: _isSubmitting,
                       label: _isSubmitting
@@ -217,7 +217,7 @@ class _SelectedTeamPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colorsOf(context);
-    final accent = colors.readableAccent(team?.primaryColor ?? colors.live);
+    final accent = colors.readableAccent(team?.primaryColor ?? colors.accent);
 
     return Container(
       width: double.infinity,
@@ -524,11 +524,16 @@ class _TeamLogoCircle extends StatelessWidget {
             onboardingAsset,
             fit: BoxFit.cover,
             filterQuality: FilterQuality.high,
+            errorBuilder: (_, _, _) => _fallbackLogo(),
           ),
         ),
       );
     }
 
+    return _fallbackLogo();
+  }
+
+  Widget _fallbackLogo() {
     return Container(
       width: size,
       height: size,

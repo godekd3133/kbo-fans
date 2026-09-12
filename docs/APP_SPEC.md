@@ -282,9 +282,9 @@
 | 진행 중인 내 경기 | 마이팀 오늘 경기가 live 상태이면 홈 최상단, `오늘 경기`와 마이팀 통계 위에 현재 스코어/이닝/구장을 compact 카드로 노출하고 탭하면 해당 경기 문자중계로 이동 |
 | 오늘 경기 | scoreboardProvider의 오늘 경기 전체를 compact row로 노출. 마이팀 경기를 우선 정렬하되 `전체 보기` CTA로 축약하지 않는다 |
 | 순위 | secondary section 활성화 이후 `/home.standingsPreview`를 읽어 전체 팀을 순위표로 표시 |
-| 최근 5경기 | 순위 바로 아래에서 마이팀의 검증된 `recentSummaries`만 결과 버블로 표시한다. 집계가 비어 있을 때는 현재 scoreboard에서 점수와 상태가 모두 확인된 `FINAL` 경기만 보조하며, 검증된 결과가 없으면 빈 상태를 보여준다. 다른 팀의 공식 streak는 이 섹션에 섞지 않고 순위표의 `연속` 정보로만 유지한다 |
+| 최근 5경기 | 순위 바로 아래에서 마이팀의 검증된 `recentSummaries`만 결과 버블로 표시한다. 집계가 비어 있을 때는 현재 scoreboard에서 점수와 상태가 모두 확인된 `FINAL` 경기만 보조하며, 검증된 결과가 없으면 빈 상태를 보여준다. 오류·빈 상태의 다음 행동은 `일정 보기`로 `/schedule`에 연결한다. 다른 팀의 공식 streak는 이 섹션에 섞지 않고 순위표의 `연속` 정보로만 유지한다 |
 | KBO 브리프 | 위 네 섹션 아래에서 그날 리그 전체의 주요 경기/확정 기록/핵심 흐름 요약 |
-| 빠른 콘텐츠 | 홈런왕, 오늘의 플레이어, 마이팀 순위 등 짧은 정보 카드. 첫 화면보다 아래에 배치 |
+| 빠른 콘텐츠 | 홈런왕, 오늘의 플레이어, 마이팀 순위, 예매 오픈 임박 등 짧은 정보 카드. 첫 화면보다 아래에 배치하며 예매 시각은 `9월 6일 11:00 KST`처럼 사용자 표시용으로 변환한다 |
 
 **UI 요소**:
 | 요소 | 설명 |
@@ -344,6 +344,8 @@
 - `batting_leader`는 records overview의 타율 리더를 사용한다.
 - `record_milestone`은 records overview가 검수된 `leaders.milestones[]` 또는 `milestones[]`를 내려줄 때만 생성한다. 각 항목은 `playerId`, `playerType`, `metricKey`, `name`, `teamId`, `value`, 선택 `milestoneLabel`, 선택 `allTimeRank`를 가질 수 있고, `allTimeRank`가 있을 때만 `역대 n번째` 문구를 쓴다.
 - `quickItems`는 홈 화면에서는 기존처럼 최대 4개만 노출하지만, aggregate에는 최대 6개까지 담아 데이터 브리핑에서 홈런왕, 오늘의 타자, 오늘의 투수 같은 선수 흐름을 compact row로 보여줄 수 있게 한다.
+- `quickItems`의 예매 `openAt`은 backend가 ISO 원문을 사용자용 KST 월·일·시각으로 변환해 subtitle에 넣는다. 기존 cache가 ISO를 보유한 경우 앱 Home consumer도 같은 형식으로 정규화하며, 파싱할 수 없는 값은 원문을 확장하지 않는다.
+- KBO 브리프의 예정 `big_match`는 score가 없으므로 `예정 · 팀 vs 팀 · 시작 시각`으로 표시한다. 일반 `defense_issue`·`player_performance` 등 숫자 score가 아닌 insight title은 score strip에서 보존한다.
 - 팀별 시즌 누적 실책 순위는 현재 팀 기록 원천에서 실책 컬럼이 검증되기 전까지 자동 생성하지 않는다. 홈에서는 검증 가능한 날짜/경기 단위 실책 이슈와 순위만 노출한다.
 - KBO 최초, 최연소, 개인/KBO 통산 달성 같은 역사적 기록 문구는 검수된 `record_catalog`와 달성/후보 snapshot이 붙기 전까지 자동 생성하지 않는다.
 

@@ -94,8 +94,9 @@ class KboTeams {
   ];
 
   static KboTeam? byId(String id) {
+    final normalized = id.trim().toUpperCase();
     try {
-      return teams.firstWhere((t) => t.id == id);
+      return teams.firstWhere((t) => t.id == normalized);
     } catch (_) {
       return null;
     }

@@ -486,7 +486,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                     metricLabel: keyPitcher.liveContext
                         ? (keyPitcher.decision ?? 'LIVE')
                         : '앱 기준 투구 효율 +$efficiencyScore',
-                    accent: AppColors.live,
+                    accent: accent,
                     badgeLabel: (keyPitcherPlayer?.number ?? 0) > 0
                         ? '${keyPitcherPlayer!.number}'
                         : null,
@@ -651,7 +651,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       name: pitcher.name,
       meta: pitcher.liveContext ? pitcher.contextLabel ?? '투수 정보' : '투수 기록',
       actionLabel: player == null ? null : '선수 기록 보기',
-      accent: AppColors.live,
+      accent: accent,
       supportingLabels: pitcher.liveContext
           ? const []
           : _pitcherAdvancedLabels(pitcher),

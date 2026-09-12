@@ -2344,7 +2344,7 @@ class _HighlightCardState extends State<_HighlightCard> {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: _playingVideoId == video.videoId
-                ? AppColors.live
+                ? AppColors.accent
                 : AppColors.divider,
           ),
         ),
@@ -2435,7 +2435,7 @@ class _HighlightCardState extends State<_HighlightCard> {
                           ? () => _playInline(video.videoId)
                           : () => _openUrl(video.videoUrl),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.live,
+                        backgroundColor: AppColors.accent,
                         foregroundColor: AppColors.textPrimary,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
@@ -2543,7 +2543,7 @@ class _HighlightCardState extends State<_HighlightCard> {
                   center: const Alignment(0, -0.25),
                   radius: 1.05,
                   colors: [
-                    AppColors.live.withValues(alpha: 0.16),
+                    AppColors.accent.withValues(alpha: 0.16),
                     Colors.transparent,
                   ],
                 ),

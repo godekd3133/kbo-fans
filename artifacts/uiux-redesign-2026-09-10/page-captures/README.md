@@ -68,3 +68,5 @@
 - Latest season-selector pass: standings and records-team season surfaces meet the 44px minimum; combined focused geometry checks passed `13` tests.
 - Latest settings interaction pass: tappable section rows expose one `AppPressable` action without an outer duplicate button semantics wrapper; the focused settings suite passed `22` tests.
 - Latest scheduled-score integrity pass: backend `/home` quick items and `/scoreboard/home` no longer promote scheduled `0 : 0` placeholders; Flutter news checks passed `22` tests, backend producer/consumer checks passed `90` tests, and the fresh Web AX tree shows `LG vs 삼성`.
+- Latest home pass: fresh Web AX shows the scheduled insight as `예정 NC vs 두산 17:00`, the ticket quick item as `티켓링크 · 9월 6일 11:00 KST`, and the recent-result error CTA contract is `일정 보기`.
+- Latest page-frame pass: common page content has an explicit child semantics boundary; the focused frame suite passed `6` tests. Accepted screenshots remain dated 2026-09-11, while this 2026-09-12 entry records runtime AX/API revalidation.

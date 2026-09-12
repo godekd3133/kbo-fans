@@ -35,7 +35,7 @@ class MyTeamGameCard extends StatelessWidget {
     final secondary = _secondaryText();
     final colors = AppTheme.colorsOf(context);
     final accent = colors.readableAccent(
-      awayTeam?.primaryColor ?? homeTeam?.primaryColor ?? colors.live,
+      awayTeam?.primaryColor ?? homeTeam?.primaryColor ?? colors.accent,
     );
     final primaryAction = _primaryAction();
     final secondaryAction = _secondaryAction();
@@ -80,10 +80,14 @@ class MyTeamGameCard extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.live.withValues(alpha: 0.18),
+                        color: isLive
+                            ? AppColors.live.withValues(alpha: 0.18)
+                            : AppColors.cardSub,
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(
-                          color: AppColors.live.withValues(alpha: 0.45),
+                          color: isLive
+                              ? AppColors.live.withValues(alpha: 0.45)
+                              : AppColors.divider,
                         ),
                       ),
                       child: Row(
@@ -92,7 +96,9 @@ class MyTeamGameCard extends StatelessWidget {
                             width: 6,
                             height: 6,
                             decoration: BoxDecoration(
-                              color: AppColors.live,
+                              color: isLive
+                                  ? AppColors.live
+                                  : AppColors.textSupporting,
                               shape: BoxShape.circle,
                             ),
                           ),

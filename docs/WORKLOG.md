@@ -2,6 +2,63 @@
 
 ---
 
+## 2026-09-12: LIVE red 의미 범위 감사와 잔여 오용 보정
+
+### 원인과 반영
+
+- `docs/UIUX_REDESIGN_2026-09-10.md` 체크리스트 기준으로 `app/lib/features/**`의 `#FF4444` 사용을 다시 감사했습니다. LIVE·오류·경기 이벤트·새 알림 신호가 아닌 위치를 action blue 또는 중립색으로 정리했습니다.
+- 팀 색상 fallback이 `colors.live`였던 위치를 `colors.accent`로 통일했습니다: 설정 hero, 순위표 일반/큰 글씨 row·마이팀 pulse, 홈 LIVE 카드·인라인 팀 강조, 마이팀 경기 카드, 라인업 비교, 문자중계 scorebug·현재 타석 투수 강조.
+- `MyTeamGameCard` 상태 pill이 예정·종료 경기에도 red 점과 red tint를 쓰던 것을 `isLive` 조건부로 변경해 비LIVE 상태는 `cardSub`/`divider`/`textSupporting`을 사용합니다.
+- 경기 상세 하이라이트 카드의 재생 중 테두리·`바로 재생` 버튼·유튜브 검색 fallback glow를 action blue로 변경해 재생 모드 선택 상태와 경기 상태 red를 분리했습니다.
+- 박스스코어 투수 요약 카드와 투수 기록 row의 고정 red accent를 타자 row와 같은 팀 readable accent로 변경했습니다. LIVE 의미는 요약 헤더의 `LIVE` pill이 유지합니다.
+- 문자중계 fallback 요약 카드의 이닝 텍스트를 `GameStatus.live` 조건부 red로 변경해 종료 경기에서 red 이닝이 남지 않게 했습니다.
+- 브리핑 `먼저 볼 흐름` 리드 marker를 action blue로 변경했습니다. 필터·카드 강조의 `game => live` 매핑은 체크리스트의 콘텐츠 의미색 유지 규칙으로 유지합니다.
+- 알림함 요약 카드의 장식 red shadow·아이콘·`보관` metric을 accent/중립으로 정리하고, `안 읽음` metric과 배달 `라이브` 모드만 red로 유지해 새 알림·LIVE 의미와 일치시켰습니다. `바로` 배달 표시는 accent로 변경했습니다.
+- 설정의 알림함 진입 카드 아이콘을 accent로 변경하고, `N 새 알림` 카운트는 새 알림 신호로 red를 유지했습니다.
+- 감사로 확인한 유지 항목: 홈 unread badge red는 시안의 `새 알림` 의미로 유지, 일정 `경기 있는 날짜` outline red와 일요일 red는 시안이 유지하도록 명시한 달력 의미색, 기록실 부상·순위 연패·최근 결과 `패`는 오류/패배 의미색, ERA metric accent는 지표 의미색 유지 규칙에 해당합니다.
+- 각 화면 header는 `AppPageHeader`(홈은 score-first hero, 경기 상세는 scorebug header)를 사용하고, 뒤로가기·header action은 단일 label·button·tap semantics를 노출함을 재확인했습니다. 기록실·순위·일정·브리핑 refresh 잠금, 알림함 loader coalescing, 선수 상세 단일 in-flight, API 진단 재실행 잠금이 기존 구현에 모두 존재함을 확인했습니다.
+
+### 검증
+
+- `fvm dart format` on touched files: `0 changed`
+- `fvm flutter analyze lib/features lib/services/notification_inbox_service.dart`: `No issues found`
+- `fvm flutter test test/features --no-pub`: `312 passed`
+
+## 2026-09-12: 홈 오류 CTA·예매 표시·인사이트 score strip 개선
+
+### 원인과 반영
+
+- 홈 `최근 5경기` 오류·빈 상태가 실제 결과를 제공하지 않는 순위 화면으로 `순위 보기`를 연결하고 있었습니다. authoritative source인 일정 화면으로 CTA와 안내 문구를 변경했습니다.
+- 홈 `예매 오픈 임박` quick item이 `2026-09-06T11:00:00+09:00` raw ISO를 노출하고 있었습니다. backend producer는 `9월 6일 11:00 KST`를 만들고, 앱 consumer는 legacy cache의 ISO도 같은 사용자 표시로 정규화합니다.
+- 예정 `big_match`가 score strip에서 왼쪽·오른쪽에 `예정`을 반복하고 팀명을 빈 label로 남길 수 있었습니다. 예정 matchup은 `팀 vs 팀 · 시작 시각`으로, 일반 defense/player insight는 원래 title로 유지하도록 분기했습니다.
+
+### 검증
+
+- `fvm flutter test --no-pub test/features/home/home_screen_test.dart`: `55 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `623 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- `backend/.venv/bin/ruff check src tests`: passed
+- `backend/.venv/bin/pytest -q`: `720 passed`
+- fresh Web AX: `예정 NC vs 두산 17:00`, `티켓링크 · 9월 6일 11:00 KST`, and no scheduled `0 : 0`
+- recent-result empty/error CTA regression: `일정 보기` routes to `/schedule`
+- local API/web: HTTP `200` / HTTP `200`
+- `git diff --check`: passed
+
+## 2026-09-12: 공통 page frame semantics boundary 보강
+
+### 원인과 반영
+
+- 리더보드·선수 상세처럼 `AppPageHeader`와 확장 본문을 함께 사용하는 route에서 상위 semantics container가 페이지 header copy를 요약으로 흡수할 수 있었습니다.
+- `AppPageFrame`에 explicit child semantics boundary를 추가해 페이지 내부 action label과 상위 화면 구조를 분리했습니다. max width, padding, scroll, route contract는 변경하지 않았습니다.
+
+### 검증
+
+- `fvm flutter test --no-pub test/core/widgets/app_page_frame_test.dart`: `6 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `623 passed`
+- Web release build: success
+
 ## 2026-09-12: 예정 경기 placeholder score 정합성 보강
 
 ### 원인과 반영

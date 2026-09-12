@@ -88,7 +88,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final myTeamId = ref.watch(myTeamProvider);
     final team = myTeamId != null ? KboTeams.byId(myTeamId) : null;
     final colors = AppTheme.colorsOf(context);
-    final teamColor = colors.readableAccent(team?.primaryColor ?? colors.live);
+    final teamColor = colors.readableAccent(
+      team?.primaryColor ?? colors.accent,
+    );
 
     return Scaffold(
       body: SafeArea(
@@ -1417,15 +1419,15 @@ class _NotificationInboxPreviewCard extends StatelessWidget {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: colors.live.withValues(alpha: 0.16),
+                        color: colors.accent.withValues(alpha: 0.16),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: colors.live.withValues(alpha: 0.36),
+                          color: colors.accent.withValues(alpha: 0.36),
                         ),
                       ),
                       child: Icon(
                         Icons.notifications_active_outlined,
-                        color: colors.live,
+                        color: colors.accent,
                         size: 22,
                       ),
                     ),

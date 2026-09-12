@@ -3304,7 +3304,7 @@ class _LiveMyTeamGameCard extends StatelessWidget {
     final opponentInfo = KboTeams.byId(opponent.teamId);
     final colors = AppTheme.colorsOf(context);
     final accent = colors.readableAccent(
-      myTeamInfo?.primaryColor ?? colors.live,
+      myTeamInfo?.primaryColor ?? colors.accent,
     );
     final inningText = game.inning.trim().isNotEmpty
         ? game.inning.trim()
@@ -3555,7 +3555,7 @@ class _LiveTeamScoreInline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colorsOf(context);
-    final accent = colors.readableAccent(team?.primaryColor ?? colors.live);
+    final accent = colors.readableAccent(team?.primaryColor ?? colors.accent);
     final logo = _TeamLogo(
       team: team,
       fallbackLabel: fallbackLabel,

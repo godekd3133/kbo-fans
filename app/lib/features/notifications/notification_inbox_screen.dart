@@ -376,7 +376,7 @@ class _InboxSummaryCard extends StatelessWidget {
         border: Border.all(color: AppColors.divider),
         boxShadow: [
           BoxShadow(
-            color: AppColors.live.withValues(alpha: 0.12),
+            color: AppColors.accent.withValues(alpha: 0.12),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -391,15 +391,15 @@ class _InboxSummaryCard extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: AppColors.live.withValues(alpha: 0.16),
+                  color: AppColors.accent.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: AppColors.live.withValues(alpha: 0.38),
+                    color: AppColors.accent.withValues(alpha: 0.38),
                   ),
                 ),
                 child: Icon(
                   Icons.notifications_active_outlined,
-                  color: AppColors.live,
+                  color: AppColors.accent,
                   size: 22,
                 ),
               ),
@@ -439,7 +439,7 @@ class _InboxSummaryCard extends StatelessWidget {
                 _SummaryMetric(
                   label: '보관',
                   value: totalCount?.toString() ?? '—',
-                  color: AppColors.live,
+                  color: AppColors.textPrimary,
                 ),
                 const SizedBox(height: 8),
                 _SummaryMetric(
@@ -451,7 +451,7 @@ class _InboxSummaryCard extends StatelessWidget {
                 _SummaryMetric(
                   label: '안 읽음',
                   value: unreadCount?.toString() ?? '—',
-                  color: AppColors.positive,
+                  color: AppColors.live,
                 ),
               ],
             )
@@ -462,7 +462,7 @@ class _InboxSummaryCard extends StatelessWidget {
                   child: _SummaryMetric(
                     label: '보관',
                     value: totalCount?.toString() ?? '—',
-                    color: AppColors.live,
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -478,7 +478,7 @@ class _InboxSummaryCard extends StatelessWidget {
                   child: _SummaryMetric(
                     label: '안 읽음',
                     value: unreadCount?.toString() ?? '—',
-                    color: AppColors.positive,
+                    color: AppColors.live,
                   ),
                 ),
               ],
@@ -1275,9 +1275,9 @@ String _deliveryLabel(PushNotificationDelivery delivery) {
 
 Color _deliveryColor(PushNotificationDelivery delivery) {
   return switch (delivery) {
-    PushNotificationDelivery.immediate => AppColors.live,
+    PushNotificationDelivery.immediate => AppColors.accent,
     PushNotificationDelivery.summary => AppColors.positive,
-    PushNotificationDelivery.liveOnly => AppColors.accent,
+    PushNotificationDelivery.liveOnly => AppColors.live,
     PushNotificationDelivery.off => AppColors.textSupporting,
   };
 }
