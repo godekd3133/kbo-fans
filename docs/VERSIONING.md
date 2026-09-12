@@ -1,13 +1,13 @@
 # Versioning And Release Policy
 
 > Created: 2026-05-20
-> Updated: 2026-09-08
+> Updated: 2026-09-13
 
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.33+101`
-- Current release tag: `0.1.33`
+- Flutter app version: `0.1.34+102`
+- Current release tag: `0.1.34`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -62,6 +62,8 @@ Every version or release change must update these surfaces in the same work unit
 - When the Director says "이어서 해", decide autonomously whether the current work deserves a new numeric version or should only amend/rewrite the current GitHub release notes. Prefer a new version when app behavior, API behavior, user-visible UI, or in-app update notes change.
 
 ## Numeric Release Map
+
+- `0.1.34`: 2026-09-10 시안 기준 UI/UX 전면 재구축. 공통 디자인 시스템 도입, LIVE red 의미색 격리와 액션 블루 선택 상태, 접근성 semantics 단일화, refresh 중복 요청 잠금, 실제 팀 엠블럼 적용, 예정 경기 `null` 스코어/`vs` 표기를 포함한 current app build `0.1.34+102`.
 
 - `0.1.33`: `home_widget` Android library와 앱의 JVM 17 target을 정렬한 배포 빌드 호환성 수정. 0.1.32 전면 리뉴얼을 포함한 current app build `0.1.33+101`.
 

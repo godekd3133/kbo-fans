@@ -2,6 +2,18 @@
 
 ---
 
+## 2026-09-13: 0.1.34 릴리즈 절단
+
+### 결정
+
+- 2026-09-10 시안 기준 UI/UX 전면 재구축(`694f082`)과 4개 감사 스레드 후속 보정(`31c0aba`), 하단 탭 문서 동기화(`17fcaa3`)를 `0.1.34+102`로 묶어 릴리즈합니다. 앱 화면 동작·API 계약(예정 경기 `null` 스코어)·사용자 가시 UI가 모두 바뀌어 `kbo-version-release` 기준 새 숫자 버전 대상입니다.
+- 갱신 표면: `app/pubspec.yaml`, `CHANGELOG.md`(`[0.1.34]`), `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md` baseline·release map, GitHub Release `0.1.34`.
+
+### 검증
+
+- 버전 변경 전 통합 검증 통과 상태를 사용: `fvm flutter analyze` No issues, `fvm flutter test` 623 passed, `backend/.venv/bin/pytest -q` 720 passed
+- release notes 대상 회귀 테스트 실행
+
 ## 2026-09-13: 하단 탭 구조 문서 동기화
 
 ### 원인과 반영
