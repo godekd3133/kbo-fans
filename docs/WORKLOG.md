@@ -2,6 +2,19 @@
 
 ---
 
+## 2026-09-13: 하단 탭 구조 문서 동기화
+
+### 원인과 반영
+
+- `CLAUDE.md`가 구 탭 구성 `일정 / 순위 / 홈 / 기록실 / 설정`(홈 가운데)을 기술하고 있어, 현재 구현과 `docs/APP_SPEC.md`·`docs/FIGMA_PROMPT.md` 기준인 `홈 / 일정 / 기록 / 브리핑 / 설정`(홈 첫 번째)으로 정정했습니다.
+- `/standings`·`/records` 하위 route의 모바일 `기록` 목적지 소속과 700px 이상 rail의 순위 독립 목적지 규칙도 함께 명시했습니다.
+- `docs/UI_UX_REFERENCE_DEVELOPMENT_2026-05-19.md`의 예시 탭 명칭도 같은 기준으로 정정했습니다. `AGENTS.md`는 탭 구성을 기술하지 않아 변경 대상이 아니었습니다.
+
+### 검증
+
+- `app/lib/core/widgets/main_scaffold.dart`의 모바일 5탭 순서와 rail destination을 소스에서 재확인
+- 변경 범위: 문서 2파일 + 이 항목만
+
 ## 2026-09-12: LIVE red 의미 범위 감사와 잔여 오용 보정
 
 ### 원인과 반영

@@ -10,7 +10,7 @@
 
 ### 1.1 최상위 내비게이션은 3~5개 목적지
 
-Android Developers의 Material 3 NavigationBar 문서는 compact 화면에서 같은 계층의 3~5개 목적지에 navigation bar를 쓰도록 설명한다. KBO Fans의 `홈 / 일정 / 순위 / 기록실 / 설정` 5탭은 이 범위 안에 들어간다.
+Android Developers의 Material 3 NavigationBar 문서는 compact 화면에서 같은 계층의 3~5개 목적지에 navigation bar를 쓰도록 설명한다. KBO Fans의 `홈 / 일정 / 기록 / 브리핑 / 설정` 5탭은 이 범위 안에 들어간다.
 
 적용:
 - 5탭은 유지한다.
