@@ -51,6 +51,9 @@ class MainScaffold extends StatelessWidget {
                 groupAlignment: -1,
                 backgroundColor: colors.background.withValues(alpha: 0.98),
                 indicatorColor: colors.accent.withValues(alpha: 0.18),
+                indicatorShape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 selectedIconTheme: IconThemeData(
                   color: colors.accent,
                   size: 24,
@@ -97,13 +100,15 @@ class MainScaffold extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
           decoration: BoxDecoration(
-            color: colors.background.withValues(alpha: 0.98),
-            border: Border(top: BorderSide(color: colors.divider)),
+            color: colors.surface.withValues(alpha: 0.98),
+            border: Border(
+              top: BorderSide(color: colors.divider.withValues(alpha: 0.9)),
+            ),
             boxShadow: [
               BoxShadow(
                 color: colors.navShadow,
-                blurRadius: 18,
-                offset: const Offset(0, -8),
+                blurRadius: 22,
+                offset: const Offset(0, -6),
               ),
             ],
           ),
@@ -209,8 +214,8 @@ class _NavItem extends StatelessWidget {
           children: [
             AnimatedContainer(
               duration: animationDuration,
-              width: 48,
-              height: 28,
+              width: 52,
+              height: 30,
               decoration: BoxDecoration(
                 color: selected
                     ? colors.accent.withValues(alpha: 0.14)

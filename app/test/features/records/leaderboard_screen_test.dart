@@ -69,6 +69,19 @@ void main() {
       find.byKey(const ValueKey('leaderboard-metric-opsPlus')),
       findsOneWidget,
     );
+    final selectedGroup = tester
+        .widgetList<AnimatedContainer>(
+          find.descendant(
+            of: find.byKey(const ValueKey('leaderboard-group-hitter')),
+            matching: find.byType(AnimatedContainer),
+          ),
+        )
+        .firstWhere((widget) => widget.decoration is BoxDecoration);
+    final selectedGroupDecoration = selectedGroup.decoration! as BoxDecoration;
+    expect(
+      selectedGroupDecoration.color,
+      AppTheme.darkColors.accent.withValues(alpha: 0.16),
+    );
     expect(find.text('최원준'), findsOneWidget);
     final averageLeader = find.byKey(const ValueKey('leader-avg-52605'));
     expect(

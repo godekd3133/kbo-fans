@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import concurrent.futures
 import logging
 import threading
+from contextlib import contextmanager
 from copy import deepcopy
 from datetime import date as date_type
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Iterator, Optional
 
 from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.crawlers.boxscore import BoxscoreCrawler
@@ -15,6 +17,7 @@ from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
 from kbo_fans_backend.utils.singleflight import SingleFlight
+from kbo_fans_backend.utils.source_cache import KboSourceCache
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 logger = logging.getLogger(__name__)
@@ -22,6 +25,22 @@ logger = logging.getLogger(__name__)
 
 def _current_kbo_date() -> date_type:
     return current_kbo_date()
+
+
+@contextmanager
+def _lineup_executor(
+    max_workers: int,
+) -> Iterator[concurrent.futures.ThreadPoolExecutor]:
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+    try:
+        yield executor
+    except BaseException:
+        # A failed lineup source must not wait for a sibling boxscore request
+        # to hit its crawler timeout before the API can expose the failure.
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise
+    else:
+        executor.shutdown(wait=True)
 
 
 class LineupService:
@@ -39,6 +58,7 @@ class LineupService:
         today_provider: Optional[Callable[[], date_type]] = None,
         boxscore_service: Optional[Any] = None,
         runtime_cache_max_age_seconds: Optional[float] = None,
+        main_source: Optional[KboSourceCache[str, list[dict[str, Any]]]] = None,
     ) -> None:
         self.lineup_crawler = lineup_crawler or LineupCrawler()
         self.boxscore_crawler = boxscore_crawler or BoxscoreCrawler()
@@ -47,6 +67,7 @@ class LineupService:
         self.player_stats_service = player_stats_service or PlayerStatsService()
         self.today_provider = today_provider or _current_kbo_date
         self.boxscore_service = boxscore_service
+        self._main_source = main_source
         configured_runtime_cache_age = (
             runtime_cache_max_age_seconds
             if runtime_cache_max_age_seconds is not None
@@ -83,37 +104,71 @@ class LineupService:
 
         payload = self._singleflight.call(
             f"lineup:{game_id}:{'force' if force_refresh else 'cached'}",
-            lambda: self._get_lineup_uncached(game_id),
+            lambda: self._get_lineup_uncached(game_id, force_refresh=force_refresh),
         )
         if self._has_ready_lineup(game_id, payload):
             self._lineup_cache.set(game_id, payload)
         return payload
 
-    def _get_lineup_uncached(self, game_id: str) -> dict[str, Any]:
-        snapshot = self.snapshot_store.load_payload("lineup", game_id)
+    def _get_lineup_uncached(
+        self,
+        game_id: str,
+        *,
+        force_refresh: bool = False,
+    ) -> dict[str, Any]:
+        is_past_game = self._is_past_game_id(game_id)
+        snapshot = (
+            self.snapshot_store.load_payload("lineup", game_id)
+            if is_past_game
+            else None
+        )
         if (
             snapshot is not None
-            and self._is_past_game_id(game_id)
+            and is_past_game
             and self._has_ready_lineup(game_id, snapshot)
         ):
             return self._enrich_snapshot_if_missing_player_images(snapshot, game_id)
 
+        lineup_future = None
+        boxscore_future = None
+        main_future = None
         try:
-            lineup = self.lineup_crawler.get_lineup(game_id)
-            if self.boxscore_service is not None:
-                boxscore = self.boxscore_service.get_boxscore(game_id)
-            else:
-                boxscore = self.boxscore_crawler.get_boxscore(game_id)
+            with _lineup_executor(max_workers=3) as executor:
+                lineup_future = executor.submit(self.lineup_crawler.get_lineup, game_id)
+                if self.boxscore_service is not None:
+                    boxscore_future = executor.submit(
+                        self.boxscore_service.get_boxscore,
+                        game_id,
+                        force_refresh=force_refresh,
+                    )
+                else:
+                    boxscore_future = executor.submit(
+                        self.boxscore_crawler.get_boxscore,
+                        game_id,
+                    )
+                main_future = executor.submit(self._get_main_game, game_id)
+                for future in concurrent.futures.as_completed(
+                    (lineup_future, boxscore_future)
+                ):
+                    future.result()
+                lineup = lineup_future.result()
+                boxscore = boxscore_future.result()
+                main_game = main_future.result()
         except Exception:
+            if lineup_future is not None:
+                lineup_future.cancel()
+            if boxscore_future is not None:
+                boxscore_future.cancel()
+            if main_future is not None:
+                main_future.cancel()
             if (
                 snapshot is not None
-                and self._is_past_game_id(game_id)
+                and is_past_game
                 and self._has_ready_lineup(game_id, snapshot)
             ):
                 return snapshot
             raise
 
-        main_game = self._get_main_game(game_id)
         for side in ("away", "home"):
             pitchers = boxscore[side]["pitchers"]
             starter = pitchers[0] if pitchers else None
@@ -134,14 +189,14 @@ class LineupService:
         # Use the source status as well as the game date so a live game that
         # crosses KBO midnight is not treated as historical.
         main_status = str(main_game.get("GAME_STATE_SC") or "") if main_game else ""
-        should_enrich_rows = self._is_past_game_id(game_id) and main_status not in {
+        should_enrich_rows = is_past_game and main_status not in {
             "1",
             "2",
             "5",
         }
-        if self._is_past_game_id(game_id) or main_status == "3":
+        if is_past_game or main_status == "3":
             self.snapshot_store.save("lineup", game_id, lineup)
-        if not self._is_past_game_id(game_id):
+        if not is_past_game:
             self.snapshot_store.save(self._RUNTIME_CACHE_NAMESPACE, game_id, lineup)
         if should_enrich_rows:
             enriched_lineup = self._enrich_with_budget(lineup, game_id)
@@ -159,10 +214,15 @@ class LineupService:
             return None
         date = f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
         try:
+            source_games = (
+                self._main_source.get(date)
+                if self._main_source is not None
+                else self.main_crawler.get_kbo_game_list(date)
+            )
             return next(
                 (
                     game
-                    for game in self.main_crawler.get_kbo_game_list(date)
+                    for game in source_games
                     if game.get("G_ID") == game_id
                 ),
                 None,

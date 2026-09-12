@@ -384,6 +384,13 @@ void main() {
       find.descendant(of: panel, matching: find.text('세이브 SV')),
       findsOneWidget,
     );
+    final moundIcon = tester.widget<Icon>(
+      find.descendant(
+        of: panel,
+        matching: find.byIcon(Icons.sports_baseball_rounded),
+      ),
+    );
+    expect(moundIcon.color, AppTheme.darkColors.accent);
     expect(
       find.descendant(of: panel, matching: find.text('탈삼진 SO')),
       findsOneWidget,
@@ -392,9 +399,7 @@ void main() {
     expect(find.text('폰세'), findsWidgets);
   });
 
-  testWidgets('기록실 지표 가로 rail은 잘린 카드가 있을 때 스크롤바를 노출한다', (
-    tester,
-  ) async {
+  testWidgets('기록실 지표 가로 rail은 잘린 카드가 있을 때 스크롤바를 노출한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);

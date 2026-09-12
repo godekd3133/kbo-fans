@@ -2,17 +2,36 @@ from __future__ import annotations
 
 import concurrent.futures
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from contextlib import contextmanager
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from kbo_fans_backend.crawlers.base import BaseCrawler
 from kbo_fans_backend.utils.html import strip_tags
 from kbo_fans_backend.utils.kbo_time import current_kbo_year
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
+from kbo_fans_backend.utils.ttl_cache import TtlCache
+
+
+@contextmanager
+def _player_stats_executor(
+    max_workers: int,
+) -> Iterator[concurrent.futures.ThreadPoolExecutor]:
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+    try:
+        yield executor
+    except BaseException:
+        # A failed detail page should not wait for the sibling total page to
+        # hit its crawler timeout before the API can expose the failure.
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise
+    else:
+        executor.shutdown(wait=True)
 
 
 class PlayerStatsCrawler(BaseCrawler):
     """Fetches team roster and player detail records from official KBO pages."""
 
+    _PLAYER_TYPE_CACHE_TTL_SECONDS = 300
     _REGISTER_URL = "/Player/Register.aspx"
     _REGISTER_ALL_URL = "/Player/RegisterAll.aspx"
     _PLAYER_SEARCH_URL = "https://eng.koreabaseball.com/Teams/PlayerSearch.aspx"
@@ -20,6 +39,34 @@ class PlayerStatsCrawler(BaseCrawler):
     _PITCHER_DETAIL_URL = "/Record/Player/PitcherDetail/Basic.aspx?playerId={player_id}"
     _HITTER_TOTAL_URL = "/Record/Player/HitterDetail/Total.aspx?playerId={player_id}"
     _PITCHER_TOTAL_URL = "/Record/Player/PitcherDetail/Total.aspx?playerId={player_id}"
+    _SEASON_FIELD = (
+        "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason"
+    )
+    _TEAM_FIELD = "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlTeam$ddlTeam"
+    _CURRENT_TEAM_STAT_SOURCES = (
+        (
+            "hitter_basic",
+            "/Record/Player/HitterBasic/BasicOld.aspx?sort=HRA_RT",
+            "hitter",
+            ("AVG", "G", "H", "HR", "RBI", "SB"),
+        ),
+        (
+            "hitter_ops",
+            "/Record/Player/HitterBasic/Basic2.aspx?sort=OPS_RT",
+            "hitter",
+            ("OPS", "SLG", "OBP"),
+        ),
+        (
+            "pitcher",
+            "/Record/Player/PitcherBasic/Basic1.aspx?sort=ERA_RT",
+            "pitcher",
+            ("ERA", "G", "W", "L", "SV", "HLD", "IP", "SO", "WHIP"),
+        ),
+    )
+    _PLAYER_RECORD_LINK_RE = re.compile(
+        r'href=["\']/Record/Player/(Hitter|Pitcher)Detail/Basic\.aspx\?playerId=(\d+)',
+        re.I,
+    )
     _TEAM_SEARCH_CODE_MAP = {
         "LG": "lg",
         "KT": "kt",
@@ -44,67 +91,313 @@ class PlayerStatsCrawler(BaseCrawler):
         "OB": "두산",
         "WO": "키움",
     }
+    _TEAM_NAME_TO_ID = {
+        "LG": "LG",
+        "KT": "KT",
+        "SSG": "SK",
+        "삼성": "SS",
+        "NC": "NC",
+        "한화": "HH",
+        "롯데": "LT",
+        "KIA": "HT",
+        "두산": "OB",
+        "키움": "WO",
+    }
     _POSITION_GROUPS = ("1", "2", "3,4,5,6", "7,8,9")
 
+    def __init__(self) -> None:
+        super().__init__()
+        self._player_type_cache: TtlCache[str, str] = TtlCache(
+            self._PLAYER_TYPE_CACHE_TTL_SECONDS
+        )
+
     def get_team_players(self, team_id: str, season: int) -> List[Dict[str, Any]]:
-        entry_keys = self._parse_register_all_entries(team_id)
         players: List[Dict[str, Any]] = []
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=len(self._POSITION_GROUPS)
-        ) as executor:
-            grouped_players = executor.map(
-                lambda group: self._fetch_player_search_rows(team_id, group),
-                self._POSITION_GROUPS,
-            )
-            for group_players in grouped_players:
-                players.extend(group_players)
+        entry_keys: set[Tuple[str, int]] = set()
+        register_error: Optional[Exception] = None
+        with _player_stats_executor(max_workers=2) as executor:
+            # The entry list and Korean roster page are independent official
+            # reads. Start them together so the primary roster path has only
+            # the slower of the two upstream waits on its critical path.
+            entry_future = executor.submit(self._parse_register_all_entries, team_id)
+            register_future = executor.submit(self._fetch_register_roster_players, team_id)
+            for future in concurrent.futures.as_completed((entry_future, register_future)):
+                if future is entry_future:
+                    entry_keys = future.result()
+                    continue
+                try:
+                    players = future.result()
+                except Exception as error:
+                    # Preserve the previous search-first fallback when the
+                    # Korean roster endpoint itself is unavailable.
+                    register_error = error
 
         if not players:
-            players = self._fetch_register_roster_players(team_id)
+            grouped_players: Dict[int, List[Dict[str, Any]]] = {}
+            with _player_stats_executor(max_workers=len(self._POSITION_GROUPS)) as executor:
+                # The English form remains a compatibility fallback for a
+                # roster page that parses empty or changes its markup.
+                search_futures = {
+                    executor.submit(self._fetch_player_search_rows, team_id, group): index
+                    for index, group in enumerate(self._POSITION_GROUPS)
+                }
+                for future in concurrent.futures.as_completed(search_futures):
+                    grouped_players[search_futures[future]] = future.result()
 
-        def enrich(player: Dict[str, Any]) -> Dict[str, Any]:
-            try:
-                profile_summary = self._fetch_player_profile_summary(
-                    player_id=player["id"],
-                    player_type=player["playerType"],
-                    season=season,
+            for index in range(len(self._POSITION_GROUPS)):
+                players.extend(grouped_players[index])
+            if not players and register_error is not None:
+                raise register_error
+
+        # A non-empty Korean roster is authoritative for the current list, so
+        # do not spend eight extra requests on the known-empty English form.
+        self._remember_player_types(players)
+        bulk_stats: Optional[Dict[str, Dict[str, str]]] = None
+        if (
+            season == current_kbo_year()
+            and players
+            and entry_keys
+            and not any(self._needs_profile_enrichment(player) for player in players)
+        ):
+            bulk_stats = self._try_fetch_current_team_stats_by_player(team_id, season)
+
+        profile_futures = {}
+        total_futures = {}
+        with _player_stats_executor(max_workers=6) as executor:
+            for index, player in enumerate(players):
+                if self._needs_profile_enrichment(player):
+                    profile_futures[index] = executor.submit(
+                        self._fetch_player_profile_summary,
+                        player_id=player["id"],
+                        player_type=player["playerType"],
+                        season=season,
+                    )
+                initial_roster_key = (player.get("name", ""), player.get("number", 0))
+                if initial_roster_key in entry_keys and (
+                    bulk_stats is None or player["id"] not in bulk_stats
+                ):
+                    # The profile and total pages are independent GETs. Submit
+                    # them together while retaining the existing six-request
+                    # worker ceiling for the whole player enrichment batch.
+                    total_futures[index] = executor.submit(
+                        self._fetch_player_total_stats,
+                        player_id=player["id"],
+                        player_type=player["playerType"],
+                        season=season,
+                    )
+
+            enriched_players = []
+            for index, player in enumerate(players):
+                profile_future = profile_futures.get(index)
+                if profile_future is not None:
+                    try:
+                        profile_summary = profile_future.result()
+                        player = {**player, **profile_summary}
+                    except Exception:
+                        pass
+
+                roster_key = (player.get("name", ""), player.get("number", 0))
+                is_entry = roster_key in entry_keys
+                if not is_entry:
+                    enriched_players.append(
+                        self._build_player_summary(
+                            player=player,
+                            season=season,
+                            season_stats={},
+                            roster_group="reserve",
+                            status="inactive",
+                            status_note="엔트리 제외",
+                        )
+                    )
+                    continue
+
+                try:
+                    if index in total_futures:
+                        season_stats = total_futures[index].result()
+                    elif bulk_stats is not None:
+                        season_stats = bulk_stats.get(player["id"], {})
+                    else:
+                        # Preserve the old edge-case behavior if profile
+                        # parsing changes a reserve row into an entry row.
+                        season_stats = self._fetch_player_total_stats(
+                            player_id=player["id"],
+                            player_type=player["playerType"],
+                            season=season,
+                        )
+                except Exception:
+                    season_stats = {}
+
+                enriched_players.append(
+                    self._build_player_summary(
+                        player=player,
+                        season=season,
+                        season_stats=season_stats,
+                        roster_group="entry",
+                        status="available",
+                        status_note=None,
+                    )
                 )
-                player = {**player, **profile_summary}
-            except Exception:
-                pass
+            return enriched_players
 
-            roster_key = (player.get("name", ""), player.get("number", 0))
-            is_entry = roster_key in entry_keys
-            if not is_entry:
-                return self._build_player_summary(
-                    player=player,
-                    season=season,
-                    season_stats={},
-                    roster_group="reserve",
-                    status="inactive",
-                    status_note="엔트리 제외",
+    @staticmethod
+    def _needs_profile_enrichment(player: Dict[str, Any]) -> bool:
+        # The Korean Register page already contains the localized list fields.
+        # Profile GETs are still required for English-search fallback rows,
+        # which do not carry role/handedness metadata.
+        return any(
+            not str(player.get(field) or "").strip()
+            for field in ("name", "roleLabel", "handedness", "birthDate", "heightWeight")
+        )
+
+    def _try_fetch_current_team_stats_by_player(
+        self,
+        team_id: str,
+        season: int,
+    ) -> Optional[Dict[str, Dict[str, str]]]:
+        try:
+            return self._fetch_current_team_stats_by_player(team_id, season)
+        except Exception:
+            # A bulk page is an optimization, not a new failure mode. Fall
+            # back to the established per-player Total.aspx path if its
+            # markup, filter, or upstream request is unavailable.
+            return None
+
+    def _fetch_current_team_stats_by_player(
+        self,
+        team_id: str,
+        season: int,
+    ) -> Dict[str, Dict[str, str]]:
+        page_stats: Dict[str, Dict[str, Dict[str, str]]] = {}
+        with _player_stats_executor(max_workers=len(self._CURRENT_TEAM_STAT_SOURCES)) as executor:
+            futures = {
+                executor.submit(
+                    self._fetch_current_team_stats_page,
+                    source_name,
+                    path,
+                    player_type,
+                    required_fields,
+                    team_id,
+                    season,
+                ): source_name
+                for source_name, path, player_type, required_fields in (
+                    self._CURRENT_TEAM_STAT_SOURCES
                 )
+            }
+            for future in concurrent.futures.as_completed(futures):
+                page_stats[futures[future]] = future.result()
 
-            try:
-                season_stats = self._fetch_player_total_stats(
-                    player_id=player["id"],
-                    player_type=player["playerType"],
-                    season=season,
-                )
-            except Exception:
-                season_stats = {}
+        merged: Dict[str, Dict[str, str]] = {}
+        for stats_by_player in page_stats.values():
+            for player_id, stats in stats_by_player.items():
+                merged.setdefault(player_id, {}).update(stats)
+        return merged
 
-            return self._build_player_summary(
-                player=player,
-                season=season,
-                season_stats=season_stats,
-                roster_group="entry",
-                status="available",
-                status_note=None,
+    def _fetch_current_team_stats_page(
+        self,
+        source_name: str,
+        path: str,
+        player_type: str,
+        required_fields: Tuple[str, ...],
+        team_id: str,
+        season: int,
+    ) -> Dict[str, Dict[str, str]]:
+        url = f"{self.base_url}{path}"
+        html = self._get_text(
+            url,
+            breaker_key=f"kbo:team_player_stats:{source_name}",
+        )
+        if self._selected_form_value(html, self._SEASON_FIELD) != str(season):
+            html = self._post_text(
+                url,
+                breaker_key=f"kbo:team_player_stats:{source_name}",
+                data=self._build_web_form_payload(
+                    html,
+                    overrides={self._SEASON_FIELD: str(season)},
+                    event_target=self._SEASON_FIELD,
+                ),
             )
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-            return list(executor.map(enrich, players))
+        if self._selected_form_value(html, self._TEAM_FIELD) != team_id:
+            html = self._post_text(
+                url,
+                breaker_key=f"kbo:team_player_stats:{source_name}",
+                data=self._build_web_form_payload(
+                    html,
+                    overrides={self._TEAM_FIELD: team_id},
+                    event_target=self._TEAM_FIELD,
+                ),
+            )
+
+        selected_team = self._selected_form_value(html, self._TEAM_FIELD)
+        if selected_team != team_id:
+            raise RuntimeError(
+                f"KBO team player stats filter did not select {team_id}: {selected_team}"
+            )
+        return self._parse_current_team_stats_page(
+            html,
+            player_type=player_type,
+            team_id=team_id,
+            required_fields=required_fields,
+        )
+
+    @classmethod
+    def _selected_form_value(cls, html: str, field: str) -> Optional[str]:
+        match = re.search(
+            rf'<select\b[^>]*name="{re.escape(field)}"[^>]*>(.*?)</select>',
+            html,
+            re.S | re.I,
+        )
+        if match is None:
+            return None
+        return cls._selected_option_value(match.group(1))
+
+    def _parse_current_team_stats_page(
+        self,
+        html: str,
+        *,
+        player_type: str,
+        team_id: str,
+        required_fields: Tuple[str, ...],
+    ) -> Dict[str, Dict[str, str]]:
+        header_match = re.search(r"<thead>(.*?)</thead>", html, re.S | re.I)
+        body_match = re.search(r"<tbody>(.*?)</tbody>", html, re.S | re.I)
+        if header_match is None or body_match is None:
+            raise RuntimeError("KBO team player stats page has no table")
+
+        headers = [
+            strip_tags(cell).replace("팀명", "TEAM").strip()
+            for cell in re.findall(r"<th[^>]*>(.*?)</th>", header_match.group(1), re.S | re.I)
+        ]
+        if any(field not in headers for field in required_fields) or "TEAM" not in headers:
+            raise RuntimeError("KBO team player stats page has an unexpected schema")
+
+        team_index = headers.index("TEAM")
+        stats_by_player: Dict[str, Dict[str, str]] = {}
+        for row in re.findall(r"<tr[^>]*>(.*?)</tr>", body_match.group(1), re.S | re.I):
+            raw_cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S | re.I)
+            if len(raw_cells) != len(headers):
+                continue
+            player_match = self._PLAYER_RECORD_LINK_RE.search(row)
+            if player_match is None or player_match.group(1).lower() != player_type:
+                continue
+            cells = [strip_tags(cell) for cell in raw_cells]
+            if self._TEAM_NAME_TO_ID.get(cells[team_index]) != team_id:
+                continue
+            stats_by_player[player_match.group(2)] = {
+                header: value for header, value in zip(headers, cells)
+            }
+        return stats_by_player
+
+    def _remember_player_types(self, players: List[Dict[str, Any]]) -> None:
+        for player in players:
+            player_id = player.get("id")
+            player_type = player.get("playerType")
+            if (
+                isinstance(player_id, str)
+                and player_id
+                and player_type in ("hitter", "pitcher")
+            ):
+                self._player_type_cache.set(player_id, player_type)
 
     def _fetch_player_profile_summary(
         self,
@@ -128,18 +421,39 @@ class PlayerStatsCrawler(BaseCrawler):
         base_profile: Optional[Dict[str, Any]] = None,
         include_recent: bool = True,
     ) -> Dict[str, Any]:
+        detail_html: Optional[str] = None
         if player_type is None:
-            player_type = self._guess_player_type(player_id)
+            player_type = self._player_type_cache.get(player_id)
+            if player_type is None:
+                player_type, detail_html = self._guess_player_type_with_html(player_id)
+        if player_type in ("hitter", "pitcher"):
+            self._player_type_cache.set(player_id, player_type)
 
         detail_url = self._detail_url(player_id, player_type)
-        html = self._get_text(
-            f"{self.base_url}{detail_url}",
-            breaker_key="kbo_player_detail",
-        )
-        total_html = self._get_text(
-            f"{self.base_url}{self._total_url(player_id, player_type)}",
-            breaker_key="kbo_player_total",
-        )
+        if detail_html is None:
+            with _player_stats_executor(max_workers=2) as executor:
+                detail_future = executor.submit(
+                    self._get_text,
+                    f"{self.base_url}{detail_url}",
+                    breaker_key="kbo_player_detail",
+                )
+                total_future = executor.submit(
+                    self._get_text,
+                    f"{self.base_url}{self._total_url(player_id, player_type)}",
+                    breaker_key="kbo_player_total",
+                )
+                for future in concurrent.futures.as_completed(
+                    (detail_future, total_future)
+                ):
+                    future.result()
+                html = detail_future.result()
+                total_html = total_future.result()
+        else:
+            html = detail_html
+            total_html = self._get_text(
+                f"{self.base_url}{self._total_url(player_id, player_type)}",
+                breaker_key="kbo_player_total",
+            )
 
         profile = dict(base_profile or {})
         profile.update(self._parse_profile(html, player_id, player_type, season))
@@ -171,7 +485,8 @@ class PlayerStatsCrawler(BaseCrawler):
         return self._parse_season_stats(total_html, season)
 
     def _fetch_register_page(self, team_id: str) -> str:
-        response = self.session.get(f"{self.base_url}{self._REGISTER_URL}", timeout=self.timeout)
+        session = self._session_for_current_thread()
+        response = session.get(f"{self.base_url}{self._REGISTER_URL}", timeout=self.timeout)
         response.raise_for_status()
         html = response.text
 
@@ -190,7 +505,7 @@ class PlayerStatsCrawler(BaseCrawler):
             "__EVENTARGUMENT": "",
         }
 
-        post_response = self.session.post(
+        post_response = session.post(
             f"{self.base_url}{self._REGISTER_URL}",
             data=payload,
             timeout=self.timeout,
@@ -199,7 +514,8 @@ class PlayerStatsCrawler(BaseCrawler):
         return post_response.text
 
     def _fetch_player_search_rows(self, team_id: str, position_value: str) -> List[Dict[str, Any]]:
-        response = self.session.get(self._PLAYER_SEARCH_URL, timeout=self.timeout)
+        session = self._session_for_current_thread()
+        response = session.get(self._PLAYER_SEARCH_URL, timeout=self.timeout)
         response.raise_for_status()
         html = response.text
 
@@ -221,7 +537,7 @@ class PlayerStatsCrawler(BaseCrawler):
             ),
             "__EVENTARGUMENT": "",
         }
-        html = self.session.post(self._PLAYER_SEARCH_URL, data=payload, timeout=self.timeout).text
+        html = session.post(self._PLAYER_SEARCH_URL, data=payload, timeout=self.timeout).text
         rows = re.findall(r"<tr>\s*<th scope=\"row\" title=\"player\">.*?</tr>", html, re.S)
         players: List[Dict[str, Any]] = []
         for row in rows:
@@ -316,7 +632,7 @@ class PlayerStatsCrawler(BaseCrawler):
         return players
 
     def _parse_register_all_entries(self, team_id: str) -> set[Tuple[str, int]]:
-        html = self.session.get(
+        html = self._session_for_current_thread().get(
             f"{self.base_url}{self._REGISTER_ALL_URL}", timeout=self.timeout
         ).text
         team_name = self._REGISTER_TEAM_NAME_MAP.get(team_id, team_id)
@@ -349,13 +665,22 @@ class PlayerStatsCrawler(BaseCrawler):
         return match.group(1) if match else ""
 
     def _guess_player_type(self, player_id: str) -> str:
+        player_type, _ = self._guess_player_type_with_html(player_id)
+        return player_type
+
+    def _guess_player_type_with_html(self, player_id: str) -> Tuple[str, Optional[str]]:
+        session = self._session_for_current_thread()
         for player_type in ("hitter", "pitcher"):
             detail_url = self._detail_url(player_id, player_type)
-            html = self.session.get(f"{self.base_url}{detail_url}", timeout=self.timeout).text
+            html = session.get(f"{self.base_url}{detail_url}", timeout=self.timeout).text
             resolved_type = self._resolve_player_type_from_detail_html(html, player_type)
             if resolved_type is not None:
-                return resolved_type
-        return "hitter"
+                # Reuse only when the page we fetched matches the requested
+                # canonical URL. A hitter URL can occasionally reveal that a
+                # player is a pitcher; that HTML must not be treated as the
+                # pitcher page without fetching the canonical URL.
+                return resolved_type, html if resolved_type == player_type else None
+        return "hitter", None
 
     def _resolve_player_type_from_detail_html(
         self, html: str, requested_player_type: str

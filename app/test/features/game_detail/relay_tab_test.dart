@@ -1320,7 +1320,7 @@ void main() {
     expect(find.text('39'), findsOneWidget);
     expect(
       tester.widget<Text>(find.text('전체 1')).style?.color,
-      AppTheme.lightColors.readableForegroundOn(AppTheme.lightColors.live),
+      AppTheme.lightColors.readableForegroundOn(AppTheme.lightColors.accent),
     );
 
     final darkFixedContainers = tester

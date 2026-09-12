@@ -12,14 +12,21 @@ from kbo_fans_backend.schemas.boxscore import (
     official_unavailable_boxscore,
 )
 from kbo_fans_backend.utils.html import strip_tags
+from kbo_fans_backend.utils.source_cache import KboSourceCache
 
 
 class BoxscoreCrawler(BaseCrawler):
     """Fetches boxscore data."""
 
-    def __init__(self, relay_crawler: Optional[Any] = None) -> None:
+    def __init__(
+        self,
+        relay_crawler: Optional[Any] = None,
+        main_source: Optional[KboSourceCache[str, list[dict[str, Any]]]] = None,
+    ) -> None:
         super().__init__()
         self.relay_crawler = relay_crawler
+        self.relay_service = None
+        self.main_source = main_source
 
     def get_boxscore(self, game_id: str) -> dict[str, Any]:
         payload = self._post_json(
@@ -198,6 +205,17 @@ class BoxscoreCrawler(BaseCrawler):
         }
 
     def _relay_current_at_bat(self, game_id: str) -> Optional[dict[str, Any]]:
+        relay_service = self.relay_service
+        if relay_service is not None:
+            try:
+                cached_relay = relay_service.get_cached_relay(game_id)
+            except Exception:
+                cached_relay = None
+            if isinstance(cached_relay, dict):
+                current_at_bat = cached_relay.get("currentAtBat")
+                if isinstance(current_at_bat, dict):
+                    return current_at_bat
+
         relay_crawler = self.relay_crawler
         if relay_crawler is None:
             try:
@@ -232,22 +250,26 @@ class BoxscoreCrawler(BaseCrawler):
             return None
         date = game_id[:8]
         try:
-            payload = self._post_json(
-                f"{self.base_url}/ws/Main.asmx/GetKboGameList",
-                breaker_key="kbo:main_game_list",
-                data={
-                    "leId": "1",
-                    "srId": self._series_for_date(date),
-                    "date": date,
-                },
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                    "X-Requested-With": "XMLHttpRequest",
-                },
-            )
+            if self.main_source is not None:
+                date_key = f"{date[:4]}-{date[4:6]}-{date[6:8]}"
+                games = self.main_source.get(date_key)
+            else:
+                payload = self._post_json(
+                    f"{self.base_url}/ws/Main.asmx/GetKboGameList",
+                    breaker_key="kbo:main_game_list",
+                    data={
+                        "leId": "1",
+                        "srId": self._series_for_date(date),
+                        "date": date,
+                    },
+                    headers={
+                        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                        "X-Requested-With": "XMLHttpRequest",
+                    },
+                )
+                games = payload.get("game") or []
         except Exception:
             return None
-        games = payload.get("game") or []
         return next((game for game in games if game.get("G_ID") == game_id), None)
 
     @staticmethod

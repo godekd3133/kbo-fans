@@ -1,16 +1,77 @@
 from __future__ import annotations
 
 import concurrent.futures
+import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
+import time
+from contextlib import contextmanager
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple
 
 from kbo_fans_backend.crawlers.base import BaseCrawler
 from kbo_fans_backend.utils.html import strip_tags
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
+from kbo_fans_backend.utils.singleflight import SingleFlight
+from kbo_fans_backend.utils.ttl_cache import TtlCache
+
+logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _records_executor(
+    max_workers: int,
+) -> Iterator[concurrent.futures.ThreadPoolExecutor]:
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+    try:
+        yield executor
+    except BaseException:
+        # A failed records page should not wait for unrelated sibling pages to
+        # hit their crawler timeout before the API can expose the failure.
+        # Already-running requests remain bounded by BaseCrawler's timeout.
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise
+    else:
+        executor.shutdown(wait=True)
+
+
+def _raise_on_first_failed_future(
+    futures: Iterable[concurrent.futures.Future],
+    *,
+    on_complete: Optional[Callable[[concurrent.futures.Future], None]] = None,
+) -> None:
+    """Surface the first failed page without waiting on submission order."""
+    for future in concurrent.futures.as_completed(futures):
+        if on_complete is not None:
+            on_complete(future)
+        future.result()
+
+
+def _log_records_timing(
+    *,
+    season: int,
+    mode: str,
+    timing_started_at: float,
+    page_ready_ms: Dict[str, float],
+    metric_names: Iterable[str],
+    complete: bool,
+) -> None:
+    timing_fields = " ".join(
+        f"{metric}Ms={page_ready_ms.get(metric, -1.0):.1f}"
+        for metric in metric_names
+    )
+    logger.info(
+        "records_overview_timing season=%s mode=%s complete=%s pageCount=%s %s totalMs=%.1f",
+        season,
+        mode,
+        complete,
+        len(page_ready_ms),
+        timing_fields,
+        (time.perf_counter() - timing_started_at) * 1000,
+    )
 
 
 class RecordsOverviewCrawler(BaseCrawler):
     MIN_SUPPORTED_SEASON = 2002
+    _SEASON_PAGE_CACHE_TTL_SECONDS = 8
     _HITTER_AVG_URL = "/Record/Player/HitterBasic/Basic1.aspx?sort=HRA_RT"
     _HITTER_HR_URL = "/Record/Player/HitterBasic/Basic1.aspx?sort=HR_CN"
     _HITTER_OPS_URL = "/Record/Player/HitterBasic/Basic2.aspx?sort=OPS_RT"
@@ -28,54 +89,119 @@ class RecordsOverviewCrawler(BaseCrawler):
         "saves": (_PITCHER_SAVES_URL, "SV", "pitcher"),
         "strikeouts": (_PITCHER_STRIKEOUTS_URL, "SO", "pitcher"),
     }
+    _HOME_OVERVIEW_METRICS = (
+        ("avg", _HITTER_AVG_URL, "AVG", "hitter"),
+        ("hr", _HITTER_HR_URL, "HR", "hitter"),
+        ("era", _PITCHER_ERA_URL, "ERA", "pitcher"),
+    )
     _SEASON_FIELD = "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason"
     _PLAYER_LINK_PATTERN = re.compile(
         r'href="/Record/(?:Player/(?:Hitter|Pitcher)Detail/Basic|Retire/(?:Hitter|Pitcher))\.aspx\?playerId=(\d+)"',
         re.I,
     )
 
+    _TIMING_METRICS = ("avg", "hr", "ops", "era", "wins", "saves", "strikeouts")
+    _HOME_TIMING_METRICS = ("avg", "hr", "era")
+    _HOME_SEED_TIMING_METRICS = ("ops", "wins", "saves", "strikeouts")
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._season_page_cache: TtlCache[str, str] = TtlCache(
+            self._SEASON_PAGE_CACHE_TTL_SECONDS
+        )
+        self._season_page_singleflight: SingleFlight[str] = SingleFlight()
+
     def get_overview(self, season: int) -> Dict[str, Any]:
         if not self.is_supported_season(season):
             return self.empty_overview(season)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-            avg_future = executor.submit(
-                self._fetch_leaders, self._HITTER_AVG_URL, season, "AVG", "hitter"
-            )
-            hr_future = executor.submit(
-                self._fetch_leaders, self._HITTER_HR_URL, season, "HR", "hitter"
-            )
-            ops_future = executor.submit(
-                self._fetch_leaders, self._HITTER_OPS_URL, season, "OPS", "hitter"
-            )
-            ops_plus_future = executor.submit(
-                self._fetch_leaderboard, self._HITTER_OPS_URL, season, "OPS", "hitter"
-            )
-            era_future = executor.submit(
-                self._fetch_leaders, self._PITCHER_ERA_URL, season, "ERA", "pitcher"
-            )
-            wins_future = executor.submit(
-                self._fetch_leaders, self._PITCHER_WINS_URL, season, "W", "pitcher"
-            )
-            saves_future = executor.submit(
-                self._fetch_leaders, self._PITCHER_SAVES_URL, season, "SV", "pitcher"
-            )
-            strikeouts_future = executor.submit(
-                self._fetch_leaders,
-                self._PITCHER_STRIKEOUTS_URL,
-                season,
-                "SO",
-                "pitcher",
-            )
+        # OPS and OPS+ share one page, leaving seven unique page loads. Start
+        # those seven pages together so one metric does not wait behind the
+        # other six; the API request bulkhead still bounds whole screen GETs.
+        timing_started_at = time.perf_counter()
+        page_ready_ms: Dict[str, float] = {}
+        future_names: Dict[concurrent.futures.Future, str] = {}
 
-            avg_leaders = avg_future.result()
-            hr_leaders = hr_future.result()
-            ops_leaders = ops_future.result()
-            ops_relative_leaders = self._build_ops_plus_leaders(ops_plus_future.result())[:5]
-            era_leaders = era_future.result()
-            win_leaders = wins_future.result()
-            save_leaders = saves_future.result()
-            strikeout_leaders = strikeouts_future.result()
+        def mark_page_ready(future: concurrent.futures.Future) -> None:
+            future_name = future_names.get(future)
+            if future_name is not None:
+                page_ready_ms[future_name] = (time.perf_counter() - timing_started_at) * 1000
+
+        try:
+            with _records_executor(max_workers=7) as executor:
+                avg_future = executor.submit(
+                    self._fetch_leaders, self._HITTER_AVG_URL, season, "AVG", "hitter"
+                )
+                hr_future = executor.submit(
+                    self._fetch_leaders, self._HITTER_HR_URL, season, "HR", "hitter"
+                )
+                ops_future = executor.submit(self._fetch_ops_leaders, season)
+                era_future = executor.submit(
+                    self._fetch_leaders, self._PITCHER_ERA_URL, season, "ERA", "pitcher"
+                )
+                wins_future = executor.submit(
+                    self._fetch_leaders, self._PITCHER_WINS_URL, season, "W", "pitcher"
+                )
+                saves_future = executor.submit(
+                    self._fetch_leaders, self._PITCHER_SAVES_URL, season, "SV", "pitcher"
+                )
+                strikeouts_future = executor.submit(
+                    self._fetch_leaders,
+                    self._PITCHER_STRIKEOUTS_URL,
+                    season,
+                    "SO",
+                    "pitcher",
+                )
+                future_names.update(
+                    {
+                        avg_future: "avg",
+                        hr_future: "hr",
+                        ops_future: "ops",
+                        era_future: "era",
+                        wins_future: "wins",
+                        saves_future: "saves",
+                        strikeouts_future: "strikeouts",
+                    }
+                )
+
+                _raise_on_first_failed_future(
+                    (
+                        avg_future,
+                        hr_future,
+                        ops_future,
+                        era_future,
+                        wins_future,
+                        saves_future,
+                        strikeouts_future,
+                    ),
+                    on_complete=mark_page_ready,
+                )
+                avg_leaders = avg_future.result()
+                hr_leaders = hr_future.result()
+                ops_leaders, ops_relative_leaders = ops_future.result()
+                era_leaders = era_future.result()
+                win_leaders = wins_future.result()
+                save_leaders = saves_future.result()
+                strikeout_leaders = strikeouts_future.result()
+        except Exception:
+            _log_records_timing(
+                season=season,
+                mode="full",
+                timing_started_at=timing_started_at,
+                page_ready_ms=page_ready_ms,
+                metric_names=self._TIMING_METRICS,
+                complete=False,
+            )
+            raise
+
+        _log_records_timing(
+            season=season,
+            mode="full",
+            timing_started_at=timing_started_at,
+            page_ready_ms=page_ready_ms,
+            metric_names=self._TIMING_METRICS,
+            complete=True,
+        )
 
         leaders = {
             "avg": avg_leaders,
@@ -96,48 +222,199 @@ class RecordsOverviewCrawler(BaseCrawler):
             "featured": self._build_canonical_featured(leaders=leaders, season=season),
         }
 
+    def get_overview_from_home(
+        self,
+        season: int,
+        home_payload: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Complete a full overview from a valid current Home seed."""
+        if not self.is_supported_season(season):
+            return self.empty_overview(season)
+
+        seeded_leaders = dict(home_payload.get("leaders") or {})
+        timing_started_at = time.perf_counter()
+        page_ready_ms: Dict[str, float] = {}
+        future_names: Dict[concurrent.futures.Future, str] = {}
+
+        def mark_page_ready(future: concurrent.futures.Future) -> None:
+            metric = future_names.get(future)
+            if metric is not None:
+                page_ready_ms[metric] = (time.perf_counter() - timing_started_at) * 1000
+
+        try:
+            with _records_executor(max_workers=4) as executor:
+                ops_future = executor.submit(self._fetch_ops_leaders, season)
+                wins_future = executor.submit(
+                    self._fetch_leaders,
+                    self._PITCHER_WINS_URL,
+                    season,
+                    "W",
+                    "pitcher",
+                )
+                saves_future = executor.submit(
+                    self._fetch_leaders,
+                    self._PITCHER_SAVES_URL,
+                    season,
+                    "SV",
+                    "pitcher",
+                )
+                strikeouts_future = executor.submit(
+                    self._fetch_leaders,
+                    self._PITCHER_STRIKEOUTS_URL,
+                    season,
+                    "SO",
+                    "pitcher",
+                )
+                future_names.update(
+                    {
+                        ops_future: "ops",
+                        wins_future: "wins",
+                        saves_future: "saves",
+                        strikeouts_future: "strikeouts",
+                    }
+                )
+
+                _raise_on_first_failed_future(
+                    (ops_future, wins_future, saves_future, strikeouts_future),
+                    on_complete=mark_page_ready,
+                )
+                ops_leaders, ops_relative_leaders = ops_future.result()
+                win_leaders = wins_future.result()
+                save_leaders = saves_future.result()
+                strikeout_leaders = strikeouts_future.result()
+        except Exception:
+            _log_records_timing(
+                season=season,
+                mode="home_seed",
+                timing_started_at=timing_started_at,
+                page_ready_ms=page_ready_ms,
+                metric_names=self._HOME_SEED_TIMING_METRICS,
+                complete=False,
+            )
+            raise
+
+        _log_records_timing(
+            season=season,
+            mode="home_seed",
+            timing_started_at=timing_started_at,
+            page_ready_ms=page_ready_ms,
+            metric_names=self._HOME_SEED_TIMING_METRICS,
+            complete=True,
+        )
+
+        leaders = {
+            "avg": seeded_leaders.get("avg", []),
+            "hr": seeded_leaders.get("hr", []),
+            "ops": ops_leaders,
+            # Retain the compatibility key and its existing relative-index
+            # semantics while avoiding a second OPS page request.
+            "opsPlus": ops_relative_leaders,
+            "era": seeded_leaders.get("era", []),
+            "wins": win_leaders,
+            "saves": save_leaders,
+            "strikeouts": strikeout_leaders,
+        }
+        return {
+            "season": season,
+            "leaders": leaders,
+            "featured": self._build_canonical_featured(leaders=leaders, season=season),
+        }
+
+    def get_home_overview(self, season: int) -> Dict[str, Any]:
+        """Fetch only the record groups used to build the home brief.
+
+        The records screen still uses ``get_overview`` and all of its groups.
+        Home only needs the batting-average, home-run, and ERA leaders to build
+        its current cards, so keep that secondary surface from waiting on
+        strikeouts, saves, wins, OPS, and the full leaderboard fan-out.
+        """
+        if not self.is_supported_season(season):
+            return self.empty_overview(season)
+
+        timing_started_at = time.perf_counter()
+        page_ready_ms: Dict[str, float] = {}
+        future_names: Dict[concurrent.futures.Future, str] = {}
+
+        def mark_page_ready(future: concurrent.futures.Future) -> None:
+            metric = future_names.get(future)
+            if metric is not None:
+                page_ready_ms[metric] = (time.perf_counter() - timing_started_at) * 1000
+
+        try:
+            with _records_executor(max_workers=len(self._HOME_OVERVIEW_METRICS)) as executor:
+                futures = {
+                    metric: executor.submit(
+                        self._fetch_leaders,
+                        path,
+                        season,
+                        metric_key,
+                        player_type,
+                    )
+                    for metric, path, metric_key, player_type in self._HOME_OVERVIEW_METRICS
+                }
+                future_names = {future: metric for metric, future in futures.items()}
+                _raise_on_first_failed_future(
+                    futures.values(),
+                    on_complete=mark_page_ready,
+                )
+                leaders = {
+                    metric: futures[metric].result()
+                    for metric, _, _, _ in self._HOME_OVERVIEW_METRICS
+                }
+        except Exception:
+            _log_records_timing(
+                season=season,
+                mode="home",
+                timing_started_at=timing_started_at,
+                page_ready_ms=page_ready_ms,
+                metric_names=self._HOME_TIMING_METRICS,
+                complete=False,
+            )
+            raise
+
+        _log_records_timing(
+            season=season,
+            mode="home",
+            timing_started_at=timing_started_at,
+            page_ready_ms=page_ready_ms,
+            metric_names=self._HOME_TIMING_METRICS,
+            complete=True,
+        )
+
+        return {
+            "season": season,
+            "leaders": {
+                metric: leaders.get(metric, [])
+                for metric in self._LEADERBOARD_METRICS
+            },
+            "featured": self._build_canonical_featured(leaders=leaders, season=season),
+        }
+
     def _fetch_leaders(
         self, path: str, season: int, metric_key: str, player_type: str
     ) -> List[Dict[str, Any]]:
-        html = self._get_text(
-            f"{self.base_url}{path}",
+        html = self._fetch_season_page(
+            path,
+            season,
             breaker_key=f"kbo:records_overview:{path}",
-        )
-        html = self._post_text(
-            f"{self.base_url}{path}",
-            breaker_key=f"kbo:records_overview:{path}",
-            data=self._build_web_form_payload(
-                html,
-                overrides={self._SEASON_FIELD: str(season)},
-                event_target=self._SEASON_FIELD,
-            ),
         )
 
         rows = re.findall(r"<tr>(.*?)</tr>", html, re.S)
-        value_index = self._resolve_metric_index(rows, metric_key)
-        leaders: List[Dict[str, Any]] = []
-        for row in rows:
-            cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)
-            if len(cells) <= value_index:
-                continue
-            player_link = self._extract_player_link(cells[1])
-            if not player_link:
-                continue
-            leaders.append(
-                {
-                    "rank": int(strip_tags(cells[0])),
-                    "playerId": player_link[0],
-                    "playerType": player_type,
-                    "metricKey": metric_key,
-                    "name": strip_tags(cells[1]),
-                    "teamId": self._team_name_to_id(strip_tags(cells[2])),
-                    "value": strip_tags(cells[value_index]),
-                    "isRetired": player_link[1],
-                }
-            )
-            if len(leaders) >= 5:
-                break
-        return leaders
+        return self._parse_leaders(rows, metric_key, player_type, limit=5)
+
+    def _fetch_ops_leaders(
+        self,
+        season: int,
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        html = self._fetch_season_page(
+            self._HITTER_OPS_URL,
+            season,
+            breaker_key=f"kbo:records_overview:{self._HITTER_OPS_URL}",
+        )
+        rows = re.findall(r"<tr>(.*?)</tr>", html, re.S)
+        ops_leaders = self._parse_leaders(rows, "OPS", "hitter", limit=5)
+        ops_plus_leaders = self._parse_leaders(rows, "OPS", "hitter", limit=None)
+        return ops_leaders, self._build_ops_plus_leaders(ops_plus_leaders)[:5]
 
     def get_leaderboard(self, season: int, metric: str) -> List[Dict[str, Any]]:
         if not self.is_supported_season(season):
@@ -156,21 +433,23 @@ class RecordsOverviewCrawler(BaseCrawler):
     def _fetch_leaderboard(
         self, path: str, season: int, metric_key: str, player_type: str
     ) -> List[Dict[str, Any]]:
-        html = self._get_text(
-            f"{self.base_url}{path}",
+        html = self._fetch_season_page(
+            path,
+            season,
             breaker_key=f"kbo:records_leaderboard:{path}",
-        )
-        html = self._post_text(
-            f"{self.base_url}{path}",
-            breaker_key=f"kbo:records_leaderboard:{path}",
-            data=self._build_web_form_payload(
-                html,
-                overrides={self._SEASON_FIELD: str(season)},
-                event_target=self._SEASON_FIELD,
-            ),
         )
 
         rows = re.findall(r"<tr>(.*?)</tr>", html, re.S)
+        return self._parse_leaders(rows, metric_key, player_type, limit=None)
+
+    def _parse_leaders(
+        self,
+        rows: List[str],
+        metric_key: str,
+        player_type: str,
+        *,
+        limit: Optional[int],
+    ) -> List[Dict[str, Any]]:
         value_index = self._resolve_metric_index(rows, metric_key)
         leaders: List[Dict[str, Any]] = []
         for row in rows:
@@ -192,7 +471,66 @@ class RecordsOverviewCrawler(BaseCrawler):
                     "isRetired": player_link[1],
                 }
             )
+            if limit is not None and len(leaders) >= limit:
+                break
         return leaders
+
+    def _fetch_season_page(
+        self,
+        path: str,
+        season: int,
+        *,
+        breaker_key: str,
+    ) -> str:
+        cache_key = f"{path}|{season}"
+        cached = self._season_page_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        return self._season_page_singleflight.call(
+            cache_key,
+            lambda: self._fetch_season_page_uncached(
+                path,
+                season,
+                breaker_key=breaker_key,
+            ),
+        )
+
+    def _fetch_season_page_uncached(
+        self,
+        path: str,
+        season: int,
+        *,
+        breaker_key: str,
+    ) -> str:
+        url = f"{self.base_url}{path}"
+        html = self._get_text(url, breaker_key=breaker_key)
+        if self._selected_season(html) == str(season):
+            self._season_page_cache.set(f"{path}|{season}", html)
+            return html
+
+        selected_html = self._post_text(
+            url,
+            breaker_key=breaker_key,
+            data=self._build_web_form_payload(
+                html,
+                overrides={self._SEASON_FIELD: str(season)},
+                event_target=self._SEASON_FIELD,
+            ),
+        )
+        self._season_page_cache.set(f"{path}|{season}", selected_html)
+        return selected_html
+
+    @classmethod
+    def _selected_season(cls, html: str) -> Optional[str]:
+        match = re.search(
+            rf'<select\b[^>]*name="{re.escape(cls._SEASON_FIELD)}"[^>]*>(.*?)</select>',
+            html,
+            re.S | re.I,
+        )
+        if match is None:
+            return None
+        return cls._selected_option_value(match.group(1))
 
     @staticmethod
     def _resolve_metric_index(rows: List[str], metric_key: str) -> int:

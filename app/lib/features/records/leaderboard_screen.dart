@@ -6,8 +6,10 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/kbo_time.dart';
+import '../../core/widgets/app_design_system.dart';
 import '../../core/utils/kbo_player_image_cache.dart';
 import '../../core/widgets/app_motion.dart';
+import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/baseball_metric_guide.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/api/api_client.dart';
@@ -67,153 +69,169 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
 
     final router = GoRouter.maybeOf(context);
     final navigator = Navigator.of(context);
+    void goBack() {
+      if (router?.canPop() == true) {
+        router!.pop();
+      } else if (router != null) {
+        router.go('/records');
+      } else if (navigator.canPop()) {
+        navigator.pop();
+      }
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        leading: Semantics(
-          label: '뒤로',
-          button: true,
-          child: IconButton(
-            tooltip: '뒤로',
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              if (router?.canPop() == true) {
-                router!.pop();
-              } else if (router != null) {
-                router.go('/records');
-              } else if (navigator.canPop()) {
-                navigator.pop();
-              }
-            },
-          ),
-        ),
-        title: const Text('리그 리더보드'),
-        actions: [
-          if (baseballMetricGuideFor(_selectedMetric.key) != null)
-            IconButton(
-              tooltip: '선택한 지표 이해하기',
-              onPressed: () =>
-                  showBaseballMetricGuide(context, metric: _selectedMetric.key),
-              icon: const Icon(Icons.help_outline_rounded),
-            ),
-        ],
-      ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+        child: AppPageFrame(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '$effectiveSeason 시즌 · ${_selectedGroup.label} 지표',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: AppPageHeader(
+                  eyebrow: '$effectiveSeason 시즌 · ${_selectedGroup.label} 지표',
+                  title: '리그 리더보드',
+                  subtitle: '상위 선수의 핵심 지표를 빠르게 비교합니다.',
+                  onBack: goBack,
+                  trailing: baseballMetricGuideFor(_selectedMetric.key) == null
+                      ? null
+                      : IconButton(
+                          tooltip: '선택한 지표 이해하기',
+                          onPressed: () => showBaseballMetricGuide(
+                            context,
+                            metric: _selectedMetric.key,
+                          ),
+                          icon: const Icon(Icons.help_outline_rounded),
+                        ),
+                ),
               ),
-              const SizedBox(height: 10),
-              _groupSegment(),
-              const SizedBox(height: 10),
-              _metricSelector(useLargeText: useLargeText),
-              const SizedBox(height: 12),
-              if (useLargeText)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _selectedMetric.title,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _sourceBadge(_selectedMetric),
-                  ],
-                )
-              else
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _selectedMetric.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
+                      _groupSegment(),
+                      const SizedBox(height: 10),
+                      _metricSelector(useLargeText: useLargeText),
+                      const SizedBox(height: 12),
+                      if (useLargeText)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _selectedMetric.title,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _sourceBadge(_selectedMetric),
+                          ],
+                        )
+                      else
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _selectedMetric.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _sourceBadge(_selectedMetric),
+                          ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    _sourceBadge(_selectedMetric),
-                  ],
-                ),
-              if (_selectedMetric.disclosure != null) ...[
-                const SizedBox(height: 10),
-                _metricDisclosure(_selectedMetric.disclosure!),
-              ],
-              if (baseballMetricGuideFor(_selectedMetric.key) case final guide?)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    key: const ValueKey('leaderboard-metric-guide'),
-                    onPressed: () => showBaseballMetricGuide(
-                      context,
-                      metric: _selectedMetric.key,
-                    ),
-                    icon: const Icon(Icons.info_outline_rounded, size: 16),
-                    label: Text(
-                      guide.formula,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    style: TextButton.styleFrom(
-                      alignment: Alignment.centerLeft,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 12),
-              if (!_selectedMetric.supportedByOfficialSource)
-                Expanded(child: _unsupportedMetricCard(metric: _selectedMetric))
-              else
-                Expanded(
-                  child: AppMotionSwitcher(
-                    child: KeyedSubtree(
-                      key: ValueKey('leaderboard-${_selectedMetric.key}'),
-                      child: asyncValue.when(
-                        loading: () => Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.live,
+                      if (_selectedMetric.disclosure != null) ...[
+                        const SizedBox(height: 10),
+                        _metricDisclosure(_selectedMetric.disclosure!),
+                      ],
+                      if (baseballMetricGuideFor(_selectedMetric.key)
+                          case final guide?)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            key: const ValueKey('leaderboard-metric-guide'),
+                            onPressed: () => showBaseballMetricGuide(
+                              context,
+                              metric: _selectedMetric.key,
+                            ),
+                            icon: const Icon(
+                              Icons.info_outline_rounded,
+                              size: 16,
+                            ),
+                            label: Text(
+                              guide.formula,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            style: TextButton.styleFrom(
+                              alignment: Alignment.centerLeft,
+                            ),
                           ),
                         ),
-                        error: (error, _) => Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                describeAsyncError(error),
-                                style: TextStyle(
-                                  color: AppColors.textSupporting,
-                                ),
-                                textAlign: TextAlign.center,
+                      const SizedBox(height: 12),
+                      if (!_selectedMetric.supportedByOfficialSource)
+                        Expanded(
+                          child: _unsupportedMetricCard(
+                            metric: _selectedMetric,
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: AppMotionSwitcher(
+                            child: KeyedSubtree(
+                              key: ValueKey(
+                                'leaderboard-${_selectedMetric.key}',
                               ),
-                              const SizedBox(height: 14),
-                              OutlinedButton(
-                                key: const ValueKey('leaderboard-retry'),
-                                onPressed: () => ref.invalidate(
-                                  leaderboardProvider(leaderboardKey),
+                              child: asyncValue.when(
+                                loading: () => Center(
+                                  child: CircularProgressIndicator(
+                                    color: AppTheme.colorsOf(context).accent,
+                                  ),
                                 ),
-                                child: const Text('다시 시도'),
+                                error: (error, _) => Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        describeAsyncError(error),
+                                        style: TextStyle(
+                                          color: AppColors.textSupporting,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 14),
+                                      OutlinedButton(
+                                        key: const ValueKey(
+                                          'leaderboard-retry',
+                                        ),
+                                        onPressed: () => ref.invalidate(
+                                          leaderboardProvider(leaderboardKey),
+                                        ),
+                                        child: const Text('다시 시도'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                data: (leaders) => _leaderList(
+                                  leaders,
+                                  season: effectiveSeason,
+                                  useLargeText: useLargeText,
+                                ),
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                        data: (leaders) => _leaderList(
-                          leaders,
-                          season: effectiveSeason,
-                          useLargeText: useLargeText,
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
                 ),
+              ),
             ],
           ),
         ),
@@ -239,6 +257,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   }
 
   Widget _groupButton(LeaderboardPlayerGroup group) {
+    final colors = AppTheme.colorsOf(context);
     final selected = _selectedGroup == group;
     return AppPressable(
       key: ValueKey('leaderboard-group-${group.name}'),
@@ -250,14 +269,21 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         curve: Curves.easeOutCubic,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? AppColors.textPrimary : Colors.transparent,
+          color: selected
+              ? colors.accent.withValues(alpha: 0.16)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: selected
+                ? colors.accent.withValues(alpha: 0.72)
+                : Colors.transparent,
+          ),
         ),
         child: Text(
           group.label,
           style: TextStyle(
             fontSize: 14,
-            color: selected ? AppColors.background : AppColors.textSecondary,
+            color: selected ? colors.accent : colors.textSecondary,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -304,18 +330,18 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.live.withValues(alpha: 0.14)
+              ? AppColors.accent.withValues(alpha: 0.14)
               : AppColors.card,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: selected ? AppColors.live : AppColors.divider,
+            color: selected ? AppColors.accent : AppColors.divider,
           ),
         ),
         child: Text(
           metric.shortLabel,
           style: TextStyle(
             fontSize: 13,
-            color: selected ? AppColors.live : AppColors.textSecondary,
+            color: selected ? AppColors.accent : AppColors.textSecondary,
             fontWeight: FontWeight.w900,
           ),
         ),

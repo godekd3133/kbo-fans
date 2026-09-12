@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/team_data.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/game_status_label.dart';
+import '../../../core/widgets/app_design_system.dart';
 import '../../../core/widgets/kbo_team_logo_image.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/schedule.dart';
@@ -81,26 +82,55 @@ class GameDayFocusCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: colors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppUi.heroRadius),
         border: Border.all(color: accent.withValues(alpha: 0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(title, style: TextStyle(color: accent, fontSize: 13)),
-              if (current != null)
-                Text(
-                  labelForGameStatus(
-                    current.status,
-                    statusLabel: current.statusLabel,
-                  ),
-                  style: TextStyle(fontSize: 12, color: colors.textSecondary),
+              if (team != null) ...[
+                KboTeamLogoImage(
+                  teamId: team.id,
+                  fallback: team.shortName,
+                  size: 34,
+                  padding: 0,
                 ),
+                const SizedBox(width: 9),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    if (current != null)
+                      Text(
+                        labelForGameStatus(
+                          current.status,
+                          statusLabel: current.statusLabel,
+                        ),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.textSecondary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (current != null)
+                Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
             ],
           ),
           const SizedBox(height: 14),

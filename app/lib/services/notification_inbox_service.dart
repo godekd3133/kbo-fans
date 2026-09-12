@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
@@ -104,6 +105,10 @@ class NotificationInboxService {
   static const _entryKeyPrefix = 'push_notifications.inbox_entry_v2.';
   static const _readKeyPrefix = 'push_notifications.inbox_read_v2.';
   static const _maxEntries = 50;
+  final StreamController<void> _changeController =
+      StreamController<void>.broadcast();
+
+  Stream<void> get changes => _changeController.stream;
 
   Future<List<NotificationInboxEntry>> loadEntries() async {
     final prefs = SharedPreferencesAsync();
@@ -192,12 +197,14 @@ class NotificationInboxService {
     }
     await prefs.setString(entryKey, jsonEncode(merged.toJson()));
     await _pruneToLimit(prefs);
+    _changeController.add(null);
   }
 
   Future<void> markRead(String id) async {
     final prefs = SharedPreferencesAsync();
     await _migrateLegacyEntries(prefs);
     await prefs.setBool('$_readKeyPrefix${_keySuffix(id)}', true);
+    _changeController.add(null);
   }
 
   Future<void> markAllRead() async {
@@ -213,6 +220,7 @@ class NotificationInboxService {
           true,
         ),
     ]);
+    _changeController.add(null);
   }
 
   Future<void> clear() async {
@@ -229,6 +237,7 @@ class NotificationInboxService {
     );
     final legacyPrefs = await SharedPreferences.getInstance();
     await legacyPrefs.remove(storageKey);
+    _changeController.add(null);
   }
 
   Future<NotificationInboxEntry?> _entryForKey(

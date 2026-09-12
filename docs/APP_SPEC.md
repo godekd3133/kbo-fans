@@ -1,9 +1,17 @@
 # KBO Fans 앱 기획서 (App Specification)
 
-> 최종 수정: 2026-09-07
+> 최종 수정: 2026-09-10
 > 상태: Draft v1
 
 ---
+
+## 0.8 2026-09-10 UI/UX 전면 재구축 계약
+
+사장님이 선택한 새 시안 1번을 기준으로 앱의 공통 시각 계층을 다시 맞춘다. 홈은 `내 팀 경기 → 오늘 경기 → 내 팀 기록` 순서로 읽히고, LIVE/경기 전/종료/취소/점수 미확정 상태를 기존 데이터 계약 그대로 표현한다. 실제 KBO 팀 엠블럼은 `KboTeamLogoImage`와 `assets/visuals/reference_team_logos/`를 통해 표시한다.
+
+공통 페이지 헤더, surface, section header, status pill, 5탭/rail 선택 상태는 같은 토큰을 사용한다. 액션 accent(`#2979FF`)와 LIVE 상태(`#FF4444`)를 분리하며, 팀 컬러는 좌측 rail·로고·선택 상태에 제한한다. 정상 데이터 화면의 장식용 배경 사진·손글씨 문구·마케팅 배너는 우선순위에서 제외한다.
+
+이번 계약은 화면 표현과 접근 가능한 터치 영역을 정리하는 범위이며 provider, API envelope, KST 날짜, cache/snapshot 정책, deep link, push/Live Activity 소유권을 변경하지 않는다. 상세 시각 결정과 구현 파일은 `docs/UIUX_REDESIGN_2026-09-10.md`에 기록한다.
 
 ## 0. 현재 런타임 기준
 
@@ -53,6 +61,7 @@
 - 기록실 선수 기록 오류와 리더보드 오류는 화면 안 명시적 `다시 시도`로 provider를 재요청한다. 알림 갱신 notice는 좁은 폭·큰 글씨에서 설명과 action을 세로로 쌓고, 선수 profile은 비어 있는 메타정보를 pill로 만들지 않는다.
 - 순위표는 1.4x 이상 text scale에서 고정 56px 행 대신 내용 높이에 맞는 적응형 행을 사용하며, 각 팀 행은 순위·팀·승/패/무·승률·경기 차·연속·마이팀을 하나의 screen-reader label로 제공한다.
 - API route의 schedule month, game/team/player identifier, season, leaderboard metric은 bounded 형식·범위를 먼저 검증한다. `/push/config-status`는 `PUSH_SYNC_SECRET` 미설정 시 503으로 diagnostics를 노출하지 않는다.
+- `/game/{gameId}`는 schedule 원천을 성공적으로 확인했지만 game ID가 없을 때만 404를 반환한다. schedule 원천 자체가 실패하면 fallback 재조회를 하지 않고 `503`과 `UPSTREAM_UNAVAILABLE`을 반환하며, client는 이를 경기 없음으로 처리하지 않는다.
 - push registry runtime 상태는 90일, pending outbox는 7일·2,048건까지 자동 정리하고 active delivery claim은 보존한다. live scoreboard shared store는 최대 14개 날짜만 유지한다. 동일 worker의 일시 APNs 실패는 token/content별 5·15·30·60초 backoff를 적용한다.
 - APNs Live Activity sender는 HTTP/2 client를 sender 수명 동안 재사용하고, update/start fanout은 기본 최대 4개 bounded worker로 처리한다. 결과 배열은 기존 token 순서를 유지하며 token별 claim·generation·permanent prune 경계는 병렬 전송에서도 독립적으로 보존한다.
 
@@ -820,6 +829,7 @@ GET /api/game/{gameId}/lineup
 GET /api/schedule?month=2026-03
 → {days: [{date, games: [{gameId, time, away, home, awayScore, homeScore, stadium, status, ticketInfo}]}]}
 ```
+- current/future `SCHEDULED` 또는 `CANCELLED` scoreboard payload는 원천이 `0`을 보내더라도 양 팀 `score`를 `null`로 유지한다. 앱의 `TeamScore.scoreAvailable=false`와 Home quick item은 이를 `–` 또는 `팀 vs 팀`으로 표시하며, 확인된 LIVE/FINAL 0:0만 실제 동점으로 표시한다.
 - 매치업 보기는 별도 endpoint를 만들지 않고 시즌 월간 일정 응답들을 앱에서 합친 뒤 `away.teamId` / `home.teamId`를 홈/원정 무관으로 필터링한다.
 - 시즌 일정은 3월부터 11월까지 월 요청을 최대 3개만 동시에 실행하고, 응답 완료 순서와 무관하게 원래 월 순서로 합친다. 각 월은 repository를 직접 우회하지 않고 기존 `scheduleProvider(yearMonth).future` 경계를 사용해 월별 cache와 override 계약을 보존한다. 어느 월이든 실패하면 부분 시즌을 정상 결과로 만들지 않고 해당 오류를 노출한다.
 - 달력·구장별·매치업의 수동 갱신은 표시 중인 `scheduleProvider(yearMonth)`와 해당 `seasonScheduleProvider(season)`을 함께 무효화한다. 달력에서 월 데이터를 갱신한 뒤 매치업이나 구장별 보기로 전환해도 이전 시즌 aggregate를 재사용하지 않고 갱신된 월 결과를 포함해야 한다.

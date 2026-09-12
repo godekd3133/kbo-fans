@@ -158,6 +158,81 @@ def test_current_live_ignores_official_snapshot_and_rejects_partial_crawler_payl
     assert snapshot_store.load_payload("boxscore", game_id)["officialAvailable"] is True
 
 
+def test_current_live_boxscore_skips_immutable_snapshot_read(tmp_path) -> None:
+    today = current_kbo_date()
+    game_id = f"{today:%Y%m%d}SKWO0"
+
+    class NoCurrentBoxscoreSnapshotStore(JsonSnapshotStore):
+        def load(self, namespace: str, key: str):
+            if namespace == "boxscore":
+                raise AssertionError("current boxscore must not read immutable snapshot")
+            return super().load(namespace, key)
+
+    service = BoxscoreService(
+        crawler=_StubBoxscoreCrawler({game_id: _official_payload(game_id)}),
+        schedule_service=_StubScheduleService({game_id: "LIVE"}),
+        player_stats_service=_EmptyPlayerStatsService(),
+        snapshot_store=NoCurrentBoxscoreSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    payload = service.get_boxscore(game_id)
+
+    assert payload["availability"] == "official"
+
+
+def test_current_live_boxscore_starts_status_and_crawler_together(tmp_path) -> None:
+    today = current_kbo_date()
+    game_id = f"{today:%Y%m%d}SKWO0"
+
+    class BlockingStatusScheduleService(_StubScheduleService):
+        def __init__(self) -> None:
+            super().__init__({game_id: "LIVE"})
+            self.started = threading.Event()
+            self.release = threading.Event()
+
+        def get_schedule_game(self, requested_game_id: str):
+            self.started.set()
+            assert self.release.wait(timeout=2)
+            return super().get_schedule_game(requested_game_id)
+
+    class BlockingBoxscoreCrawler(_StubBoxscoreCrawler):
+        def __init__(self) -> None:
+            super().__init__({game_id: _official_payload(game_id)})
+            self.started = threading.Event()
+            self.release = threading.Event()
+
+        def get_boxscore(self, requested_game_id: str):
+            self.started.set()
+            assert self.release.wait(timeout=2)
+            return super().get_boxscore(requested_game_id)
+
+    schedule = BlockingStatusScheduleService()
+    crawler = BlockingBoxscoreCrawler()
+    service = BoxscoreService(
+        crawler=crawler,
+        schedule_service=schedule,
+        player_stats_service=_EmptyPlayerStatsService(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+    result = {}
+
+    def load() -> None:
+        result["payload"] = service.get_boxscore(game_id)
+
+    thread = threading.Thread(target=load)
+    thread.start()
+    assert schedule.started.wait(timeout=1)
+    try:
+        assert crawler.started.wait(timeout=0.5)
+    finally:
+        schedule.release.set()
+        crawler.release.set()
+        thread.join(timeout=2)
+
+    assert not thread.is_alive()
+    assert result["payload"]["availability"] == "official"
+
+
 def test_current_official_boxscore_does_not_wait_for_optional_player_enrichment(
     tmp_path,
 ) -> None:

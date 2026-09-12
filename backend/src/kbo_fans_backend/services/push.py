@@ -808,35 +808,38 @@ class PushService:
 
         messaging = self._get_messaging()
         visible_options = _visible_push_options(messaging, title=title, body=body)
-        sent = []
-        errors = []
-        for topic in targets:
-            claim_id = None
-            if event_id:
-                claim_id = self.registry.claim_push_outbox_target(event_id, topic)
-                if claim_id is None:
-                    continue
-            data = {
-                "type": moment,
-                "gameId": game_id,
-                "awayTeamId": away_team_id,
-                "homeTeamId": home_team_id,
-                "awayScore": _optional_score_data_value(away_score),
-                "homeScore": _optional_score_data_value(home_score),
-                "inning": inning,
-                "batterName": batter_name,
-                "pitcherName": pitcher_name,
-                "situationText": situation_text,
-                "playText": play_text,
-                "startTime": start_time,
-                "stadium": stadium,
-                "gameStatus": game_status,
-            }
-            if event_id:
-                data["eventId"] = event_id
+        notification = messaging.Notification(title=title, body=body)
+        data = {
+            "type": moment,
+            "gameId": game_id,
+            "awayTeamId": away_team_id,
+            "homeTeamId": home_team_id,
+            "awayScore": _optional_score_data_value(away_score),
+            "homeScore": _optional_score_data_value(home_score),
+            "inning": inning,
+            "batterName": batter_name,
+            "pitcherName": pitcher_name,
+            "situationText": situation_text,
+            "playText": play_text,
+            "startTime": start_time,
+            "stadium": stadium,
+            "gameStatus": game_status,
+        }
+        if event_id:
+            data["eventId"] = event_id
+
+        if event_id:
+            claims = self.registry.claim_push_outbox_targets(event_id, targets)
+            claimed_targets = [
+                (topic, claims[topic]) for topic in targets if topic in claims
+            ]
+        else:
+            claimed_targets = [(topic, None) for topic in targets]
+
+        def send_target(topic: str, claim_id: Optional[str]) -> dict[str, Any]:
             message = messaging.Message(
-                notification=messaging.Notification(title=title, body=body),
-                data=data,
+                notification=notification,
+                data=dict(data),
                 topic=topic,
                 **visible_options,
             )
@@ -845,23 +848,50 @@ class PushService:
             except Exception as error:
                 if not event_id:
                     raise
-                self.registry.mark_push_outbox_target_failed(
-                    event_id,
-                    topic,
-                    str(error),
-                    claim_id=claim_id,
-                )
-                errors.append({"topic": topic, "error": str(error)})
+                return {
+                    "topic": topic,
+                    "claimId": claim_id,
+                    "sent": False,
+                    "error": str(error),
+                }
+            return {
+                "topic": topic,
+                "claimId": claim_id,
+                "sent": True,
+                "messageId": message_id,
+            }
+
+        if event_id and len(claimed_targets) > 1:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=min(3, len(claimed_targets))
+            ) as executor:
+                futures = [
+                    executor.submit(send_target, topic, claim_id)
+                    for topic, claim_id in claimed_targets
+                ]
+                target_results = [
+                    future.result() for future in futures
+                ]
+        else:
+            target_results = [
+                send_target(topic, claim_id)
+                for topic, claim_id in claimed_targets
+            ]
+
+        if event_id and target_results:
+            self.registry.resolve_push_outbox_targets(event_id, target_results)
+
+        sent = []
+        errors = []
+        for target_result in target_results:
+            topic = target_result["topic"]
+            if target_result.get("sent"):
+                message_id = target_result.get("messageId")
+                sent.append({"topic": topic, "messageId": message_id})
                 continue
 
-            if event_id:
-                self.registry.mark_push_outbox_target_sent(
-                    event_id,
-                    topic,
-                    message_id,
-                    claim_id=claim_id,
-                )
-            sent.append({"topic": topic, "messageId": message_id})
+            error = str(target_result.get("error") or "push send failed")
+            errors.append({"topic": topic, "error": error})
 
         if not event_id:
             return {"sent": True, "moment": moment, "messages": sent}

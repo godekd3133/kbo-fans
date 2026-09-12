@@ -15,7 +15,11 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from kbo_fans_backend.api.router import api_router
 from kbo_fans_backend.core.config import get_settings
-from kbo_fans_backend.utils.resilience import UpstreamBusyError, UpstreamDeadlineExceeded
+from kbo_fans_backend.utils.resilience import (
+    UpstreamBusyError,
+    UpstreamDeadlineExceeded,
+    UpstreamUnavailableError,
+)
 
 logger = logging.getLogger(__name__)
 _SLOW_REQUEST_WARNING_MS = 800
@@ -252,6 +256,19 @@ def create_app() -> FastAPI:
             status_code=503,
             code="UPSTREAM_BUSY",
             message="데이터 요청이 몰리고 있습니다. 잠시 후 다시 시도해주세요.",
+            headers={"Retry-After": _RETRY_AFTER_SECONDS},
+        )
+
+    @app.exception_handler(UpstreamUnavailableError)
+    async def handle_upstream_unavailable(
+        _request: Request,
+        error: UpstreamUnavailableError,
+    ) -> JSONResponse:
+        logger.warning("Upstream source unavailable [%s]", type(error).__name__)
+        return _error_response(
+            status_code=503,
+            code="UPSTREAM_UNAVAILABLE",
+            message="데이터 원천을 잠시 사용할 수 없습니다.",
             headers={"Retry-After": _RETRY_AFTER_SECONDS},
         )
 

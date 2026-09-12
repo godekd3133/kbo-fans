@@ -100,6 +100,18 @@ class _FreshPlayerCrawler:
         raise RuntimeError("player unavailable")
 
 
+class _FreshPlayerDetailCrawler:
+    def get_player_detail(self, player_id: str, player_type, season: int, include_recent: bool):
+        return {
+            "id": player_id,
+            "teamId": "LG",
+            "season": season,
+            "playerType": player_type or "hitter",
+            "name": "박성한",
+            "recentGames": [],
+        }
+
+
 class _BlockingPlayerCrawler(_FreshPlayerCrawler):
     def __init__(self) -> None:
         self.calls = 0
@@ -111,6 +123,32 @@ class _BlockingPlayerCrawler(_FreshPlayerCrawler):
         self.started.set()
         assert self.release.wait(timeout=2)
         return super().get_team_players(team_id, season)
+
+
+class _BlockingPlayerDetailCrawler(_FreshPlayerCrawler):
+    def __init__(self) -> None:
+        self.calls = 0
+        self.started = threading.Event()
+        self.duplicate_call_started = threading.Event()
+        self.release = threading.Event()
+        self._lock = threading.Lock()
+
+    def get_player_detail(self, player_id: str, player_type, season: int, include_recent: bool):
+        with self._lock:
+            self.calls += 1
+            call_number = self.calls
+        self.started.set()
+        if call_number > 1:
+            self.duplicate_call_started.set()
+        assert self.release.wait(timeout=2)
+        return {
+            "id": player_id,
+            "teamId": "LG",
+            "season": season,
+            "playerType": player_type or "hitter",
+            "name": "박성한",
+            "recentGames": [],
+        }
 
 
 class _FailingTeamStatsCrawler:
@@ -128,9 +166,100 @@ class _FreshTeamStatsCrawler:
         }
 
 
+class _BlockingTeamStatsCrawler(_FreshTeamStatsCrawler):
+    def __init__(self) -> None:
+        self.calls = 0
+        self.started = threading.Event()
+        self.duplicate_call_started = threading.Event()
+        self.release = threading.Event()
+        self._lock = threading.Lock()
+
+    def get_team_stats(self, team_id: str, season: int):
+        with self._lock:
+            self.calls += 1
+            call_number = self.calls
+        self.started.set()
+        if call_number > 1:
+            self.duplicate_call_started.set()
+        assert self.release.wait(timeout=2)
+        return super().get_team_stats(team_id, season)
+
+
 class _FailingRecordsOverviewCrawler:
     def get_overview(self, season: int):
         raise RuntimeError("overview unavailable")
+
+
+class _FreshRecordsOverviewCrawler:
+    def get_overview(self, season: int):
+        return {
+            "season": season,
+            "leaders": {
+                metric: [{"rank": 1, "playerId": metric, "name": metric}]
+                for metric in (
+                    "avg",
+                    "hr",
+                    "ops",
+                    "opsPlus",
+                    "era",
+                    "wins",
+                    "saves",
+                    "strikeouts",
+                )
+            },
+            "featured": {},
+        }
+
+
+class _NoCurrentSnapshotLoadStore(JsonSnapshotStore):
+    def __init__(self, base_dir: str):
+        super().__init__(base_dir=base_dir)
+        self.loads = []
+
+    def load(self, namespace: str, key: str):
+        self.loads.append((namespace, key))
+        if namespace in {
+            "standings_latest",
+            "records_overview",
+            "team_stats",
+            "team_players",
+            "player_detail",
+        }:
+            raise AssertionError(f"current path must not load {namespace} snapshot")
+        return super().load(namespace, key)
+
+
+def test_current_stable_services_skip_immutable_snapshot_reads(tmp_path) -> None:
+    season = current_kbo_year()
+    store = _NoCurrentSnapshotLoadStore(str(tmp_path))
+
+    standings = StandingsService(
+        crawler=_FreshStandingsCrawler(),
+        snapshot_store=store,
+    ).get_standings(season)
+    records = RecordsOverviewService(
+        crawler=_FreshRecordsOverviewCrawler(),
+        snapshot_store=store,
+    ).get_overview(season)
+    team_stats = TeamStatsService(
+        crawler=_FreshTeamStatsCrawler(),
+        snapshot_store=store,
+    ).get_team_stats("KT", season)
+    player_service = PlayerStatsService(
+        crawler=_FreshPlayerCrawler(),
+        snapshot_store=store,
+    )
+    team_players = player_service.get_team_players("KT", season)
+    player_detail = PlayerStatsService(
+        crawler=_FreshPlayerDetailCrawler(),
+        snapshot_store=store,
+    ).get_player_detail("61102", season, "hitter")
+
+    assert standings["season"] == season
+    assert records["season"] == season
+    assert team_stats["season"] == season
+    assert team_players["season"] == season
+    assert player_detail["season"] == season
 
 
 def test_scoreboard_uses_historical_snapshot_before_crawling(tmp_path) -> None:
@@ -523,6 +652,80 @@ def test_concurrent_current_team_players_crawls_once(tmp_path) -> None:
         assert first.result(timeout=1) == second.result(timeout=1)
 
     assert crawler.calls == 1
+
+
+def test_concurrent_current_player_detail_crawls_once(tmp_path) -> None:
+    crawler = _BlockingPlayerDetailCrawler()
+    service = PlayerStatsService(
+        crawler=crawler,
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+    season = current_kbo_year()
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(service.get_player_detail, "61102", season, "hitter")
+        assert crawler.started.wait(timeout=1)
+        second = executor.submit(service.get_player_detail, "61102", season, "hitter")
+        duplicate_started = crawler.duplicate_call_started.wait(timeout=0.5)
+        crawler.release.set()
+        first_payload = first.result(timeout=2)
+        second_payload = second.result(timeout=2)
+
+    assert duplicate_started is False
+    assert crawler.calls == 1
+    assert first_payload == second_payload
+
+
+def test_player_detail_auto_type_result_aliases_explicit_type_cache(tmp_path) -> None:
+    class _CountingPlayerDetailCrawler:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def get_player_detail(self, player_id: str, player_type, season: int, include_recent: bool):
+            self.calls += 1
+            return {
+                "id": player_id,
+                "teamId": "LG",
+                "season": season,
+                "playerType": "hitter",
+                "name": "홍길동",
+                "recentGames": [],
+            }
+
+    crawler = _CountingPlayerDetailCrawler()
+    service = PlayerStatsService(
+        crawler=crawler,
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+    season = current_kbo_year()
+
+    automatic = service.get_player_detail("61102", season)
+    explicit = service.get_player_detail("61102", season, "hitter")
+
+    assert automatic == explicit
+    assert crawler.calls == 1
+
+
+def test_concurrent_current_team_stats_crawls_once(tmp_path) -> None:
+    crawler = _BlockingTeamStatsCrawler()
+    service = TeamStatsService(
+        crawler=crawler,
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+    season = current_kbo_year()
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(service.get_team_stats, "KT", season)
+        assert crawler.started.wait(timeout=1)
+        second = executor.submit(service.get_team_stats, "KT", season)
+        duplicate_started = crawler.duplicate_call_started.wait(timeout=0.5)
+        crawler.release.set()
+        first_payload = first.result(timeout=2)
+        second_payload = second.result(timeout=2)
+
+    assert duplicate_started is False
+    assert crawler.calls == 1
+    assert first_payload == second_payload
 
 
 def test_historical_team_players_rejects_snapshot_for_another_team_or_season(tmp_path) -> None:

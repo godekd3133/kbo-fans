@@ -10,10 +10,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import '../../core/constants/team_data.dart';
-import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/game_status_label.dart';
-import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
@@ -185,7 +183,9 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
             child: Scaffold(
               body: SafeArea(
                 child: Center(
-                  child: CircularProgressIndicator(color: AppColors.live),
+                  child: CircularProgressIndicator(
+                    color: AppTheme.colorsOf(context).accent,
+                  ),
                 ),
               ),
             ),
@@ -1159,8 +1159,12 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                     child: Row(
                       children: [
                         Semantics(
+                          key: const ValueKey('game-detail-back'),
+                          container: true,
+                          excludeSemantics: true,
                           label: '뒤로',
                           button: true,
+                          onTap: _goBackOrHome,
                           child: IconButton(
                             tooltip: '뒤로',
                             icon: const Icon(Icons.arrow_back, size: 24),
@@ -1343,27 +1347,6 @@ class _GameScorebug extends StatelessWidget {
           ),
           child: Stack(
             children: [
-              const Positioned.fill(
-                child: AppArtworkLayer(
-                  assetName: VisualAssets.gameDetailScoreboard,
-                  alignment: Alignment.center,
-                  opacity: 0.22,
-                ),
-              ),
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        AppColors.background.withValues(alpha: 0.18),
-                        AppColors.background.withValues(alpha: 0.92),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
                 child: Column(
@@ -2715,15 +2698,25 @@ class _HighlightCardState extends State<_HighlightCard> {
     required bool selected,
     required VoidCallback onTap,
   }) {
+    final colors = AppTheme.colorsOf(context);
     return AppPressable(
+      key: ValueKey('game-detail-video-mode-$label'),
       onTap: onTap,
       pressedScale: 0.94,
+      semanticSelected: selected,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
-          color: selected ? AppColors.textPrimary : Colors.transparent,
+          color: selected
+              ? colors.accent.withValues(alpha: 0.16)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected
+                ? colors.accent.withValues(alpha: 0.72)
+                : Colors.transparent,
+          ),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -2732,7 +2725,7 @@ class _HighlightCardState extends State<_HighlightCard> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: selected ? AppColors.background : AppColors.textPrimary,
+              color: selected ? colors.accent : colors.textPrimary,
             ),
           ),
         ),

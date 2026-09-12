@@ -1,6 +1,7 @@
 import json
 
 from kbo_fans_backend.crawlers.boxscore import BoxscoreCrawler
+from kbo_fans_backend.utils.source_cache import KboSourceCache
 
 
 class _PayloadBoxscoreCrawler(BoxscoreCrawler):
@@ -92,6 +93,37 @@ def test_boxscore_crawler_returns_live_context_when_official_endpoint_empty() ->
     assert payload["home"]["pitchers"][0]["decision"] == "LIVE"
 
 
+def test_boxscore_crawler_uses_shared_main_source_for_live_context(monkeypatch) -> None:
+    game_id = "20260620OBLG0"
+    main_source = KboSourceCache(
+        lambda date: [
+            {
+                "G_ID": game_id,
+                "GAME_STATE_SC": "2",
+                "GAME_INN_NO": "3",
+                "GAME_TB_SC": "T",
+                "GAME_TB_SC_NM": "초",
+                "T_P_NM": "양석환",
+                "B_P_NM": "임찬규",
+                "T_PIT_P_NM": "곽빈",
+                "B_PIT_P_NM": "임찬규",
+            }
+        ],
+        ttl_seconds=8,
+    )
+    crawler = BoxscoreCrawler(main_source=main_source)
+    monkeypatch.setattr(
+        crawler,
+        "_post_json",
+        lambda *args, **kwargs: {"arrHitter": [], "arrPitcher": []},
+    )
+
+    payload = crawler.get_boxscore(game_id)
+
+    assert payload["source"] == "live_context"
+    assert payload["away"]["batters"][0]["name"] == "양석환"
+
+
 def test_boxscore_crawler_enriches_live_context_with_relay_today_batting_line() -> None:
     crawler = _RoutePayloadBoxscoreCrawler(
         boxscore_payload={"arrHitter": [], "arrPitcher": []},
@@ -132,6 +164,56 @@ def test_boxscore_crawler_enriches_live_context_with_relay_today_batting_line() 
     assert payload["away"]["batters"][0]["atBats"] == 2
     assert payload["away"]["batters"][0]["hits"] == 1
     assert payload["away"]["batters"][0]["liveStatsAvailable"] is True
+
+
+def test_boxscore_crawler_reuses_cached_relay_before_direct_crawler() -> None:
+    game_id = "20260620OBLG0"
+
+    class CachedRelayService:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def get_cached_relay(self, requested_game_id: str):
+            self.calls += 1
+            assert requested_game_id == game_id
+            return {
+                "gameId": game_id,
+                "currentAtBat": {
+                    "batter": {
+                        "name": "양석환",
+                        "todayAtBats": 2,
+                        "todayHits": 1,
+                    },
+                },
+                "relayItems": [],
+            }
+
+    crawler = _RoutePayloadBoxscoreCrawler(
+        boxscore_payload={"arrHitter": [], "arrPitcher": []},
+        main_payload={
+            "game": [
+                {
+                    "G_ID": game_id,
+                    "GAME_STATE_SC": "2",
+                    "GAME_INN_NO": "3",
+                    "GAME_TB_SC": "T",
+                    "GAME_TB_SC_NM": "초",
+                    "T_P_NM": "양석환",
+                    "B_P_NM": "임찬규",
+                    "T_PIT_P_NM": "곽빈",
+                    "B_PIT_P_NM": "임찬규",
+                }
+            ]
+        },
+    )
+    cached_relay = CachedRelayService()
+    crawler.relay_service = cached_relay
+
+    payload = crawler.get_boxscore(game_id)
+
+    assert cached_relay.calls == 1
+    assert payload["away"]["batters"][0]["atBats"] == 2
+    assert payload["away"]["batters"][0]["hits"] == 1
 
 
 def test_boxscore_crawler_rejects_pitcher_only_official_payload() -> None:

@@ -34,6 +34,12 @@ void main() {
           .value,
       currentSeason,
     );
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('standings-season-dropdown')))
+          .height,
+      greaterThanOrEqualTo(44),
+    );
 
     final container = ProviderScope.containerOf(
       tester.element(find.byType(StandingsScreen)),
@@ -193,6 +199,12 @@ void main() {
 
     expect(requests, 2);
     expect(refreshCompleted, isFalse);
+    expect(
+      tester
+          .widget<IconButton>(find.byKey(const ValueKey('standings-refresh')))
+          .onPressed,
+      isNull,
+    );
 
     pendingRefresh.complete(const [
       TeamStanding(
@@ -211,6 +223,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(refreshCompleted, isTrue);
+    expect(
+      tester
+          .widget<IconButton>(find.byKey(const ValueKey('standings-refresh')))
+          .onPressed,
+      isNotNull,
+    );
     expect(find.text('KT'), findsOneWidget);
   });
 

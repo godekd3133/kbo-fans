@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +11,48 @@ import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/records/player_detail_screen.dart';
 
 void main() {
+  testWidgets('선수 상세 동시 pull refresh는 player provider를 중복 호출하지 않는다', (
+    tester,
+  ) async {
+    final refreshResult = Completer<PlayerProfile>();
+    var loads = 0;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          playerDetailProvider.overrideWith((ref, key) async {
+            loads += 1;
+            if (loads == 1) {
+              return _player;
+            }
+            return refreshResult.future;
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const PlayerDetailScreen(playerId: '69102', season: 2026),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final refreshIndicator = tester.widget<RefreshIndicator>(
+      find.byType(RefreshIndicator),
+    );
+    final firstRefresh = refreshIndicator.onRefresh();
+    await tester.pump();
+    final secondRefresh = refreshIndicator.onRefresh();
+    await tester.pump();
+
+    expect(loads, 2);
+    refreshResult.complete(_player);
+    await firstRefresh;
+    await secondRefresh;
+    await tester.pumpAndSettle();
+    expect(loads, 2);
+  });
+
   testWidgets('선수 상세 오류는 다시 시도해 프로필을 복구한다', (tester) async {
     var shouldFail = true;
     var loadCount = 0;

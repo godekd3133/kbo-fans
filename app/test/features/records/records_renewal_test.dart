@@ -19,6 +19,52 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   AppConfig.initialize();
 
+  testWidgets('팀 기록실의 일반 선택은 경기 상태색과 분리된 액션 블루를 사용한다', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          teamRecordsProvider.overrideWith((ref, key) async => _bundle(2024)),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const RecordsScreen(
+            teamId: 'LG',
+            initialSeason: 2024,
+            followsCurrentSeason: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    final tabIndicator = tabBar.indicator! as BoxDecoration;
+    expect(
+      tabIndicator.color,
+      AppTheme.darkColors.accent.withValues(alpha: 0.16),
+    );
+
+    final filter = tester.widget<Container>(
+      find.byKey(const ValueKey('records-filter-전체')),
+    );
+    final filterDecoration = filter.decoration! as BoxDecoration;
+    expect(
+      filterDecoration.border?.top.color,
+      AppTheme.darkColors.accent.withValues(alpha: 0.72),
+    );
+
+    final sort = tester.widget<Container>(
+      find.byKey(const ValueKey('records-sort-타율')),
+    );
+    final sortDecoration = sort.decoration! as BoxDecoration;
+    expect(
+      sortDecoration.border?.top.color,
+      AppTheme.darkColors.accent.withValues(alpha: 0.62),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('내 팀 바로가기는 지연 리그 데이터 전후 위치와 시즌을 유지한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;

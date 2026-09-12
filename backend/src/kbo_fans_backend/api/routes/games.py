@@ -16,6 +16,7 @@ from kbo_fans_backend.api.runtime_services import (
 )
 from kbo_fans_backend.schemas.boxscore import BoxscorePayload
 from kbo_fans_backend.schemas.common import ApiEnvelope
+from kbo_fans_backend.services.scoreboard import GameScheduleUnavailableError
 from kbo_fans_backend.services.youtube_highlight import YoutubeHighlightService
 
 router = APIRouter(prefix="/game/{game_id}")
@@ -44,13 +45,19 @@ def get_game(
     x_kbo_push_sync_secret: Optional[str] = Header(default=None),
 ) -> ApiEnvelope[dict]:
     _validate_game_id(game_id)
-    game = scoreboard_service.get_game(
-        game_id,
-        force_refresh=trusted_force_refresh(
-            forceRefresh,
-            x_kbo_push_sync_secret,
-        ),
-    )
+    try:
+        game = scoreboard_service.get_game(
+            game_id,
+            force_refresh=trusted_force_refresh(
+                forceRefresh,
+                x_kbo_push_sync_secret,
+            ),
+        )
+    except GameScheduleUnavailableError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="경기 일정을 잠시 불러올 수 없습니다",
+        ) from error
     scheduled_game = None
     if game is None:
         scheduled_game = schedule_service.get_schedule_game(game_id)

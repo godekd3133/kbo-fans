@@ -12,6 +12,7 @@ from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 class RecordsOverviewService:
     _OVERVIEW_CACHE_TTL_SECONDS = 300
+    _HOME_OVERVIEW_CACHE_TTL_SECONDS = 300
     _RANKED_METRICS = (
         "avg",
         "hr",
@@ -33,10 +34,14 @@ class RecordsOverviewService:
         self._overview_cache: TtlCache[int, Dict[str, Any]] = TtlCache(
             self._OVERVIEW_CACHE_TTL_SECONDS
         )
+        self._home_overview_cache: TtlCache[int, Dict[str, Any]] = TtlCache(
+            self._HOME_OVERVIEW_CACHE_TTL_SECONDS
+        )
         self._leaderboard_cache: TtlCache[str, Dict[str, Any]] = TtlCache(
             self._OVERVIEW_CACHE_TTL_SECONDS
         )
         self._overview_singleflight: SingleFlight[int] = SingleFlight()
+        self._home_overview_singleflight: SingleFlight[int] = SingleFlight()
         self._leaderboard_singleflight: SingleFlight[str] = SingleFlight()
 
     def get_overview(self, season: int) -> Dict[str, Any]:
@@ -50,20 +55,86 @@ class RecordsOverviewService:
                 return normalized_cached
         return self._overview_singleflight.call(season, lambda: self._load_overview(season))
 
+    def get_home_overview(self, season: int) -> Dict[str, Any]:
+        """Return the smaller current-season record payload needed by Home.
+
+        Historical seasons continue through the canonical full overview path,
+        while current/future Home requests avoid the eight-group records crawl.
+        A current failure remains visible to the caller; this method does not
+        fall back to a historical snapshot.
+        """
+        if not RecordsOverviewCrawler.is_supported_season(season):
+            return RecordsOverviewCrawler.empty_overview(season)
+        if self._is_historical_season(season):
+            return self.get_overview(season)
+
+        full_cached = self._overview_cache.get(season)
+        if full_cached is not None and self._has_overview_identity(full_cached, season):
+            normalized_full = self._normalize_overview_payload(full_cached, season)
+            if self._is_reusable_ranked_payload(normalized_full):
+                self._home_overview_cache.set(season, normalized_full)
+                return normalized_full
+
+        cached = self._home_overview_cache.get(season)
+        if cached is not None and self._has_overview_identity(cached, season):
+            normalized_cached = self._normalize_overview_payload(cached, season)
+            if self._is_reusable_ranked_payload(normalized_cached):
+                return normalized_cached
+
+        return self._home_overview_singleflight.call(
+            season,
+            lambda: self._load_home_overview(season),
+        )
+
+    def _load_home_overview(self, season: int) -> Dict[str, Any]:
+        full_cached = self._overview_cache.get(season)
+        if full_cached is not None and self._has_overview_identity(full_cached, season):
+            normalized_full = self._normalize_overview_payload(full_cached, season)
+            if self._is_reusable_ranked_payload(normalized_full):
+                self._home_overview_cache.set(season, normalized_full)
+                return normalized_full
+
+        cached = self._home_overview_cache.get(season)
+        if cached is not None and self._has_overview_identity(cached, season):
+            normalized_cached = self._normalize_overview_payload(cached, season)
+            if self._is_reusable_ranked_payload(normalized_cached):
+                return normalized_cached
+
+        home_loader = getattr(self.crawler, "get_home_overview", None)
+        payload = (
+            home_loader(season)
+            if home_loader is not None
+            else self.crawler.get_overview(season)
+        )
+        normalized = self._normalize_overview_payload(payload, season)
+        if self._is_reusable_ranked_payload(normalized):
+            self._home_overview_cache.set(season, normalized)
+        return normalized
+
     def _load_overview(self, season: int) -> Dict[str, Any]:
         cached = self._overview_cache.get(season)
         if cached is not None and self._has_overview_identity(cached, season):
             normalized_cached = self._normalize_overview_payload(cached, season)
             if self._is_reusable_ranked_payload(normalized_cached):
                 return normalized_cached
-        snapshot_record = self.snapshot_store.load("records_overview", str(season))
+        snapshot_record = (
+            self.snapshot_store.load("records_overview", str(season))
+            if self._is_historical_season(season)
+            else None
+        )
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
         if self._can_use_snapshot_before_crawling(season, snapshot):
             payload = self._normalize_overview_payload(snapshot, season)
             self._overview_cache.set(season, payload)
             return payload
+        home_seed = self._reusable_home_seed(season)
+        home_loader = getattr(self.crawler, "get_overview_from_home", None)
         try:
-            payload = self.crawler.get_overview(season)
+            payload = (
+                home_loader(season, home_seed)
+                if home_loader is not None and home_seed is not None
+                else self.crawler.get_overview(season)
+            )
         except Exception:
             stale = self._overview_cache.get_stale(season)
             if (
@@ -82,6 +153,24 @@ class RecordsOverviewService:
             self._overview_cache.set(season, payload)
             self.snapshot_store.save("records_overview", str(season), payload)
         return payload
+
+    def _reusable_home_seed(self, season: int) -> Optional[Dict[str, Any]]:
+        cached = self._home_overview_cache.get(season)
+        if cached is None or not self._has_overview_identity(cached, season):
+            return None
+        normalized = self._normalize_overview_payload(cached, season)
+        if not self._is_reusable_ranked_payload(normalized):
+            return None
+        leaders = normalized.get("leaders")
+        if not isinstance(leaders, dict):
+            return None
+        if not all(
+            isinstance(leaders.get(metric), list)
+            and self._leaders_start_at_rank_one(leaders[metric])
+            for metric in ("avg", "hr", "era")
+        ):
+            return None
+        return normalized
 
     def get_leaderboard(self, season: int, metric: str) -> Dict[str, Any]:
         if not RecordsOverviewCrawler.is_supported_season(season):
@@ -104,7 +193,11 @@ class RecordsOverviewService:
             normalized_cached = self._normalize_leaderboard_payload(cached, season, metric)
             if self._is_reusable_ranked_payload(normalized_cached):
                 return normalized_cached
-        snapshot_record = self.snapshot_store.load("leaderboard", cache_key)
+        snapshot_record = (
+            self.snapshot_store.load("leaderboard", cache_key)
+            if self._is_historical_season(season)
+            else None
+        )
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
         if self._can_use_snapshot_before_crawling(season, snapshot, metric=metric):
             payload = self._normalize_leaderboard_payload(snapshot, season, metric)

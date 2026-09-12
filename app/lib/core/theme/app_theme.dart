@@ -317,7 +317,8 @@ class AppTheme {
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: colors.background,
-        selectedItemColor: colors.live,
+        // LIVE red is reserved for game status; navigation selection is an action.
+        selectedItemColor: colors.accent,
         unselectedItemColor: colors.textSecondary,
         type: BottomNavigationBarType.fixed,
         selectedLabelStyle: const TextStyle(

@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/theme_mode_controller.dart';
+import '../../core/widgets/app_design_system.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../data/providers.dart';
@@ -93,18 +94,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: SafeArea(
         child: AppPageFrame(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
             children: [
-              Text(
-                '설정',
-                style: TextStyle(
-                  fontSize: 23,
-                  fontWeight: FontWeight.w900,
-                  height: 1.05,
-                  color: colors.textPrimary,
-                ),
+              const AppPageHeader(
+                eyebrow: 'KBO Fans',
+                title: '설정',
+                subtitle: '마이팀과 경기 알림을 한 곳에서 관리합니다.',
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
               _MoreHeroCard(
                 team: team,
@@ -296,10 +293,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (onTap == null) {
       return row;
     }
-    return Semantics(
-      button: true,
-      child: AppPressable(onTap: onTap, child: row),
-    );
+    return AppPressable(onTap: onTap, child: row);
   }
 
   Widget _divider() {
@@ -395,46 +389,44 @@ class _AppearanceModeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colorsOf(context);
-    final foreground = selected ? colors.live : colors.textSecondary;
+    final foreground = selected ? colors.accent : colors.textSecondary;
     final background = selected
-        ? colors.live.withValues(alpha: 0.12)
+        ? colors.accent.withValues(alpha: 0.12)
         : colors.cardSub;
-    final border = selected ? colors.live : colors.divider;
+    final border = selected ? colors.accent : colors.divider;
 
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: '${mode.label} 모드',
-      child: AppPressable(
-        onTap: onTap,
-        pressedScale: 0.98,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOutQuart,
-          constraints: const BoxConstraints(minHeight: 68),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: border),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(mode.icon, size: 20, color: foreground),
-              const SizedBox(height: 5),
-              Text(
-                mode.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: foreground,
-                  fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-                ),
+    return AppPressable(
+      key: ValueKey('appearance-mode-${mode.storageValue}'),
+      onTap: onTap,
+      semanticSelected: selected,
+      semanticLabel: '${mode.label} 모드',
+      pressedScale: 0.98,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutQuart,
+        constraints: const BoxConstraints(minHeight: 68),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: border),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(mode.icon, size: 20, color: foreground),
+            const SizedBox(height: 5),
+            Text(
+              mode.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                color: foreground,
+                fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -764,7 +756,7 @@ class _PushNotificationSettingsCardState
           );
         }
 
-        final accent = colors.readableAccent(
+        final teamAccent = colors.readableAccent(
           widget.team?.primaryColor ?? colors.accent,
         );
         final enabledMomentCount = _enabledMomentCount(settings);
@@ -778,7 +770,7 @@ class _PushNotificationSettingsCardState
               _NotificationPresetSelector(
                 selected: _presetForSettings(settings),
                 enabled: !_saving,
-                accent: accent,
+                accent: colors.accent,
                 onSelected: _selectPreset,
               ),
               const SizedBox(height: 16),
@@ -795,7 +787,7 @@ class _PushNotificationSettingsCardState
                 },
               ),
               const SizedBox(height: 12),
-              _NotificationTargetStrip(team: widget.team, accent: accent),
+              _NotificationTargetStrip(team: widget.team, accent: teamAccent),
               if (widget.team == null) ...[
                 const SizedBox(height: 10),
                 Text(

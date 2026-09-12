@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/visual_assets.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/app_artwork_card.dart';
 import '../../../data/models/game.dart';
 import '../widgets/game_reading_card.dart';
 
@@ -35,7 +33,7 @@ class ScoreTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: onRefresh ?? () async {},
-      color: AppColors.live,
+      color: AppTheme.colorsOf(context).accent,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -174,121 +172,108 @@ class ScoreTab extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: AppColors.divider),
               ),
-              child: Stack(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Positioned.fill(
-                    child: AppArtworkLayer(
-                      assetName: VisualAssets.scoreLinescore,
-                      alignment: Alignment.centerRight,
-                      opacity: 0.18,
+                  SizedBox(
+                    key: const ValueKey('score-fixed-team-column'),
+                    width: _teamColumnWidth,
+                    child: Table(
+                      defaultVerticalAlignment:
+                          TableCellVerticalAlignment.middle,
+                      children: [
+                        TableRow(
+                          children: [
+                            _tableCell(
+                              '팀',
+                              headerStyle,
+                              height: _headerRowHeight,
+                            ),
+                          ],
+                        ),
+                        _dividerRow(1),
+                        TableRow(
+                          children: [
+                            _tableCell(
+                              game.away.shortName,
+                              boldStyle,
+                              height: _scoreRowHeight,
+                            ),
+                          ],
+                        ),
+                        _dividerRow(1),
+                        TableRow(
+                          children: [
+                            _tableCell(
+                              game.home.shortName,
+                              boldStyle,
+                              height: _scoreRowHeight,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        key: const ValueKey('score-fixed-team-column'),
-                        width: _teamColumnWidth,
+                  Container(
+                    width: 1,
+                    height: _headerRowHeight + (_scoreRowHeight * 2) + 2,
+                    color: AppColors.divider,
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      key: const ValueKey('score-scrollable-columns'),
+                      scrollDirection: Axis.horizontal,
+                      child: SizedBox(
+                        width: headers.length * _scoreColumnWidth,
                         child: Table(
                           defaultVerticalAlignment:
                               TableCellVerticalAlignment.middle,
+                          defaultColumnWidth: const FixedColumnWidth(
+                            _scoreColumnWidth,
+                          ),
                           children: [
                             TableRow(
-                              children: [
-                                _tableCell(
-                                  '팀',
+                              children: headers.asMap().entries.map((entry) {
+                                final inningNo = entry.key < inningCount
+                                    ? entry.key + 1
+                                    : null;
+                                return _tableCell(
+                                  entry.value,
                                   headerStyle,
+                                  key: inningNo == null
+                                      ? ValueKey(
+                                          'score-stat-header-${entry.value}',
+                                        )
+                                      : ValueKey(
+                                          'score-inning-header-$inningNo',
+                                        ),
                                   height: _headerRowHeight,
-                                ),
-                              ],
+                                  isHighlight:
+                                      inningNo != null &&
+                                      inningNo == currentInning,
+                                );
+                              }).toList(),
                             ),
-                            _dividerRow(1),
-                            TableRow(
-                              children: [
-                                _tableCell(
-                                  game.away.shortName,
-                                  boldStyle,
-                                  height: _scoreRowHeight,
-                                ),
-                              ],
+                            _dividerRow(headers.length),
+                            _scoreRow(
+                              game.away,
+                              inningCount,
+                              currentInning,
+                              dataStyle,
+                              boldStyle,
                             ),
-                            _dividerRow(1),
-                            TableRow(
-                              children: [
-                                _tableCell(
-                                  game.home.shortName,
-                                  boldStyle,
-                                  height: _scoreRowHeight,
-                                ),
-                              ],
+                            _dividerRow(headers.length),
+                            _scoreRow(
+                              game.home,
+                              inningCount,
+                              currentInning,
+                              dataStyle,
+                              boldStyle,
                             ),
                           ],
                         ),
                       ),
-                      Container(
-                        width: 1,
-                        height: _headerRowHeight + (_scoreRowHeight * 2) + 2,
-                        color: AppColors.divider,
-                      ),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          key: const ValueKey('score-scrollable-columns'),
-                          scrollDirection: Axis.horizontal,
-                          child: SizedBox(
-                            width: headers.length * _scoreColumnWidth,
-                            child: Table(
-                              defaultVerticalAlignment:
-                                  TableCellVerticalAlignment.middle,
-                              defaultColumnWidth: const FixedColumnWidth(
-                                _scoreColumnWidth,
-                              ),
-                              children: [
-                                TableRow(
-                                  children: headers.asMap().entries.map((
-                                    entry,
-                                  ) {
-                                    final inningNo = entry.key < inningCount
-                                        ? entry.key + 1
-                                        : null;
-                                    return _tableCell(
-                                      entry.value,
-                                      headerStyle,
-                                      key: inningNo == null
-                                          ? ValueKey(
-                                              'score-stat-header-${entry.value}',
-                                            )
-                                          : ValueKey(
-                                              'score-inning-header-$inningNo',
-                                            ),
-                                      height: _headerRowHeight,
-                                      isHighlight:
-                                          inningNo != null &&
-                                          inningNo == currentInning,
-                                    );
-                                  }).toList(),
-                                ),
-                                _dividerRow(headers.length),
-                                _scoreRow(
-                                  game.away,
-                                  inningCount,
-                                  currentInning,
-                                  dataStyle,
-                                  boldStyle,
-                                ),
-                                _dividerRow(headers.length),
-                                _scoreRow(
-                                  game.home,
-                                  inningCount,
-                                  currentInning,
-                                  dataStyle,
-                                  boldStyle,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),

@@ -88,12 +88,12 @@ class _RecordsAreaTab extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
         decoration: BoxDecoration(
           color: selected
-              ? colors.live.withValues(alpha: 0.16)
+              ? colors.accent.withValues(alpha: 0.16)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(7),
           border: Border.all(
             color: selected
-                ? colors.live.withValues(alpha: 0.72)
+                ? colors.accent.withValues(alpha: 0.72)
                 : Colors.transparent,
           ),
         ),

@@ -27,6 +27,7 @@ class PlayerStatsService:
             self._PLAYER_DETAIL_CACHE_TTL_SECONDS
         )
         self._team_players_singleflight: SingleFlight[Tuple[str, int]] = SingleFlight()
+        self._player_detail_singleflight: SingleFlight[Tuple[str, int, str]] = SingleFlight()
 
     def get_team_players(self, team_id: str, season: int) -> Dict[str, Any]:
         cache_key = (team_id, season)
@@ -63,7 +64,11 @@ class PlayerStatsService:
             return cached
 
         snapshot_key = self._team_players_snapshot_key(team_id, season)
-        snapshot_record = self.snapshot_store.load("team_players", snapshot_key)
+        snapshot_record = (
+            self.snapshot_store.load("team_players", snapshot_key)
+            if self._is_historical_season(season)
+            else None
+        )
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
         if self._can_use_snapshot_before_crawling(team_id, season, snapshot):
             return snapshot
@@ -98,8 +103,39 @@ class PlayerStatsService:
         ):
             return cached
 
+        return self._player_detail_singleflight.call(
+            cache_key,
+            lambda: self._load_player_detail(
+                player_id=player_id,
+                season=season,
+                player_type=player_type,
+                cache_key=cache_key,
+            ),
+        )
+
+    def _load_player_detail(
+        self,
+        *,
+        player_id: str,
+        season: int,
+        player_type: Optional[str],
+        cache_key: Tuple[str, int, str],
+    ) -> Dict[str, Any]:
+        cached = self._player_detail_cache.get(cache_key)
+        if cached is not None and self._is_consistent_player_detail_payload(
+            cached,
+            player_id=player_id,
+            season=season,
+            player_type=player_type,
+        ):
+            return cached
+
         snapshot_key = self._player_detail_snapshot_key(player_id, season, player_type)
-        snapshot = self.snapshot_store.load_payload("player_detail", snapshot_key)
+        snapshot = (
+            self.snapshot_store.load_payload("player_detail", snapshot_key)
+            if self._is_historical_season(season)
+            else None
+        )
         if (
             snapshot is not None
             and self._is_historical_season(season)
@@ -136,9 +172,22 @@ class PlayerStatsService:
                 return snapshot
             raise
 
-        self._player_detail_cache.set(cache_key, payload)
+        self._cache_player_detail_payload(cache_key, payload)
         self.snapshot_store.save("player_detail", snapshot_key, payload)
         return payload
+
+    def _cache_player_detail_payload(
+        self,
+        cache_key: Tuple[str, int, str],
+        payload: Dict[str, Any],
+    ) -> None:
+        self._player_detail_cache.set(cache_key, payload)
+        resolved_type = payload.get("playerType")
+        if cache_key[2] == "" and resolved_type in ("hitter", "pitcher"):
+            self._player_detail_cache.set(
+                (cache_key[0], cache_key[1], resolved_type),
+                payload,
+            )
 
     def _get_cached_team_players(self, cache_key: Tuple[str, int]) -> Optional[Dict[str, Any]]:
         return self._team_players_cache.get(cache_key)

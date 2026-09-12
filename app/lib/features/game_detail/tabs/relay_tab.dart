@@ -76,7 +76,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
         ?.value;
     return RefreshIndicator(
       onRefresh: widget.onRefresh ?? () async {},
-      color: AppColors.live,
+      color: AppTheme.colorsOf(context).accent,
       child: relayDataAsync.when(
         skipError: true,
         loading: () => _buildFallbackContent(latestGame, isLoading: true),
@@ -419,6 +419,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
   }
 
   Widget _buildInningChips(List<RelayItem> items) {
+    final colors = AppTheme.colorsOf(context);
     final useLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
     final chips = <String>['전체'];
     for (final item in items) {
@@ -454,10 +455,10 @@ class _RelayTabState extends ConsumerState<RelayTab> {
               curve: Curves.easeOutCubic,
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
-                color: isActive ? AppColors.textPrimary : AppColors.cardSub,
+                color: isActive ? colors.accent : colors.cardSub,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: isActive ? AppColors.textPrimary : AppColors.divider,
+                  color: isActive ? colors.accent : colors.divider,
                 ),
               ),
               child: Text(
@@ -465,8 +466,8 @@ class _RelayTabState extends ConsumerState<RelayTab> {
                 style: TextStyle(
                   fontSize: 12,
                   color: isActive
-                      ? AppColors.background
-                      : AppColors.textSupporting,
+                      ? colors.readableForegroundOn(colors.accent)
+                      : colors.textSupporting,
                   fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
@@ -504,10 +505,10 @@ class _RelayTabState extends ConsumerState<RelayTab> {
               curve: Curves.easeOutCubic,
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
-                color: isActive ? AppColors.live : AppColors.cardSub,
+                color: isActive ? colors.accent : colors.cardSub,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isActive ? AppColors.live : AppColors.divider,
+                  color: isActive ? colors.accent : colors.divider,
                 ),
               ),
               child: Text(
@@ -515,8 +516,8 @@ class _RelayTabState extends ConsumerState<RelayTab> {
                 style: TextStyle(
                   fontSize: 12,
                   color: isActive
-                      ? colors.readableForegroundOn(AppColors.live)
-                      : AppColors.textSupporting,
+                      ? colors.readableForegroundOn(colors.accent)
+                      : colors.textSupporting,
                   fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
                 ),
               ),

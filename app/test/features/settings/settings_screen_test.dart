@@ -154,6 +154,49 @@ void main() {
     }
   });
 
+  testWidgets('화면 모드 선택은 중복 버튼 semantics 없이 하나의 제어로 노출된다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: const SettingsScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      for (final mode in ['system', 'light', 'dark']) {
+        final control = find.byKey(ValueKey('appearance-mode-$mode'));
+        final data = tester.getSemantics(control).getSemanticsData();
+        expect(data.flagsCollection.isButton, isTrue);
+        expect(data.label, contains('모드'));
+        expect(data.hasAction(SemanticsAction.tap), isTrue);
+
+        final duplicateControls = <SemanticsNode>[];
+        bool collectDuplicateControls(SemanticsNode child) {
+          final childData = child.getSemanticsData();
+          if (childData.hasAction(SemanticsAction.tap) ||
+              childData.flagsCollection.isButton) {
+            duplicateControls.add(child);
+          }
+          child.visitChildren(collectDuplicateControls);
+          return true;
+        }
+
+        tester.getSemantics(control).visitChildren(collectDuplicateControls);
+        expect(
+          duplicateControls,
+          isEmpty,
+          reason: '$mode 모드 아래에 중복 버튼 semantics가 노출되면 안 된다',
+        );
+      }
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets('푸시 알림은 목적 선택과 항목별 토글을 함께 제공한다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -559,6 +602,32 @@ void main() {
     );
     expect(permissionRequests, 0);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('푸시 프리셋 선택은 마이팀 색상과 분리된 액션 블루를 사용한다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const SettingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final results = find.byKey(const ValueKey('push_preset_results'));
+    await tester.tap(results);
+    await tester.pumpAndSettle();
+
+    final chip = tester.widget<ChoiceChip>(results);
+    expect(chip.side?.color, AppTheme.darkColors.accent);
+    expect(
+      chip.selectedColor,
+      AppTheme.darkColors.accent.withValues(alpha: 0.15),
+    );
+    expect(chip.labelStyle?.color, AppTheme.darkColors.accent);
   });
 
   testWidgets('320px 240% 알림 목적 선택을 잘림 없이 바꿀 수 있다', (tester) async {

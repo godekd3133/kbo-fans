@@ -79,6 +79,7 @@ class _ReleaseNotesPromptDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     final media = MediaQuery.of(context);
     final maxNotesHeight = (media.size.height * 0.46).clamp(220.0, 430.0);
 
@@ -105,42 +106,52 @@ class _ReleaseNotesPromptDialog extends StatelessWidget {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: AppColors.live.withValues(alpha: 0.14),
+                        color: colors.accent.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: AppColors.live.withValues(alpha: 0.36),
+                          color: colors.accent.withValues(alpha: 0.36),
                         ),
                       ),
                       child: Icon(
                         Icons.system_update_alt_rounded,
                         size: 19,
-                        color: AppColors.live,
+                        color: colors.accent,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '업데이트 소식',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              height: 1.1,
-                              color: AppColors.textPrimary,
-                            ),
+                      child: Semantics(
+                        key: const ValueKey(
+                          'release-notes-prompt-header-semantics',
+                        ),
+                        container: true,
+                        explicitChildNodes: true,
+                        label: '업데이트 소식, 버전 ${release.version}',
+                        child: ExcludeSemantics(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '업데이트 소식',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.1,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                '버전 ${release.version}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 5),
-                          Text(
-                            '버전 ${release.version}',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                     IconButton(
@@ -170,15 +181,25 @@ class _ReleaseNotesPromptDialog extends StatelessWidget {
                 ConstrainedBox(
                   constraints: BoxConstraints(maxHeight: maxNotesHeight),
                   child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (final note in release.notes) ...[
-                          _ReleaseNoteBullet(note),
-                          if (note != release.notes.last)
-                            const SizedBox(height: 10),
-                        ],
-                      ],
+                    child: Semantics(
+                      key: const ValueKey(
+                        'release-notes-prompt-notes-semantics',
+                      ),
+                      container: true,
+                      explicitChildNodes: true,
+                      label: '변경점: ${release.notes.join(', ')}',
+                      child: ExcludeSemantics(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (final note in release.notes) ...[
+                              _ReleaseNoteBullet(note),
+                              if (note != release.notes.last)
+                                const SizedBox(height: 10),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -227,7 +248,11 @@ class _ReleaseNoteBullet extends StatelessWidget {
       children: [
         Padding(
           padding: EdgeInsets.only(top: 7),
-          child: Icon(Icons.circle, size: 6, color: AppColors.live),
+          child: Icon(
+            Icons.circle,
+            size: 6,
+            color: AppTheme.colorsOf(context).accent,
+          ),
         ),
         const SizedBox(width: 10),
         Expanded(

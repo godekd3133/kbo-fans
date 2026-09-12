@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from kbo_fans_backend.api.routes import games
 from kbo_fans_backend.api.routes import scoreboard as scoreboard_routes
 from kbo_fans_backend.main import app
+from kbo_fans_backend.services.scoreboard import GameScheduleUnavailableError
 
 
 def test_get_game_returns_game_payload(monkeypatch) -> None:
@@ -133,6 +134,27 @@ def test_get_game_returns_404_when_missing(monkeypatch) -> None:
     assert body["detail"] == "해당 경기를 찾을 수 없습니다"
 
 
+def test_get_game_does_not_retry_schedule_after_scoreboard_schedule_failure(monkeypatch) -> None:
+    schedule_calls = 0
+
+    def fail_scoreboard(game_id, force_refresh=False):
+        raise GameScheduleUnavailableError("schedule unavailable")
+
+    def fail_schedule(game_id):
+        nonlocal schedule_calls
+        schedule_calls += 1
+        raise AssertionError("schedule fallback must not retry an unavailable source")
+
+    monkeypatch.setattr(games.scoreboard_service, "get_game", fail_scoreboard)
+    monkeypatch.setattr(games.schedule_service, "get_schedule_game", fail_schedule)
+
+    response = TestClient(app).get("/api/game/20260330KTLG0")
+
+    assert response.status_code == 503
+    assert schedule_calls == 0
+    assert "일정" in response.json()["detail"]
+
+
 def test_get_game_schedule_fallback_preserves_terminal_status_and_unknown_totals(
     monkeypatch,
 ) -> None:
@@ -221,6 +243,19 @@ def test_get_relay_returns_empty_payload(monkeypatch) -> None:
     body = response.json()
     assert body["success"] is True
     assert body["data"] == expected
+
+
+def test_get_relay_schedule_failure_uses_upstream_unavailable_response(monkeypatch) -> None:
+    def fail_relay(game_id, after=None, force_refresh=False):
+        raise GameScheduleUnavailableError("schedule unavailable")
+
+    monkeypatch.setattr(games.relay_service, "get_relay", fail_relay)
+
+    response = TestClient(app).get("/api/game/20260330KTLG0/relay")
+
+    assert response.status_code == 503
+    body = response.json()
+    assert body["error"]["code"] == "UPSTREAM_UNAVAILABLE"
 
 
 def test_public_get_relay_force_refresh_keeps_backend_ttl(monkeypatch) -> None:

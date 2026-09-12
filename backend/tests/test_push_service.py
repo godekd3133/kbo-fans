@@ -40,6 +40,7 @@ from kbo_fans_backend.services.push_registry import (
     PushRegistry,
     PushRegistryOwnershipError,
 )
+from kbo_fans_backend.utils.resilience import UpstreamBusyError
 
 
 def test_build_topics_returns_empty_without_team_when_all_games_disabled() -> None:
@@ -702,6 +703,126 @@ def test_send_game_moment_includes_followed_game_topic(tmp_path) -> None:
     ]
 
 
+def test_send_game_moment_outbox_sends_targets_together(tmp_path) -> None:
+    class BlockingMessaging(FakeFcmMessaging):
+        def __init__(self) -> None:
+            super().__init__()
+            self._lock = threading.Lock()
+            self.all_started = threading.Event()
+            self.release = threading.Event()
+            self.attempted_topics = []
+
+        def send(self, message) -> str:
+            with self._lock:
+                self.attempted_topics.append(message.topic)
+                if len(self.attempted_topics) == 3:
+                    self.all_started.set()
+            assert self.release.wait(timeout=2)
+            return f"message-{message.topic}"
+
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    event_id = "game-moment:20260604LGKT0:scoring:parallel-test"
+    targets = service.game_moment_targets(
+        moment="scoring",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        home_team_id="KT",
+    )
+    registry.enqueue_push_outbox_events(
+        [
+            {
+                "eventId": event_id,
+                "kind": "game_moment",
+                "payload": {"moment": "scoring", "game_id": "20260604LGKT0"},
+                "targets": targets,
+            }
+        ]
+    )
+    messaging = BlockingMessaging()
+    service._get_messaging = lambda: messaging
+    result = {}
+
+    def send() -> None:
+        result["payload"] = service.send_game_moment(
+            moment="scoring",
+            game_id="20260604LGKT0",
+            away_team_id="LG",
+            away_team_name="LG",
+            home_team_id="KT",
+            home_team_name="KT",
+            away_score=2,
+            home_score=3,
+            inning="7회말",
+            event_id=event_id,
+        )
+
+    thread = threading.Thread(target=send)
+    thread.start()
+    assert messaging.all_started.wait(timeout=1)
+    try:
+        messaging.release.set()
+        thread.join(timeout=2)
+    finally:
+        messaging.release.set()
+        thread.join(timeout=2)
+
+    assert not thread.is_alive()
+    assert result["payload"]["sent"] is True
+    assert set(messaging.attempted_topics) == set(targets)
+
+
+def test_send_game_moment_skips_empty_outbox_resolution(monkeypatch, tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    event_id = "game-moment:20260604LGKT0:scoring:empty-resolution-test"
+    targets = service.game_moment_targets(
+        moment="scoring",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        home_team_id="KT",
+    )
+    registry.enqueue_push_outbox_events(
+        [
+            {
+                "eventId": event_id,
+                "kind": "game_moment",
+                "payload": {"moment": "scoring", "game_id": "20260604LGKT0"},
+                "targets": targets,
+            }
+        ]
+    )
+    registry.claim_push_outbox_targets(event_id, targets)
+    resolve_calls = []
+    original_resolve = registry.resolve_push_outbox_targets
+
+    def resolve(event_id_value, results):
+        resolve_calls.append((event_id_value, results))
+        return original_resolve(event_id_value, results)
+
+    monkeypatch.setattr(registry, "resolve_push_outbox_targets", resolve)
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_game_moment(
+        moment="scoring",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG",
+        home_team_id="KT",
+        home_team_name="KT",
+        away_score=2,
+        home_score=3,
+        inning="7회말",
+        event_id=event_id,
+    )
+
+    assert response["sent"] is False
+    assert set(response["pendingTargets"]) == set(targets)
+    assert resolve_calls == []
+    assert messaging.sent_messages == []
+
+
 def test_send_game_moment_outbox_retries_only_failed_target_after_restart(
     tmp_path,
 ) -> None:
@@ -850,6 +971,70 @@ def test_push_outbox_fencing_rejects_stale_worker_completion(
         )
         is True
     )
+
+
+def test_push_outbox_batch_claim_and_resolve_preserve_target_fencing(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    event_id = "game-moment:20260604LGKT0:scoring:batch-test"
+    targets = [
+        "scoring_LG",
+        "scoring_KT",
+        "scoring_GAME_20260604LGKT0",
+    ]
+    registry.enqueue_push_outbox_events(
+        [
+            {
+                "eventId": event_id,
+                "kind": "game_moment",
+                "payload": {},
+                "targets": targets,
+            }
+        ]
+    )
+    save_calls = []
+    original_save = registry._save_unlocked
+
+    def save(data):
+        save_calls.append(data)
+        return original_save(data)
+
+    monkeypatch.setattr(registry, "_save_unlocked", save)
+
+    claims = registry.claim_push_outbox_targets(event_id, targets)
+
+    assert set(claims) == set(targets)
+    assert len(save_calls) == 1
+    assert registry.claim_push_outbox_targets(event_id, targets) == {}
+    assert len(save_calls) == 1
+
+    resolved = registry.resolve_push_outbox_targets(
+        event_id,
+        [
+            {
+                "target": targets[0],
+                "claimId": claims[targets[0]],
+                "sent": True,
+                "messageId": "message-away",
+            },
+            {
+                "target": targets[1],
+                "claimId": claims[targets[1]],
+                "sent": False,
+                "error": "temporary FCM failure",
+            },
+        ],
+    )
+
+    assert resolved == {targets[0]: True, targets[1]: True}
+    assert len(save_calls) == 2
+    persisted = registry.push_outbox_event(event_id)
+    assert persisted is not None
+    assert persisted["targets"][targets[0]]["status"] == "sent"
+    assert persisted["targets"][targets[1]]["status"] == "pending"
+    assert persisted["targets"][targets[2]]["status"] == "sending"
 
 
 def test_send_game_moment_matchup_copy_normalizes_team_ids(tmp_path) -> None:
@@ -2215,6 +2400,34 @@ def test_push_registry_shared_lock_uses_readable_lock_fd(monkeypatch, tmp_path) 
     heartbeat = PushRegistry(str(tmp_path / "push_registry.json")).sync_heartbeat()
 
     assert heartbeat == {}
+
+
+def test_push_registry_file_lock_wait_is_bounded(tmp_path) -> None:
+    path = tmp_path / "push_registry.json"
+    holder = PushRegistry(str(path))
+    waiter = PushRegistry(str(path), lock_wait_timeout_seconds=0.03)
+
+    with holder._file_lock(exclusive=True):
+        started_at = time_module.monotonic()
+        with pytest.raises(UpstreamBusyError, match="push registry file lock is busy"):
+            waiter._load()
+
+    assert time_module.monotonic() - started_at < 0.2
+
+
+def test_push_registry_thread_lock_wait_is_bounded(tmp_path) -> None:
+    path = tmp_path / "push_registry.json"
+    holder = PushRegistry(str(path))
+    waiter = PushRegistry(str(path), lock_wait_timeout_seconds=0.03)
+    holder._thread_lock.acquire()
+    started_at = time_module.monotonic()
+    try:
+        with pytest.raises(UpstreamBusyError, match="push registry thread lock is busy"):
+            waiter._load()
+    finally:
+        holder._thread_lock.release()
+
+    assert time_module.monotonic() - started_at < 0.2
 
 
 def test_register_live_activity_replaces_previous_token(tmp_path) -> None:

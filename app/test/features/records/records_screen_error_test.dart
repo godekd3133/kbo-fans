@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:async';
 import 'package:kbo_fans/core/config/app_config.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/core/utils/kbo_time.dart';
@@ -56,5 +57,54 @@ void main() {
 
     expect(find.text('조건에 맞는 선수가 없습니다'), findsOneWidget);
     expect(attempts, 2);
+  });
+
+  testWidgets('팀 기록 refresh 중 빠른 재시도는 중복 provider 요청을 만들지 않는다', (tester) async {
+    final recovery = Completer<TeamRecordsBundle>();
+    var attempts = 0;
+    final season = kboCurrentSeason();
+    final recovered = TeamRecordsBundle(
+      players: const [],
+      teamStats: TeamStats(
+        teamId: 'LG',
+        season: season,
+        hitting: const {},
+        pitching: const {},
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          teamRecordsProvider.overrideWith((ref, key) async {
+            attempts += 1;
+            if (attempts == 1) {
+              throw StateError('temporary records failure');
+            }
+            return recovery.future;
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const RecordsScreen(teamId: 'LG'),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.text('다시 시도'));
+    await tester.pump();
+
+    expect(attempts, 2);
+    final refreshButton = find.byKey(const ValueKey('records-team-refresh'));
+    expect(tester.widget<IconButton>(refreshButton).onPressed, isNull);
+
+    recovery.complete(recovered);
+    await tester.pumpAndSettle();
+
+    expect(attempts, 2);
+    expect(tester.widget<IconButton>(refreshButton).onPressed, isNotNull);
   });
 }

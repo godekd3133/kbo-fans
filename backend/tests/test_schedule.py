@@ -85,6 +85,13 @@ class _FailingMainCrawler:
         raise RuntimeError("main unavailable")
 
 
+class _NoCurrentScheduleSnapshotLoadStore(JsonSnapshotStore):
+    def load(self, namespace: str, key: str):
+        if namespace == "schedule":
+            raise AssertionError("current month must not load schedule snapshot")
+        return super().load(namespace, key)
+
+
 class _BlockingScheduleCrawler:
     def __init__(self) -> None:
         self.calls = 0
@@ -208,6 +215,60 @@ def test_current_day_schedule_status_is_enriched_from_main_game(tmp_path) -> Non
     )
 
     payload = service.get_month_schedule(today[:7])
+    game = payload["days"][0]["games"][0]
+
+    assert game["status"] == "LIVE"
+    assert game["awayScore"] == 4
+    assert game["homeScore"] == 2
+
+
+def test_current_month_schedule_skips_historical_snapshot_read(tmp_path) -> None:
+    service = ScheduleService(
+        schedule_crawler=_StubScheduleCrawler(),
+        main_crawler=_StubMainCrawler(),
+        snapshot_store=_NoCurrentScheduleSnapshotLoadStore(str(tmp_path)),
+    )
+
+    payload = service.get_month_schedule(current_kbo_date().isoformat()[:7])
+
+    assert payload["month"] == current_kbo_date().isoformat()[:7]
+
+
+def test_home_month_schedule_skips_current_day_main_enrichment(tmp_path) -> None:
+    service = ScheduleService(
+        schedule_crawler=_StubScheduleCrawler(),
+        main_crawler=_FailingMainCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    payload = service.get_month_schedule_for_home(current_kbo_date().isoformat()[:7])
+    game = payload["days"][0]["games"][0]
+
+    assert game["status"] == "SCHEDULED"
+    assert game["awayScore"] is None
+    assert game["homeScore"] is None
+
+
+def test_home_month_schedule_keeps_current_failure_visible(tmp_path) -> None:
+    service = ScheduleService(
+        schedule_crawler=_FailingScheduleCrawler(),
+        main_crawler=_StubMainCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    with pytest.raises(RuntimeError, match="schedule unavailable"):
+        service.get_month_schedule_for_home(current_kbo_date().isoformat()[:7])
+
+
+def test_normal_schedule_enriches_home_month_cache_before_returning(tmp_path) -> None:
+    service = ScheduleService(
+        schedule_crawler=_StubScheduleCrawler(),
+        main_crawler=_StubMainCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    service.get_month_schedule_for_home(current_kbo_date().isoformat()[:7])
+    payload = service.get_month_schedule(current_kbo_date().isoformat()[:7])
     game = payload["days"][0]["games"][0]
 
     assert game["status"] == "LIVE"

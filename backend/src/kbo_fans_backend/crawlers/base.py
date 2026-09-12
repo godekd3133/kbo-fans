@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 import time
 from html import unescape
 from typing import Any, Dict, Optional
@@ -19,12 +20,15 @@ class BaseCrawler:
     _CIRCUIT_BREAKER_STATE_TTL_SECONDS = 600
     _CIRCUIT_BREAKER_MAX_KEYS = 4096
     _breaker_state: Dict[str, Dict[str, Any]] = {}
+    _breaker_lock = threading.Lock()
 
     def __init__(self) -> None:
         settings = get_settings()
         self.base_url = settings.kbo_base_url
         self.timeout = settings.request_timeout_seconds
         self.session = Session()
+        self._session_owner_thread_id = threading.get_ident()
+        self._session_local = threading.local()
         self.session.headers.update(
             {
                 "User-Agent": (
@@ -35,43 +39,72 @@ class BaseCrawler:
             }
         )
 
+    def _session_for_current_thread(self) -> Session:
+        if threading.get_ident() == self._session_owner_thread_id:
+            return self.session
+
+        session = getattr(self._session_local, "session", None)
+        if session is None:
+            session = Session()
+            session.headers.update(self.session.headers)
+            self._session_local.session = session
+        return session
+
     def _request(self, method: str, url: str, *, breaker_key: Optional[str] = None, **kwargs):
         now = time.monotonic()
-        self._prune_breaker_state(now)
         key = breaker_key or url
-        state = self._breaker_state.get(key, {"failures": 0, "opened_until": 0.0})
-        opened_until = state.get("opened_until", 0.0)
-        if opened_until and now < opened_until:
-            raise RuntimeError(f"Circuit open for {key}")
+        with self._breaker_lock:
+            self._prune_breaker_state_unlocked(now)
+            state = dict(self._breaker_state.get(key, {"failures": 0, "opened_until": 0.0}))
+            opened_until = state.get("opened_until", 0.0)
+            if opened_until and now < opened_until:
+                raise RuntimeError(f"Circuit open for {key}")
 
         try:
-            response = self.session.request(method, url, timeout=self.timeout, **kwargs)
+            response = self._session_for_current_thread().request(
+                method,
+                url,
+                timeout=self.timeout,
+                **kwargs,
+            )
             response.raise_for_status()
-            self._breaker_state[key] = {
-                "failures": 0,
-                "opened_until": 0.0,
-                "updated_at": now,
-            }
+            with self._breaker_lock:
+                self._breaker_state[key] = {
+                    "failures": 0,
+                    "opened_until": 0.0,
+                    "updated_at": now,
+                }
             return response
         except Exception:
-            failures = int(state.get("failures", 0)) + 1
-            opened_until = 0.0
+            with self._breaker_lock:
+                current_state = self._breaker_state.get(
+                    key,
+                    {"failures": 0, "opened_until": 0.0},
+                )
+                failures = int(current_state.get("failures", 0)) + 1
+                opened_until = 0.0
+                if failures >= self._CIRCUIT_BREAKER_THRESHOLD:
+                    opened_until = now + self._CIRCUIT_BREAKER_COOLDOWN_SECONDS
+                self._breaker_state[key] = {
+                    "failures": failures,
+                    "opened_until": opened_until,
+                    "updated_at": now,
+                }
             if failures >= self._CIRCUIT_BREAKER_THRESHOLD:
-                opened_until = now + self._CIRCUIT_BREAKER_COOLDOWN_SECONDS
                 logger.warning(
                     "KBO circuit opened for %s after %s failures",
                     key,
                     failures,
                 )
-            self._breaker_state[key] = {
-                "failures": failures,
-                "opened_until": opened_until,
-                "updated_at": now,
-            }
             raise
 
     @classmethod
     def _prune_breaker_state(cls, now: float) -> None:
+        with cls._breaker_lock:
+            cls._prune_breaker_state_unlocked(now)
+
+    @classmethod
+    def _prune_breaker_state_unlocked(cls, now: float) -> None:
         for key, state in list(cls._breaker_state.items()):
             opened_until = float(state.get("opened_until", 0.0) or 0.0)
             updated_at = float(state.get("updated_at", 0.0) or 0.0)

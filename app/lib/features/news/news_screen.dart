@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/router/app_route_sanitizer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/kbo_time.dart';
+import '../../core/widgets/app_design_system.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
@@ -36,6 +37,7 @@ class NewsScreen extends ConsumerStatefulWidget {
 
 class _NewsScreenState extends ConsumerState<NewsScreen> {
   _NewsFilter _filter = _NewsFilter.all;
+  bool _refreshing = false;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +51,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
       body: SafeArea(
         child: AppPageFrame(
           child: RefreshIndicator(
-            color: AppColors.live,
+            color: AppTheme.colorsOf(context).accent,
             onRefresh: _refresh,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -57,7 +59,8 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
               children: [
                 _NewsHeader(
                   displayDate: displayDate,
-                  onRefresh: () => unawaited(_refresh()),
+                  refreshing: _refreshing,
+                  onRefresh: _refreshing ? null : () => unawaited(_refresh()),
                 ),
                 const SizedBox(height: 14),
                 AppMotionSwitcher(
@@ -69,7 +72,9 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
                     error: (error, stackTrace) => KeyedSubtree(
                       key: const ValueKey('news-error'),
                       child: _NewsErrorState(
-                        onRetry: () => unawaited(_refresh()),
+                        onRetry: _refreshing
+                            ? null
+                            : () => unawaited(_refresh()),
                       ),
                     ),
                     data: (aggregate) => KeyedSubtree(
@@ -94,67 +99,58 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
   }
 
   Future<void> _refresh() async {
+    if (_refreshing) {
+      return;
+    }
+    setState(() => _refreshing = true);
     final today = ref.read(kboDateProvider);
     final myTeamId = ref.read(myTeamProvider);
     final aggregateKey = '$today|${myTeamId ?? ''}';
-    ref.invalidate(homeAggregateProvider(aggregateKey));
     try {
+      ref.invalidate(homeAggregateProvider(aggregateKey));
       await ref.read(homeAggregateProvider(aggregateKey).future);
     } catch (_) {
       // The provider owns the rendered error state; pull-to-refresh should settle.
+    } finally {
+      if (mounted) {
+        setState(() => _refreshing = false);
+      }
     }
   }
 }
 
 class _NewsHeader extends StatelessWidget {
   final String displayDate;
-  final VoidCallback onRefresh;
+  final VoidCallback? onRefresh;
+  final bool refreshing;
 
-  const _NewsHeader({required this.displayDate, required this.onRefresh});
+  const _NewsHeader({
+    required this.displayDate,
+    required this.onRefresh,
+    required this.refreshing,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '$displayDate 기준',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSupporting,
-                  fontWeight: FontWeight.w700,
+    return AppPageHeader(
+      eyebrow: '$displayDate 기준',
+      title: '데이터 브리핑',
+      subtitle: '지금 볼 경기부터, 기록의 의미까지',
+      trailing: IconButton(
+        key: const ValueKey('news-refresh'),
+        tooltip: '데이터 브리핑 새로고침',
+        onPressed: onRefresh,
+        icon: refreshing
+            ? SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppTheme.colorsOf(context).accent,
                 ),
-              ),
-              const SizedBox(height: 5),
-              const Text(
-                '데이터 브리핑',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  height: 1.05,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '지금 볼 경기부터, 기록의 의미까지',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  height: 1.35,
-                ),
-              ),
-            ],
-          ),
-        ),
-        IconButton(
-          tooltip: '데이터 브리핑 새로고침',
-          onPressed: onRefresh,
-          icon: const Icon(Icons.refresh_rounded),
-        ),
-      ],
+              )
+            : const Icon(Icons.refresh_rounded),
+      ),
     );
   }
 }
@@ -167,6 +163,7 @@ class _FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     final useLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
 
     Widget buildTab(_NewsFilter filter) => AppPressable(
@@ -182,9 +179,9 @@ class _FilterBar extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
+        border: Border.all(color: colors.divider),
       ),
       child: useLargeText
           ? Padding(
@@ -227,7 +224,9 @@ class _FilterTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     return AnimatedContainer(
+      key: ValueKey('news-filter-${filter.name}'),
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       margin: const EdgeInsets.all(4),
@@ -237,12 +236,12 @@ class _FilterTab extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: selected
-            ? AppColors.live.withValues(alpha: 0.16)
+            ? colors.accent.withValues(alpha: 0.16)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: selected
-              ? AppColors.live.withValues(alpha: 0.55)
+              ? colors.accent.withValues(alpha: 0.55)
               : Colors.transparent,
         ),
       ),
@@ -253,7 +252,7 @@ class _FilterTab extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w900,
-          color: selected ? AppColors.textPrimary : AppColors.textSecondary,
+          color: selected ? colors.accent : colors.textSecondary,
         ),
       ),
     );
@@ -791,7 +790,7 @@ class _NewsLoadingList extends StatelessWidget {
 }
 
 class _NewsErrorState extends StatelessWidget {
-  final VoidCallback onRetry;
+  final VoidCallback? onRetry;
 
   const _NewsErrorState({required this.onRetry});
 
@@ -851,7 +850,7 @@ class _StateCard extends StatelessWidget {
   final String title;
   final String body;
   final String actionLabel;
-  final VoidCallback onAction;
+  final VoidCallback? onAction;
 
   const _StateCard({
     required this.icon,
@@ -1506,7 +1505,7 @@ class _NewsCardData {
           : item.eyebrow.isEmpty
           ? _sourceLabelForRoute(item.route, filter)
           : item.eyebrow,
-      title: item.title,
+      title: _quickItemTitle(item),
       subtitle: isTicket
           ? _ticketBriefSubtitle(item, ticketInfo)
           : item.subtitle.isEmpty
@@ -1522,6 +1521,20 @@ class _NewsCardData {
       imageUrl: item.imageUrl,
       fallbackLabel: item.fallbackLabel,
     );
+  }
+
+  static String _quickItemTitle(HomeQuickItem item) {
+    if (!item.subtitle.contains('예정')) {
+      return item.title;
+    }
+
+    final match = RegExp(
+      r'^\s*(.+?)\s+\d+\s*:\s*\d+\s+(.+?)\s*$',
+    ).firstMatch(item.title);
+    if (match == null) {
+      return item.title;
+    }
+    return '${match.group(1)} vs ${match.group(2)}';
   }
 
   static _NewsCardData? fromStandingsPreview(List<TeamStanding> standings) {

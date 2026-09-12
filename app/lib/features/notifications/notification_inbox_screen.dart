@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/router/app_route_sanitizer.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_design_system.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
@@ -52,6 +53,8 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
   Object? _settingsError;
   bool _entriesLoading = true;
   bool _settingsLoading = true;
+  Future<void>? _entriesLoadInFlight;
+  Future<void>? _settingsLoadInFlight;
 
   @override
   void initState() {
@@ -63,7 +66,21 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
     await Future.wait<void>([_loadEntries(), _loadSettings()]);
   }
 
-  Future<void> _loadEntries() async {
+  Future<void> _loadEntries() {
+    final inFlight = _entriesLoadInFlight;
+    if (inFlight != null) {
+      return inFlight;
+    }
+    final request = _loadEntriesOnce();
+    _entriesLoadInFlight = request;
+    return request.whenComplete(() {
+      if (identical(_entriesLoadInFlight, request)) {
+        _entriesLoadInFlight = null;
+      }
+    });
+  }
+
+  Future<void> _loadEntriesOnce() async {
     if (mounted) {
       setState(() {
         _entriesLoading = true;
@@ -92,7 +109,21 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
     }
   }
 
-  Future<void> _loadSettings() async {
+  Future<void> _loadSettings() {
+    final inFlight = _settingsLoadInFlight;
+    if (inFlight != null) {
+      return inFlight;
+    }
+    final request = _loadSettingsOnce();
+    _settingsLoadInFlight = request;
+    return request.whenComplete(() {
+      if (identical(_settingsLoadInFlight, request)) {
+        _settingsLoadInFlight = null;
+      }
+    });
+  }
+
+  Future<void> _loadSettingsOnce() async {
     if (mounted) {
       setState(() {
         _settingsLoading = true;
@@ -167,7 +198,7 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
       body: SafeArea(
         child: AppPageFrame(
           child: RefreshIndicator(
-            color: AppColors.live,
+            color: AppTheme.colorsOf(context).accent,
             onRefresh: _load,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -291,49 +322,21 @@ class _InboxHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        IconButton(
-          tooltip: '뒤로',
-          onPressed: onBack,
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+    return AppPageHeader(
+      eyebrow: '푸시 알림',
+      title: '알림함',
+      subtitle: '경기와 브리프에서 놓친 신호를 한 곳에서 확인합니다.',
+      onBack: onBack,
+      trailing: TextButton(
+        onPressed: onMarkAllRead,
+        child: Text(
+          unreadCount == null
+              ? '확인 불가'
+              : unreadCount == 0
+              ? '정리됨'
+              : '모두 읽음',
         ),
-        const SizedBox(width: 2),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '푸시 알림',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textSupporting,
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                '알림함',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  height: 1.05,
-                ),
-              ),
-            ],
-          ),
-        ),
-        TextButton(
-          onPressed: onMarkAllRead,
-          child: Text(
-            unreadCount == null
-                ? '확인 불가'
-                : unreadCount == 0
-                ? '정리됨'
-                : '모두 읽음',
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -548,6 +551,7 @@ class _InboxFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     return SizedBox(
       height: 44,
       child: ListView.separated(
@@ -566,10 +570,10 @@ class _InboxFilterBar extends StatelessWidget {
               curve: Curves.easeOutCubic,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.textPrimary : AppColors.card,
+                color: isSelected ? colors.accent : colors.card,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isSelected ? AppColors.textPrimary : AppColors.divider,
+                  color: isSelected ? colors.accent : colors.divider,
                 ),
               ),
               alignment: Alignment.center,
@@ -579,8 +583,8 @@ class _InboxFilterBar extends StatelessWidget {
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
                   color: isSelected
-                      ? AppColors.background
-                      : AppColors.textSecondary,
+                      ? colors.readableForegroundOn(colors.accent)
+                      : colors.textSecondary,
                 ),
               ),
             ),

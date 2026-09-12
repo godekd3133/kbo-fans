@@ -95,7 +95,7 @@ class _LineupTabState extends ConsumerState<LineupTab> {
             constraints: BoxConstraints(maxWidth: maxWidth),
             child: RefreshIndicator(
               onRefresh: onRefresh ?? () async {},
-              color: AppColors.live,
+              color: AppTheme.colorsOf(context).accent,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
@@ -105,7 +105,9 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                       key: ValueKey('lineup-loading'),
                       padding: EdgeInsets.all(28),
                       child: Center(
-                        child: CircularProgressIndicator(color: AppColors.live),
+                        child: CircularProgressIndicator(
+                          color: AppTheme.colorsOf(context).accent,
+                        ),
                       ),
                     ),
                     error: (error, _) => _buildLineupErrorState(error),
@@ -220,25 +222,8 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                             const _LineupStaleNotice(),
                             const SizedBox(height: 10),
                           ],
-                          if (hasComparisonData) ...[
-                            AppMotionListItem(
-                              index: 0,
-                              child: _MatchupCompareSection(
-                                data: compareData,
-                                awayAccent: colors.readableAccent(
-                                  KboTeams.byId(awayTeamId)?.primaryColor ??
-                                      colors.live,
-                                ),
-                                homeAccent: colors.readableAccent(
-                                  KboTeams.byId(homeTeamId)?.primaryColor ??
-                                      colors.accent,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
                           AppMotionListItem(
-                            index: hasComparisonData ? 1 : 0,
+                            index: 0,
                             child: _CompareSection(
                               title: '선발 라인업',
                               left: _LineupColumn(
@@ -279,6 +264,23 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                               ),
                             ),
                           ),
+                          if (hasComparisonData) ...[
+                            const SizedBox(height: 16),
+                            AppMotionListItem(
+                              index: 1,
+                              child: _MatchupCompareSection(
+                                data: compareData,
+                                awayAccent: colors.readableAccent(
+                                  KboTeams.byId(awayTeamId)?.primaryColor ??
+                                      colors.live,
+                                ),
+                                homeAccent: colors.readableAccent(
+                                  KboTeams.byId(homeTeamId)?.primaryColor ??
+                                      colors.accent,
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       );
                     },

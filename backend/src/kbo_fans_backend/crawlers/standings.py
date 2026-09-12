@@ -5,6 +5,7 @@ from datetime import date, datetime
 from typing import Any
 
 from kbo_fans_backend.crawlers.base import BaseCrawler
+from kbo_fans_backend.utils.kbo_time import current_kbo_year
 
 
 class StandingsCrawler(BaseCrawler):
@@ -22,15 +23,31 @@ class StandingsCrawler(BaseCrawler):
             breaker_key="kbo:standings_annual",
         )
         self._require_available_season(initial_html, season)
-        html = self._post_text(
-            url,
-            breaker_key="kbo:standings_annual",
-            data=self._build_web_form_payload(
-                initial_html,
-                overrides={self._SEASON_FIELD: str(season)},
-                event_target=self._SEASON_FIELD,
-            ),
-        )
+        use_initial_html = False
+        if season == current_kbo_year():
+            try:
+                initial_source_date = self._source_date(initial_html)
+                use_initial_html = (
+                    self._source_season(initial_html) == season
+                    and initial_source_date.year == season
+                )
+            except ValueError:
+                # A malformed or incomplete initial page must still use the
+                # established WebForms POST path so validation remains visible.
+                use_initial_html = False
+
+        if use_initial_html:
+            html = initial_html
+        else:
+            html = self._post_text(
+                url,
+                breaker_key="kbo:standings_annual",
+                data=self._build_web_form_payload(
+                    initial_html,
+                    overrides={self._SEASON_FIELD: str(season)},
+                    event_target=self._SEASON_FIELD,
+                ),
+            )
 
         source_season = self._source_season(html)
         source_date = self._source_date(html)

@@ -52,6 +52,43 @@ void main() {
     }
   });
 
+  testWidgets('명시 label이 있는 AppPressable은 부모 형제 텍스트와 합쳐지지 않는다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Row(
+              children: [
+                AppPressable(
+                  key: const ValueKey('header-back'),
+                  onTap: () {},
+                  semanticLabel: '뒤로',
+                  child: const SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Icon(Icons.arrow_back),
+                  ),
+                ),
+                const Expanded(
+                  child: Column(children: [Text('푸시 알림'), Text('알림함 설명')]),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final data = tester
+          .getSemantics(find.byKey(const ValueKey('header-back')))
+          .getSemanticsData();
+      expect(data.label, '뒤로');
+      expect(data.hasAction(SemanticsAction.tap), isTrue);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets('AppPressable은 활성 및 비활성 상태 모두 최소 히트 영역을 제공한다', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

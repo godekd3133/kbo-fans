@@ -1,6 +1,7 @@
 import pytest
 
 from kbo_fans_backend.crawlers.standings import StandingsCrawler
+from kbo_fans_backend.utils.kbo_time import current_kbo_year
 
 
 class _HtmlStandingsCrawler(StandingsCrawler):
@@ -79,6 +80,68 @@ def test_standings_crawler_posts_requested_season_and_preserves_streak() -> None
     assert payload["sourceSeason"] == 2025
     assert payload["sourceDate"] == "2025-12-31"
     assert payload["updatedAt"] == "2025-12-31"
+
+
+def test_current_season_standings_uses_initial_get_without_post(monkeypatch) -> None:
+    season = current_kbo_year()
+    html = _standings_html(
+        selected_season=season,
+        source_season=season,
+        source_date=f"{season}1231",
+    )
+    crawler = _HtmlStandingsCrawler(html, html)
+
+    def fail_post(*args, **kwargs):
+        raise AssertionError("current standings should not issue a season POST")
+
+    monkeypatch.setattr(crawler, "_post_text", fail_post)
+
+    payload = crawler.get_standings(season)
+
+    assert payload["season"] == season
+    assert payload["standings"][0]["teamId"] == "LG"
+
+
+def test_current_season_standings_posts_when_initial_source_is_not_current(monkeypatch) -> None:
+    season = current_kbo_year()
+    initial_html = _standings_html(
+        selected_season=season - 1,
+        source_season=season - 1,
+        source_date=f"{season - 1}1231",
+    )
+    response_html = _standings_html(
+        selected_season=season,
+        source_season=season,
+        source_date=f"{season}1231",
+    )
+    crawler = _HtmlStandingsCrawler(initial_html, response_html)
+
+    payload = crawler.get_standings(season)
+
+    assert crawler.post_data is not None
+    assert crawler.post_data[StandingsCrawler._SEASON_FIELD] == str(season)
+    assert payload["sourceSeason"] == season
+
+
+def test_current_season_standings_posts_when_initial_source_date_is_stale(monkeypatch) -> None:
+    season = current_kbo_year()
+    initial_html = _standings_html(
+        selected_season=season,
+        source_season=season,
+        source_date=f"{season - 1}1231",
+    )
+    response_html = _standings_html(
+        selected_season=season,
+        source_season=season,
+        source_date=f"{season}1231",
+    )
+    crawler = _HtmlStandingsCrawler(initial_html, response_html)
+
+    payload = crawler.get_standings(season)
+
+    assert crawler.post_data is not None
+    assert crawler.post_data[StandingsCrawler._SEASON_FIELD] == str(season)
+    assert payload["sourceDate"] == f"{season}-12-31"
 
 
 def test_standings_crawler_rejects_source_season_mismatch() -> None:

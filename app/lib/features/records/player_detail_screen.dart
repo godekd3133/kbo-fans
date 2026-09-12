@@ -9,12 +9,14 @@ import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/kbo_time.dart';
 import '../../core/utils/kbo_player_image_cache.dart';
+import '../../core/widgets/app_design_system.dart';
 import '../../core/widgets/app_motion.dart';
+import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/baseball_metric_guide.dart';
 import '../../data/models/player.dart';
 import '../../data/providers.dart';
 
-class PlayerDetailScreen extends ConsumerWidget {
+class PlayerDetailScreen extends ConsumerStatefulWidget {
   final String playerId;
   final int season;
   final bool followsCurrentSeason;
@@ -27,7 +29,18 @@ class PlayerDetailScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PlayerDetailScreen> createState() => _PlayerDetailScreenState();
+}
+
+class _PlayerDetailScreenState extends ConsumerState<PlayerDetailScreen> {
+  bool _refreshing = false;
+
+  String get playerId => widget.playerId;
+  int get season => widget.season;
+  bool get followsCurrentSeason => widget.followsCurrentSeason;
+
+  @override
+  Widget build(BuildContext context) {
     final effectiveSeason = followsCurrentSeason
         ? kboSeasonFromDateKey(ref.watch(kboDateProvider)) ?? season
         : season;
@@ -35,8 +48,20 @@ class PlayerDetailScreen extends ConsumerWidget {
       playerDetailProvider('$playerId|$effectiveSeason'),
     );
     Future<void> refreshPlayer() async {
-      ref.invalidate(playerDetailProvider('$playerId|$effectiveSeason'));
-      await ref.read(playerDetailProvider('$playerId|$effectiveSeason').future);
+      if (_refreshing) {
+        return;
+      }
+      setState(() => _refreshing = true);
+      try {
+        ref.invalidate(playerDetailProvider('$playerId|$effectiveSeason'));
+        await ref.read(
+          playerDetailProvider('$playerId|$effectiveSeason').future,
+        );
+      } finally {
+        if (mounted) {
+          setState(() => _refreshing = false);
+        }
+      }
     }
 
     Future<void> retryPlayer() async {
@@ -49,57 +74,61 @@ class PlayerDetailScreen extends ConsumerWidget {
 
     final router = GoRouter.maybeOf(context);
     final navigator = Navigator.of(context);
+    void goBack() {
+      if (router?.canPop() == true) {
+        router!.pop();
+      } else if (router != null) {
+        router.go('/records');
+      } else if (navigator.canPop()) {
+        navigator.pop();
+      }
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        leading: Semantics(
-          label: '뒤로',
-          button: true,
-          child: IconButton(
-            tooltip: '뒤로',
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              if (router?.canPop() == true) {
-                router!.pop();
-              } else if (router != null) {
-                router.go('/records');
-              } else if (navigator.canPop()) {
-                navigator.pop();
-              }
-            },
-          ),
-        ),
-        title: Text('선수 프로필 · $effectiveSeason'),
-        actions: [
-          IconButton(
-            tooltip: '기록 읽는 법',
-            onPressed: () => showBaseballMetricGuide(context),
-            icon: const Icon(Icons.help_outline_rounded),
-          ),
-        ],
-      ),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: refreshPlayer,
-          color: AppColors.live,
-          child: AppMotionSwitcher(
-            child: playerAsync.when(
-              loading: () => const KeyedSubtree(
-                key: ValueKey('player-detail-loading'),
-                child: _PlayerDetailLoading(),
-              ),
-              error: (_, stackTrace) => KeyedSubtree(
-                key: ValueKey('player-detail-error'),
-                child: _PlayerDetailError(
-                  onRetry: () => unawaited(retryPlayer()),
-                  onRecords: () => context.go('/records'),
+        child: AppPageFrame(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: AppPageHeader(
+                  eyebrow: '기록실 · 선수 상세',
+                  title: '선수 프로필 · $effectiveSeason',
+                  subtitle: '대표 기록과 최근 경기 흐름을 확인합니다.',
+                  onBack: goBack,
+                  trailing: IconButton(
+                    tooltip: '기록 읽는 법',
+                    onPressed: () => showBaseballMetricGuide(context),
+                    icon: const Icon(Icons.help_outline_rounded),
+                  ),
                 ),
               ),
-              data: (player) => KeyedSubtree(
-                key: ValueKey('player-detail-data-${player.id}'),
-                child: _buildBody(player, season: effectiveSeason),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: refreshPlayer,
+                  color: AppTheme.colorsOf(context).accent,
+                  child: AppMotionSwitcher(
+                    child: playerAsync.when(
+                      loading: () => const KeyedSubtree(
+                        key: ValueKey('player-detail-loading'),
+                        child: _PlayerDetailLoading(),
+                      ),
+                      error: (_, stackTrace) => KeyedSubtree(
+                        key: ValueKey('player-detail-error'),
+                        child: _PlayerDetailError(
+                          onRetry: () => unawaited(retryPlayer()),
+                          onRecords: () => context.go('/records'),
+                        ),
+                      ),
+                      data: (player) => KeyedSubtree(
+                        key: ValueKey('player-detail-data-${player.id}'),
+                        child: _buildBody(player, season: effectiveSeason),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -131,12 +160,11 @@ class PlayerDetailScreen extends ConsumerWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
       children: [
-        Container(
+        AppSurface(
           padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(12),
-          ),
+          radius: AppUi.heroRadius,
+          accentColor: team?.primaryColor,
+          showAccentRail: team != null,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -352,12 +380,9 @@ class PlayerDetailScreen extends ConsumerWidget {
   }
 
   Widget _section({required String title, required Widget child}) {
-    return Container(
+    return AppSurface(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-      ),
+      radius: AppUi.compactRadius,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -660,14 +685,13 @@ class _PlayerDetailLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         SizedBox(
           height: 420,
-          child: Center(
-            child: CircularProgressIndicator(color: AppColors.live),
-          ),
+          child: Center(child: CircularProgressIndicator(color: colors.accent)),
         ),
       ],
     );

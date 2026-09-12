@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import concurrent.futures
 import logging
 import threading
+from contextlib import contextmanager
 from copy import deepcopy
 from datetime import date as date_type
-from typing import Any, Optional
+from typing import Any, Iterator, Optional
 
 from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.crawlers.boxscore import BoxscoreCrawler
@@ -17,9 +19,26 @@ from kbo_fans_backend.services.schedule import ScheduleService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
 from kbo_fans_backend.utils.singleflight import SingleFlight
+from kbo_fans_backend.utils.source_cache import KboSourceCache
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _boxscore_executor(
+    max_workers: int,
+) -> Iterator[concurrent.futures.ThreadPoolExecutor]:
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+    try:
+        yield executor
+    except BaseException:
+        # Current status and official boxscore are independent. If either
+        # fails, do not wait for a sibling request that is still in flight.
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise
+    else:
+        executor.shutdown(wait=True)
 
 
 class BoxscoreService:
@@ -35,8 +54,11 @@ class BoxscoreService:
         player_stats_service: Optional[PlayerStatsService] = None,
         snapshot_store: Optional[JsonSnapshotStore] = None,
         runtime_cache_max_age_seconds: Optional[float] = None,
+        main_source: Optional[KboSourceCache[str, list[dict[str, Any]]]] = None,
     ) -> None:
-        self.crawler = crawler or BoxscoreCrawler()
+        self.crawler = crawler or BoxscoreCrawler(main_source=main_source)
+        if main_source is not None and isinstance(self.crawler, BoxscoreCrawler):
+            self.crawler.main_source = main_source
         self.schedule_service = schedule_service or ScheduleService()
         self.player_stats_service = player_stats_service or PlayerStatsService()
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
@@ -83,12 +105,17 @@ class BoxscoreService:
         return payload
 
     def _get_boxscore_uncached(self, game_id: str) -> dict[str, Any]:
-        game_status = self._game_status(game_id)
+        is_past_game = self._is_past_game_id(game_id)
+        game_status = self._game_status(game_id) if is_past_game else None
         is_historical_final = self._is_historical_final(game_id, game_status)
-        can_use_historical_snapshot = self._is_past_game_id(game_id) and (
+        can_use_historical_snapshot = is_past_game and (
             is_historical_final or game_status in {None, "UNKNOWN"}
         )
-        snapshot = self.snapshot_store.load_payload("boxscore", game_id)
+        snapshot = (
+            self.snapshot_store.load_payload("boxscore", game_id)
+            if is_past_game
+            else None
+        )
         if can_use_historical_snapshot and self._is_valid_historical_snapshot(
             snapshot,
             game_id,
@@ -97,7 +124,10 @@ class BoxscoreService:
                 return snapshot
             return self._enrich_with_budget(snapshot, game_id)
 
-        payload = self.crawler.get_boxscore(game_id)
+        if is_past_game:
+            payload = self.crawler.get_boxscore(game_id)
+        else:
+            game_status, payload = self._fetch_current_status_and_boxscore(game_id)
 
         payload = self._normalize_crawler_payload(payload, game_id)
         if self._is_verified_official_payload(payload, game_id):
@@ -111,9 +141,9 @@ class BoxscoreService:
             # slow player crawl cannot block the data response.
             if game_status == "FINAL":
                 self.snapshot_store.save("boxscore", game_id, payload)
-            if not self._is_past_game_id(game_id):
+            if not is_past_game:
                 self.snapshot_store.save(self._RUNTIME_CACHE_NAMESPACE, game_id, payload)
-            if self._is_past_game_id(game_id):
+            if is_past_game:
                 enriched_payload = self._enrich_with_budget(payload, game_id)
                 if enriched_payload != payload:
                     self.snapshot_store.save("boxscore", game_id, enriched_payload)
@@ -122,12 +152,12 @@ class BoxscoreService:
 
         if self._is_live_context_payload(payload, game_id):
             if game_status == "LIVE" or (
-                game_status in {None, "UNKNOWN"} and not self._is_past_game_id(game_id)
+                game_status in {None, "UNKNOWN"} and not is_past_game
             ):
                 # Live context rows are also useful before the official
                 # boxscore is published. Keep their first response bounded by
                 # the main/relay context crawl; player metadata is optional.
-                if self._is_past_game_id(game_id):
+                if is_past_game:
                     return self._enrich_with_budget(payload, game_id)
                 self.snapshot_store.save(self._RUNTIME_CACHE_NAMESPACE, game_id, payload)
                 return payload
@@ -165,6 +195,17 @@ class BoxscoreService:
                     pass
 
         return payload
+
+    def _fetch_current_status_and_boxscore(
+        self,
+        game_id: str,
+    ) -> tuple[Optional[str], dict[str, Any]]:
+        with _boxscore_executor(max_workers=2) as executor:
+            status_future = executor.submit(self._game_status, game_id)
+            payload_future = executor.submit(self.crawler.get_boxscore, game_id)
+            for future in concurrent.futures.as_completed((status_future, payload_future)):
+                future.result()
+            return status_future.result(), payload_future.result()
 
     @classmethod
     def _is_cacheable_payload(cls, payload: Any, game_id: str) -> bool:

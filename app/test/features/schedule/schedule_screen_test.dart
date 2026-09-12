@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
@@ -75,6 +76,56 @@ void main() {
       findsNothing,
     );
     expect(requests, requestsBefore);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('일정의 일반 선택은 경기 상태색과 분리된 액션 블루를 사용한다', (tester) async {
+    final now = kboCivilDateTime();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+          scheduleProvider.overrideWith(
+            (_, yearMonth) async => _renewalScheduleForMonth(yearMonth),
+          ),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const ScheduleScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final viewMode = tester.widget<Container>(
+      find.byKey(const ValueKey('schedule-view-내 팀 먼저 보기')),
+    );
+    final viewDecoration = viewMode.decoration! as BoxDecoration;
+    expect(
+      viewDecoration.color,
+      AppTheme.darkColors.accent.withValues(alpha: 0.14),
+    );
+    expect(
+      viewDecoration.border?.top.color,
+      AppTheme.darkColors.accent.withValues(alpha: 0.45),
+    );
+
+    final teamFilter = tester.widget<Container>(
+      find.byKey(const ValueKey('schedule-filter-전체')),
+    );
+    final filterDecoration = teamFilter.decoration! as BoxDecoration;
+    expect(
+      filterDecoration.border?.top.color,
+      AppTheme.darkColors.accent.withValues(alpha: 0.62),
+    );
+
+    final selectedDate = tester.widget<AnimatedContainer>(
+      find.byKey(
+        ValueKey('schedule-date-cell-${now.year}-${now.month}-${now.day}'),
+      ),
+    );
+    final dateDecoration = selectedDate.decoration! as BoxDecoration;
+    expect(
+      dateDecoration.border?.top.color,
+      AppTheme.darkColors.accent.withValues(alpha: 0.82),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -663,6 +714,38 @@ void main() {
     expect(tester.getSize(find.byTooltip('이전 달')), const Size(44, 44));
     expect(tester.getSize(find.byTooltip('다음 달')), const Size(44, 44));
     expect(tester.getSize(find.byTooltip('오늘로 이동')), const Size(44, 44));
+  });
+
+  testWidgets('달력 헤더 action은 제목과 분리된 단일 semantics를 제공한다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      final now = kboCivilDateTime();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+            scheduleProvider.overrideWith(
+              (_, yearMonth) async => _myTeamScheduleForToday(now, yearMonth),
+            ),
+          ],
+          child: const MaterialApp(home: ScheduleScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      for (final label in ['이전 달', '다음 달', '오늘로 이동']) {
+        final control = find.descendant(
+          of: find.byTooltip(label),
+          matching: find.byType(AppPressable),
+        );
+        final data = tester.getSemantics(control).getSemanticsData();
+        expect(data.label, label);
+        expect(data.flagsCollection.isButton, isTrue);
+        expect(data.hasAction(SemanticsAction.tap), isTrue);
+      }
+    } finally {
+      semantics.dispose();
+    }
   });
 
   testWidgets('구장별 일정 API 실패는 빈 일정이 아니라 재시도 오류로 구분한다', (tester) async {

@@ -33,6 +33,26 @@ void main() {
     expect(AppTheme.dark.brightness, Brightness.dark);
   });
 
+  test('default bottom navigation selection uses the action accent', () {
+    final palettes = <ThemeData, AppThemeColors>{
+      AppTheme.dark: AppTheme.darkColors,
+      AppTheme.light: AppTheme.lightColors,
+      AppTheme.highContrastDark: AppTheme.highContrastDarkColors,
+      AppTheme.highContrastLight: AppTheme.highContrastLightColors,
+    };
+
+    for (final entry in palettes.entries) {
+      expect(
+        entry.key.bottomNavigationBarTheme.selectedItemColor,
+        entry.value.accent,
+      );
+      expect(
+        entry.key.bottomNavigationBarTheme.selectedItemColor,
+        isNot(entry.value.live),
+      );
+    }
+  });
+
   test('high contrast themes expose their own distinct color palettes', () {
     final lightColors = AppTheme.light.extension<AppThemeColors>();
     final darkColors = AppTheme.dark.extension<AppThemeColors>();

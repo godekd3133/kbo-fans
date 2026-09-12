@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -129,6 +130,11 @@ void main() {
       final namedBackButton = find.byTooltip('뒤로');
       expect(namedBackButton, findsOneWidget);
       expect(find.bySemanticsLabel('뒤로'), findsOneWidget);
+      final backData = tester
+          .getSemantics(find.byKey(const ValueKey('onboarding-edit-back')))
+          .getSemanticsData();
+      expect(backData.flagsCollection.isButton, isTrue);
+      expect(backData.hasAction(SemanticsAction.tap), isTrue);
     } finally {
       semantics.dispose();
     }

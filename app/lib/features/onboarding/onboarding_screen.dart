@@ -7,6 +7,7 @@ import '../../core/constants/team_data.dart';
 import '../../core/router/app_route_sanitizer.dart';
 import '../../core/router/onboarding_state.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_design_system.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
@@ -105,8 +106,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Semantics(
+                          key: const ValueKey('onboarding-edit-back'),
+                          container: true,
+                          excludeSemantics: true,
                           label: '뒤로',
                           button: true,
+                          onTap: () => context.go(_returnRoute),
                           child: IconButton(
                             tooltip: '뒤로',
                             onPressed: () => context.go(_returnRoute),
@@ -114,33 +119,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           ),
                         ),
                       ),
-                    Text(
-                      'KBO Fans',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontSize: 15,
-                        color: AppColors.textSupporting,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0,
-                        height: 1.06,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      widget.isEditMode ? '응원 팀을 선택하세요' : '응원팀을 고르면\n경기에서 기록까지',
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '내 팀을 먼저 보고, 언제든 바꿀 수 있어요.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        height: 1.4,
-                      ),
+                    AppPageHeader(
+                      eyebrow: 'KBO Fans',
+                      title: widget.isEditMode
+                          ? '응원 팀을 선택하세요'
+                          : '응원팀을 고르면\n경기에서 기록까지',
+                      subtitle: '내 팀을 먼저 보고, 언제든 바꿀 수 있어요.',
                     ),
                     const SizedBox(height: 12),
                     _SelectedTeamPreview(team: selectedTeam),
@@ -413,102 +397,100 @@ class _OnboardingTeamCard extends StatelessWidget {
     final colors = AppTheme.colorsOf(context);
     final accent = colors.readableAccent(team.primaryColor);
     final usesLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.5;
-    return Semantics(
-      selected: isSelected,
-      child: AppPressable(
-        onTap: onTap,
-        pressedScale: 0.976,
-        child: AnimatedContainer(
-          duration: MediaQuery.of(context).disableAnimations
-              ? Duration.zero
-              : const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected ? accent : AppColors.divider,
-              width: isSelected ? 1.5 : 1,
-            ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: accent.withValues(alpha: 0.16),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ]
-                : null,
+    return AppPressable(
+      semanticSelected: isSelected,
+      onTap: onTap,
+      pressedScale: 0.976,
+      child: AnimatedContainer(
+        duration: MediaQuery.of(context).disableAnimations
+            ? Duration.zero
+            : const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? accent : AppColors.divider,
+            width: isSelected ? 1.5 : 1,
           ),
-          child: Stack(
-            children: [
-              Row(
-                children: [
-                  _TeamLogoCircle(
-                    teamId: team.id,
-                    fallback: team.shortName,
-                    accent: accent,
-                    size: 50,
-                    logoSize: 39,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.16),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          team.shortName,
-                          maxLines: usesLargeText ? null : 1,
-                          overflow: usesLargeText
-                              ? TextOverflow.visible
-                              : TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 17,
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w900,
-                            height: 1.08,
-                          ),
+                ]
+              : null,
+        ),
+        child: Stack(
+          children: [
+            Row(
+              children: [
+                _TeamLogoCircle(
+                  teamId: team.id,
+                  fallback: team.shortName,
+                  accent: accent,
+                  size: 50,
+                  logoSize: 39,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        team.shortName,
+                        maxLines: usesLargeText ? null : 1,
+                        overflow: usesLargeText
+                            ? TextOverflow.visible
+                            : TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 17,
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w900,
+                          height: 1.08,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          team.name,
-                          maxLines: usesLargeText ? null : 1,
-                          overflow: usesLargeText
-                              ? TextOverflow.visible
-                              : TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w700,
-                          ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        team.name,
+                        maxLines: usesLargeText ? null : 1,
+                        overflow: usesLargeText
+                            ? TextOverflow.visible
+                            : TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w700,
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if (isSelected)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: accent,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.check_rounded,
-                      size: 20,
-                      color: colors.readableForegroundOn(accent),
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-            ],
-          ),
+              ],
+            ),
+            if (isSelected)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: accent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.check_rounded,
+                    size: 20,
+                    color: colors.readableForegroundOn(accent),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

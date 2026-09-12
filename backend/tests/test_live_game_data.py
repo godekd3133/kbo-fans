@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import threading
+
 from kbo_fans_backend.scheduler.live_game_data_loop import LiveGameDataWarmer
+from kbo_fans_backend.services.boxscore import BoxscoreService
+from kbo_fans_backend.services.lineup import LineupService
 from kbo_fans_backend.services.live_game_data import LiveGameDataWarmService
 from kbo_fans_backend.services.relay import RelayService
 from kbo_fans_backend.services.scoreboard import ScoreboardService
@@ -182,9 +186,11 @@ class _FakeScoreboard:
 class _FakeRelay:
     def __init__(self):
         self.calls = []
+        self.provided_games = []
 
-    def get_relay(self, game_id: str, force_refresh: bool = False):
+    def get_relay(self, game_id: str, force_refresh: bool = False, game=None):
         self.calls.append((game_id, force_refresh))
+        self.provided_games.append(game)
         return _relay(game_id)
 
     @staticmethod
@@ -249,8 +255,118 @@ def test_live_game_data_warm_service_retries_live_and_finalizes_once() -> None:
         (live_id, True),
     ]
     assert len(relay.calls) == 3
+    assert all(game is not None for game in relay.provided_games)
     assert len(boxscore.calls) == 3
     assert len(lineup.calls) == 3
+
+
+def test_live_game_data_warm_coalesces_boxscore_with_lineup_lookup(tmp_path) -> None:
+    game_id = "29990101KTLG0"
+
+    class CountingBoxscoreCrawler:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def get_boxscore(self, requested_game_id: str):
+            self.calls += 1
+            return _official_boxscore(requested_game_id)
+
+    class Schedule:
+        def get_schedule_game(self, requested_game_id: str):
+            return {"gameId": requested_game_id, "status": "LIVE"}
+
+    class EmptyPlayerStats:
+        def get_team_players(self, team_id: str, season: int):
+            return {"teamId": team_id, "season": season, "players": []}
+
+    class LineupCrawler:
+        def get_lineup(self, requested_game_id: str):
+            return _lineup(requested_game_id)
+
+    class MainCrawler:
+        def get_kbo_game_list(self, date: str):
+            return []
+
+    scoreboard = _FakeScoreboard({game_id: "LIVE"})
+    crawler = CountingBoxscoreCrawler()
+    boxscore_service = BoxscoreService(
+        crawler=crawler,
+        schedule_service=Schedule(),
+        player_stats_service=EmptyPlayerStats(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "boxscore")),
+    )
+    lineup_service = LineupService(
+        lineup_crawler=LineupCrawler(),
+        boxscore_service=boxscore_service,
+        main_crawler=MainCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "lineup")),
+        player_stats_service=EmptyPlayerStats(),
+    )
+    warm_service = LiveGameDataWarmService(
+        scoreboard_service=scoreboard,
+        relay_service=_FakeRelay(),
+        boxscore_service=boxscore_service,
+        lineup_service=lineup_service,
+    )
+
+    result = warm_service.warm_games([{"gameId": game_id, "status": "LIVE"}])
+
+    assert result["results"][0]["components"] == {
+        "game": "ok",
+        "relay": "ok",
+        "boxscore": "ok",
+        "lineup": "ok",
+    }
+    assert crawler.calls == 1
+
+
+def test_live_game_data_starts_boxscore_and_lineup_together_after_relay() -> None:
+    game_id = "20260901KTLG0"
+    boxscore_started = threading.Event()
+    boxscore_release = threading.Event()
+    lineup_started = threading.Event()
+    result = {}
+
+    class BlockingBoxscore:
+        def get_boxscore(self, _game_id: str, force_refresh: bool = False):
+            boxscore_started.set()
+            assert boxscore_release.wait(timeout=2)
+            return _official_boxscore(game_id)
+
+        @staticmethod
+        def is_complete_payload(game_id: str, payload) -> bool:
+            return isinstance(payload, dict) and payload.get("gameId") == game_id
+
+    class ObservedLineup:
+        def get_lineup(self, _game_id: str, force_refresh: bool = False):
+            lineup_started.set()
+            return _lineup(game_id)
+
+        @staticmethod
+        def is_complete_payload(game_id: str, payload) -> bool:
+            return isinstance(payload, dict) and payload.get("gameId") == game_id
+
+    service = LiveGameDataWarmService(
+        scoreboard_service=_FakeScoreboard({game_id: "LIVE"}),
+        relay_service=_FakeRelay(),
+        boxscore_service=BlockingBoxscore(),
+        lineup_service=ObservedLineup(),
+    )
+
+    def warm() -> None:
+        result["payload"] = service.warm_games([{"gameId": game_id, "status": "LIVE"}])
+
+    thread = threading.Thread(target=warm)
+    thread.start()
+    assert boxscore_started.wait(timeout=1)
+    try:
+        assert lineup_started.wait(timeout=0.5)
+    finally:
+        boxscore_release.set()
+        thread.join(timeout=2)
+
+    assert not thread.is_alive()
+    assert result["payload"]["liveGames"] == 1
 
 
 def test_live_game_data_warmer_adapts_interval_without_overlap() -> None:

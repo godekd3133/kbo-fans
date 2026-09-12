@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kbo_fans/core/config/app_config.dart';
@@ -48,6 +49,17 @@ void main() {
 
       expect(find.byTooltip('뒤로'), findsOneWidget);
       expect(find.bySemanticsLabel('뒤로'), findsOneWidget);
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('records-season-selector')))
+            .height,
+        greaterThanOrEqualTo(44),
+      );
+      final backData = tester
+          .getSemantics(find.byKey(const ValueKey('records-team-back')))
+          .getSemanticsData();
+      expect(backData.flagsCollection.isButton, isTrue);
+      expect(backData.hasAction(SemanticsAction.tap), isTrue);
     } finally {
       semantics.dispose();
     }

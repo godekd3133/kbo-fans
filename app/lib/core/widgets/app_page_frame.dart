@@ -21,7 +21,14 @@ class AppPageFrame extends StatelessWidget {
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: effectiveMaxWidth),
-        child: Padding(padding: padding, child: child),
+        child: Padding(
+          padding: padding,
+          child: Semantics(
+            container: true,
+            explicitChildNodes: true,
+            child: child,
+          ),
+        ),
       ),
     );
   }

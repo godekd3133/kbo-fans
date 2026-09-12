@@ -1,3 +1,4 @@
+import concurrent.futures
 import threading
 
 from kbo_fans_backend.services.youtube_highlight import YoutubeHighlightService
@@ -38,3 +39,49 @@ def test_highlight_oembed_titles_are_fetched_with_bounded_parallelism(monkeypatc
 
     assert len(videos) == len(video_ids)
     assert len(thread_ids) > 1
+
+
+def test_concurrent_same_highlight_request_searches_once() -> None:
+    service = YoutubeHighlightService()
+    search_started = threading.Event()
+    duplicate_started = threading.Event()
+    release = threading.Event()
+    calls = 0
+    calls_lock = threading.Lock()
+
+    def search_video_ids(query: str, limit: int):
+        nonlocal calls
+        del query, limit
+        with calls_lock:
+            calls += 1
+            if calls > 1:
+                duplicate_started.set()
+        search_started.set()
+        assert release.wait(timeout=2)
+        return []
+
+    service._search_video_ids = search_video_ids
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(
+            service.fetch_highlights,
+            game_id="20260630KTLG0",
+            away_name="KT 위즈",
+            home_name="LG 트윈스",
+        )
+        assert search_started.wait(timeout=1)
+        second = executor.submit(
+            service.fetch_highlights,
+            game_id="20260630KTLG0",
+            away_name="KT 위즈",
+            home_name="LG 트윈스",
+        )
+        try:
+            assert not duplicate_started.wait(timeout=0.2)
+        finally:
+            release.set()
+
+        assert first.result(timeout=2) == []
+        assert second.result(timeout=2) == []
+
+    assert calls == 1

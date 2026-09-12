@@ -6,10 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/team_data.dart';
-import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/kbo_player_image_cache.dart';
 import '../../core/utils/kbo_time.dart';
+import '../../core/widgets/app_design_system.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/baseball_metric_guide.dart';
@@ -64,6 +64,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   LeaderboardMetric _selectedPreviewMetric = LeaderboardMetric.avg;
   int? _teamRecordsLoadStartedAtMicros;
   String? _lastTeamRecordsLogKey;
+  bool _overviewRefreshing = false;
+  bool _teamRefreshing = false;
   late final ScrollController _metricSpotlightScrollController;
 
   @override
@@ -147,23 +149,53 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   Future<void> _refreshOverview() async {
-    ref.invalidate(recordsOverviewProvider(_selectedSeason));
+    if (_overviewRefreshing) {
+      return;
+    }
+    setState(() => _overviewRefreshing = true);
     try {
+      ref.invalidate(recordsOverviewProvider(_selectedSeason));
       await ref.read(recordsOverviewProvider(_selectedSeason).future);
     } catch (error) {
       DevConsole.instance.warn('RECORDS overview refresh failed: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _overviewRefreshing = false);
+      }
     }
   }
 
   Future<void> _refreshTeamRecords(String teamId) async {
-    ref.invalidate(teamRecordsProvider('$teamId|$_selectedSeason'));
+    if (_teamRefreshing) {
+      return;
+    }
+    setState(() => _teamRefreshing = true);
     try {
+      ref.invalidate(teamRecordsProvider('$teamId|$_selectedSeason'));
       await ref.read(teamRecordsProvider('$teamId|$_selectedSeason').future);
     } catch (error) {
       DevConsole.instance.warn(
         'RECORDS team refresh failed: $teamId $_selectedSeason $error',
       );
+    } finally {
+      if (mounted) {
+        setState(() => _teamRefreshing = false);
+      }
     }
+  }
+
+  Widget _recordsRefreshIcon(BuildContext context, {required bool busy}) {
+    if (!busy) {
+      return const Icon(Icons.refresh_rounded);
+    }
+    return SizedBox(
+      width: 18,
+      height: 18,
+      child: CircularProgressIndicator(
+        strokeWidth: 2,
+        color: AppTheme.colorsOf(context).accent,
+      ),
+    );
   }
 
   Widget _buildTeamChooser() {
@@ -190,62 +222,31 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       body: SafeArea(
         child: Stack(
           children: [
-            const Positioned.fill(child: _RecordsBackdrop()),
             AppPageFrame(
               child: DefaultTextStyle.merge(
                 style: TextStyle(color: AppColors.textPrimary),
                 child: RefreshIndicator(
                   onRefresh: _refreshOverview,
-                  color: AppColors.live,
+                  color: AppTheme.colorsOf(context).accent,
                   child: ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '기록으로 보는 야구',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppColors.textSupporting,
-                                    letterSpacing: 0,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  '기록실',
-                                  style: TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w900,
-                                    height: 1.05,
-                                  ),
-                                ),
-                                SizedBox(height: 6),
-                                Text(
-                                  '리그를 살펴보고, 내 팀 선수를 나란히 비교하세요.',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                    height: 1.35,
-                                  ),
-                                ),
-                              ],
-                            ),
+                      AppPageHeader(
+                        eyebrow: '기록으로 보는 야구',
+                        title: '기록실',
+                        subtitle: '리그를 살펴보고, 내 팀 선수를 나란히 비교하세요.',
+                        trailing: IconButton(
+                          key: const ValueKey('records-overview-refresh'),
+                          tooltip: '기록실 새로고침',
+                          onPressed: _overviewRefreshing
+                              ? null
+                              : () => unawaited(_refreshOverview()),
+                          icon: _recordsRefreshIcon(
+                            context,
+                            busy: _overviewRefreshing,
                           ),
-                          IconButton(
-                            tooltip: '기록실 새로고침',
-                            onPressed: () {
-                              unawaited(_refreshOverview());
-                              setState(() {});
-                            },
-                            icon: const Icon(Icons.refresh_rounded),
-                          ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 10),
                       if (showRecordsAreaSwitcher) ...[
@@ -466,6 +467,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   Widget _buildTeamRecords(String teamId) {
+    final colors = AppTheme.colorsOf(context);
     final team = KboTeams.byId(teamId);
     final teamRecordsAsync = ref.watch(
       teamRecordsProvider('$teamId|$_selectedSeason'),
@@ -476,6 +478,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         ? 'records-error-$teamId'
         : 'records-data-$teamId-$_selectedSeason-${_tabController.index}-$_filter-$_sort-${teamRecordsAsync.asData?.value.players.length ?? 0}';
     _logTeamRecordsLoad(teamId, teamRecordsAsync);
+    void goBack() {
+      final router = GoRouter.of(context);
+      if (router.canPop()) {
+        router.pop();
+      } else {
+        router.go(_recordsChildLocation('/records'));
+      }
+    }
 
     return Scaffold(
       body: SafeArea(
@@ -489,18 +499,15 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   child: Row(
                     children: [
                       Semantics(
+                        key: const ValueKey('records-team-back'),
+                        container: true,
+                        excludeSemantics: true,
                         label: '뒤로',
                         button: true,
+                        onTap: goBack,
                         child: IconButton(
                           tooltip: '뒤로',
-                          onPressed: () {
-                            final router = GoRouter.of(context);
-                            if (router.canPop()) {
-                              router.pop();
-                            } else {
-                              router.go(_recordsChildLocation('/records'));
-                            }
-                          },
+                          onPressed: goBack,
                           icon: const Icon(Icons.arrow_back),
                         ),
                       ),
@@ -528,9 +535,15 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                         ),
                       ),
                       IconButton(
+                        key: const ValueKey('records-team-refresh'),
                         tooltip: '팀 기록 새로고침',
-                        onPressed: () => unawaited(_refreshTeamRecords(teamId)),
-                        icon: const Icon(Icons.refresh_rounded),
+                        onPressed: _teamRefreshing
+                            ? null
+                            : () => unawaited(_refreshTeamRecords(teamId)),
+                        icon: _recordsRefreshIcon(
+                          context,
+                          busy: _teamRefreshing,
+                        ),
                       ),
                       if (team != null)
                         KboTeamLogoImage(
@@ -570,13 +583,16 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       controller: _tabController,
                       indicatorSize: TabBarIndicatorSize.tab,
                       indicator: BoxDecoration(
-                        color: AppColors.textPrimary,
+                        color: colors.accent.withValues(alpha: 0.16),
                         borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: colors.accent.withValues(alpha: 0.72),
+                        ),
                       ),
                       dividerColor: Colors.transparent,
                       labelPadding: EdgeInsets.zero,
-                      labelColor: AppColors.background,
-                      unselectedLabelColor: AppColors.textSecondary,
+                      labelColor: colors.accent,
+                      unselectedLabelColor: colors.textSecondary,
                       labelStyle: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -653,7 +669,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       key: ValueKey(recordsMotionKey),
                       child: RefreshIndicator(
                         onRefresh: () => _refreshTeamRecords(teamId),
-                        color: AppColors.live,
+                        color: AppTheme.colorsOf(context).accent,
                         child: teamRecordsAsync.when(
                           loading: () => ListView(
                             physics: const AlwaysScrollableScrollPhysics(),
@@ -662,7 +678,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                                 height: 420,
                                 child: Center(
                                   child: CircularProgressIndicator(
-                                    color: AppColors.live,
+                                    color: AppTheme.colorsOf(context).accent,
                                   ),
                                 ),
                               ),
@@ -685,9 +701,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                                       ),
                                       const SizedBox(height: 14),
                                       OutlinedButton(
-                                        onPressed: () => unawaited(
-                                          _refreshTeamRecords(teamId),
-                                        ),
+                                        onPressed: _teamRefreshing
+                                            ? null
+                                            : () => unawaited(
+                                                _refreshTeamRecords(teamId),
+                                              ),
                                         child: const Text('다시 시도'),
                                       ),
                                     ],
@@ -767,8 +785,12 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             const SizedBox(width: 8),
             IconButton(
               tooltip: '다시 시도',
-              onPressed: () => unawaited(_refreshOverview()),
-              icon: const Icon(Icons.refresh_rounded, size: 20),
+              onPressed: _overviewRefreshing
+                  ? null
+                  : () => unawaited(_refreshOverview()),
+              icon: _overviewRefreshing
+                  ? _recordsRefreshIcon(context, busy: true)
+                  : const Icon(Icons.refresh_rounded, size: 20),
             ),
           ],
         ),
@@ -1333,24 +1355,30 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     required bool selected,
     required VoidCallback onTap,
   }) {
+    final colors = AppTheme.colorsOf(context);
     return AppPressable(
       onTap: onTap,
       pressedScale: 0.96,
       semanticSelected: selected,
       child: Container(
+        key: ValueKey('records-filter-$label'),
         height: 38,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? AppColors.textPrimary : AppColors.card,
+          color: selected ? colors.accent.withValues(alpha: 0.16) : colors.card,
           borderRadius: BorderRadius.circular(10),
-          border: selected ? null : Border.all(color: AppColors.divider),
+          border: Border.all(
+            color: selected
+                ? colors.accent.withValues(alpha: 0.72)
+                : colors.divider,
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: selected ? AppColors.background : AppColors.textSecondary,
+            color: selected ? colors.accent : colors.textSecondary,
           ),
         ),
       ),
@@ -1362,24 +1390,30 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     required bool selected,
     required VoidCallback onTap,
   }) {
+    final colors = AppTheme.colorsOf(context);
     return AppPressable(
       onTap: onTap,
       pressedScale: 0.96,
       semanticSelected: selected,
       child: Container(
+        key: ValueKey('records-sort-$label'),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.cardSub : Colors.transparent,
+          color: selected
+              ? colors.accent.withValues(alpha: 0.14)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? AppColors.textSecondary : AppColors.divider,
+            color: selected
+                ? colors.accent.withValues(alpha: 0.62)
+                : colors.divider,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 12,
-            color: selected ? AppColors.textPrimary : AppColors.textSupporting,
+            color: selected ? colors.accent : colors.textSupporting,
             fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
@@ -1397,7 +1431,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         year,
     ];
     return Container(
-      height: 38,
+      key: const ValueKey('records-season-selector'),
+      constraints: const BoxConstraints(minHeight: 44),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: AppColors.card,
@@ -2040,6 +2075,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       return const SizedBox.shrink();
     }
     final isLight = Theme.of(context).brightness == Brightness.light;
+    final accent = AppTheme.colorsOf(context).accent;
     final featured = snapshots.first.topLeader;
 
     return Container(
@@ -2062,14 +2098,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: AppColors.live.withValues(alpha: 0.14),
+                  color: accent.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 alignment: Alignment.center,
                 child: Icon(
                   Icons.sports_baseball_rounded,
                   size: 17,
-                  color: AppColors.live,
+                  color: accent,
                 ),
               ),
               const SizedBox(width: 9),
@@ -2408,12 +2444,13 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   Widget _leaderboardGroupSegment() {
+    final colors = AppTheme.colorsOf(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 3),
       decoration: BoxDecoration(
-        color: AppColors.background.withValues(alpha: 0.22),
+        color: colors.background.withValues(alpha: 0.22),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
+        border: Border.all(color: colors.divider),
       ),
       child: Row(
         children: [
@@ -2425,6 +2462,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   Widget _leaderboardGroupButton(LeaderboardPlayerGroup group) {
+    final colors = AppTheme.colorsOf(context);
     final selected = _selectedPreviewGroup == group;
     return AppPressable(
       onTap: selected ? null : () => _selectPreviewGroup(group),
@@ -2436,14 +2474,21 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         curve: Curves.easeOutCubic,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? AppColors.textPrimary : Colors.transparent,
+          color: selected
+              ? colors.accent.withValues(alpha: 0.16)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: selected
+                ? colors.accent.withValues(alpha: 0.72)
+                : Colors.transparent,
+          ),
         ),
         child: Text(
           group.label,
           style: TextStyle(
             fontSize: 14,
-            color: selected ? AppColors.background : AppColors.textSecondary,
+            color: selected ? colors.accent : colors.textSecondary,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -2466,6 +2511,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     required bool selected,
     bool useLargeText = false,
   }) {
+    final colors = AppTheme.colorsOf(context);
     return AppPressable(
       onTap: selected
           ? null
@@ -2485,11 +2531,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected
-              ? snapshot.color.withValues(alpha: 0.12)
+              ? colors.accent.withValues(alpha: 0.12)
               : Colors.transparent,
           border: Border(
             bottom: BorderSide(
-              color: selected ? snapshot.color : Colors.transparent,
+              color: selected ? colors.accent : Colors.transparent,
               width: 2,
             ),
           ),
@@ -2498,7 +2544,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           snapshot.metric.shortLabel,
           style: TextStyle(
             fontSize: 14,
-            color: selected ? snapshot.color : AppColors.textSecondary,
+            color: selected ? colors.accent : colors.textSecondary,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -2985,79 +3031,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       return '2위와 +${diff.round()}';
     }
     return '2위와 +${diff.toStringAsFixed(3)}';
-  }
-}
-
-class _RecordsBackdrop extends StatelessWidget {
-  const _RecordsBackdrop();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppTheme.colorsOf(context);
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    return IgnorePointer(
-      child: Stack(
-        children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: isLight
-                    ? [colors.background, colors.background, colors.cardSub]
-                    : [
-                        const Color(0xFF080808),
-                        colors.background,
-                        colors.background,
-                      ],
-                stops: const [0, 0.48, 1],
-              ),
-            ),
-            child: SizedBox.expand(),
-          ),
-          Positioned(
-            left: 0,
-            top: 0,
-            right: 0,
-            height: 280,
-            child: Opacity(
-              opacity: isLight ? 0.16 : 1,
-              child: Image.asset(
-                VisualAssets.recordsStadiumBackdrop,
-                fit: BoxFit.cover,
-                alignment: Alignment.topCenter,
-              ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            top: 0,
-            right: 0,
-            height: 320,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: isLight
-                      ? [
-                          colors.background.withValues(alpha: 0.1),
-                          colors.background.withValues(alpha: 0.72),
-                          colors.background,
-                        ]
-                      : [
-                          Colors.black.withValues(alpha: 0.18),
-                          Colors.black.withValues(alpha: 0.48),
-                          colors.background,
-                        ],
-                  stops: const [0, 0.52, 1],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

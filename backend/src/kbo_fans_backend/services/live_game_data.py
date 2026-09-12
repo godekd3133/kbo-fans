@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import concurrent.futures
 import logging
 import threading
 import time
@@ -122,14 +123,22 @@ class LiveGameDataWarmService:
             result["durationMs"] = round((time.perf_counter() - started_at) * 1000, 1)
             return result
 
+        payloads: dict[str, Any] = {}
+        try:
+            payloads["relay"] = self.relay_service.get_relay(
+                game_id,
+                force_refresh=force_refresh,
+                game=game,
+            )
+            result["components"]["relay"] = "ok"
+        except Exception as error:
+            self._record_error(result, "relay", error)
+
+        # Relay uses one authenticated session that is also used by the
+        # boxscore live-context fallback. Fetch it first, then run the two
+        # remaining independent services together without concurrent relay
+        # session access.
         components: list[tuple[str, Callable[[], Any]]] = [
-            (
-                "relay",
-                lambda: self.relay_service.get_relay(
-                    game_id,
-                    force_refresh=force_refresh,
-                ),
-            ),
             (
                 "boxscore",
                 lambda: self.boxscore_service.get_boxscore(
@@ -145,13 +154,18 @@ class LiveGameDataWarmService:
                 ),
             ),
         ]
-        payloads: dict[str, Any] = {}
-        for name, loader in components:
-            try:
-                payloads[name] = loader()
-                result["components"][name] = "ok"
-            except Exception as error:
-                self._record_error(result, name, error)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            futures = {
+                name: executor.submit(loader)
+                for name, loader in components
+            }
+            for name, _ in components:
+                future = futures[name]
+                try:
+                    payloads[name] = future.result()
+                    result["components"][name] = "ok"
+                except Exception as error:
+                    self._record_error(result, name, error)
 
         if resolved_status == self._FINAL_STATUS:
             self._promote_complete_final_payloads(game_id, payloads)

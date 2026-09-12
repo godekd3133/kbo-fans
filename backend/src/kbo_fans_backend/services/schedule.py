@@ -8,11 +8,13 @@ from kbo_fans_backend.services.ticketing import TicketingService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
 from kbo_fans_backend.utils.singleflight import SingleFlight
+from kbo_fans_backend.utils.source_cache import KboSourceCache
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
 class ScheduleService:
     _CACHE_TTL_SECONDS = 300
+    _HOME_CACHE_TTL_SECONDS = 300
 
     def __init__(
         self,
@@ -20,20 +22,44 @@ class ScheduleService:
         main_crawler: Optional[MainCrawler] = None,
         ticketing_service: Optional[TicketingService] = None,
         snapshot_store: Optional[JsonSnapshotStore] = None,
+        schedule_source: Optional[KboSourceCache[str, list[dict[str, Any]]]] = None,
+        main_source: Optional[KboSourceCache[str, list[dict[str, Any]]]] = None,
     ) -> None:
         self.schedule_crawler = schedule_crawler or ScheduleCrawler()
         self.main_crawler = main_crawler or MainCrawler()
         self.ticketing_service = ticketing_service or TicketingService()
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
         self._cache: TtlCache[str, dict[str, Any]] = TtlCache(self._CACHE_TTL_SECONDS)
+        # Home already has the current-day scoreboard. Keep a separate raw
+        # month cache so the aggregate path does not fetch Main.asmx again,
+        # while the normal schedule path can continue to publish its enriched
+        # current-day contract.
+        self._home_cache: TtlCache[str, dict[str, Any]] = TtlCache(
+            self._HOME_CACHE_TTL_SECONDS
+        )
         self._singleflight: SingleFlight[str] = SingleFlight()
+        self._home_singleflight: SingleFlight[str] = SingleFlight()
+        self._schedule_source = schedule_source
+        self._main_source = main_source
 
     def get_month_schedule(self, month: str) -> dict[str, Any]:
         cached = self._cache.get(month)
         if cached is not None:
             return cached
 
-        snapshot_record = self.snapshot_store.load("schedule", month)
+        home_cached = self._home_cache.get(month)
+        if home_cached is not None and not self._is_historical_month(month):
+            payload = self._enrich_current_day_with_main_games(home_cached)
+            self._cache.set(month, payload)
+            if self._should_persist_month_snapshot(payload):
+                self.snapshot_store.save("schedule", month, payload)
+            return payload
+
+        snapshot_record = (
+            self.snapshot_store.load("schedule", month)
+            if self._is_historical_month(month)
+            else None
+        )
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
         if self._is_reusable_historical_snapshot(month, snapshot):
             self._cache.set(month, snapshot)
@@ -44,13 +70,36 @@ class ScheduleService:
             lambda: self._load_month_schedule(month, snapshot),
         )
 
+    def get_month_schedule_for_home(self, month: str) -> dict[str, Any]:
+        """Load the month without a duplicate current-day Main.asmx request.
+
+        The Home aggregate receives the current scoreboard separately and
+        merges that one date after both futures complete. Historical months
+        still use the canonical schedule path so immutable snapshot rules and
+        normal current-day enrichment remain unchanged for other callers.
+        """
+        cached = self._cache.get(month)
+        if cached is not None:
+            return cached
+        if self._is_historical_month(month):
+            return self.get_month_schedule(month)
+
+        cached = self._home_cache.get(month)
+        if cached is not None:
+            return cached
+
+        return self._home_singleflight.call(
+            f"schedule_home:{month}",
+            lambda: self._load_month_schedule_for_home(month),
+        )
+
     def _load_month_schedule(
         self,
         month: str,
         snapshot: Optional[dict[str, Any]],
     ) -> dict[str, Any]:
         try:
-            rows = self.schedule_crawler.get_month_schedule(month)
+            rows = self._get_month_rows(month)
         except Exception:
             stale = self._cache.get_stale(month)
             if self._is_historical_month(month) and stale is not None:
@@ -59,6 +108,40 @@ class ScheduleService:
                 return snapshot
             raise
 
+        payload = self._build_schedule_payload(month, rows)
+        payload = self._enrich_current_day_with_main_games(payload)
+        self._cache.set(month, payload)
+        if self._should_persist_month_snapshot(payload):
+            self.snapshot_store.save("schedule", month, payload)
+        return payload
+
+    def _load_month_schedule_for_home(self, month: str) -> dict[str, Any]:
+        cached = self._home_cache.get(month)
+        if cached is not None:
+            return cached
+
+        try:
+            rows = self._get_month_rows(month)
+        except Exception:
+            stale = self._home_cache.get_stale(month)
+            if self._is_historical_month(month) and stale is not None:
+                return stale
+            raise
+
+        payload = self._build_schedule_payload(month, rows)
+        self._home_cache.set(month, payload)
+        return payload
+
+    def _get_month_rows(self, month: str) -> list[dict[str, Any]]:
+        if self._schedule_source is not None:
+            return self._schedule_source.get(month)
+        return self.schedule_crawler.get_month_schedule(month)
+
+    def _build_schedule_payload(
+        self,
+        month: str,
+        rows: list[dict[str, Any]],
+    ) -> dict[str, Any]:
         days_by_date: dict[str, dict[str, Any]] = {}
         for row in rows:
             date = row["date"]
@@ -90,15 +173,10 @@ class ScheduleService:
                 }
             )
 
-        payload = {
+        return {
             "month": month,
             "days": list(days_by_date.values()),
         }
-        payload = self._enrich_current_day_with_main_games(payload)
-        self._cache.set(month, payload)
-        if self._should_persist_month_snapshot(payload):
-            self.snapshot_store.save("schedule", month, payload)
-        return payload
 
     def get_schedule_game(self, game_id: str) -> Optional[dict[str, Any]]:
         month = f"{game_id[:4]}-{game_id[4:6]}"
@@ -189,8 +267,12 @@ class ScheduleService:
             return payload
 
         try:
+            if self._main_source is not None:
+                source_games = self._main_source.get(today)
+            else:
+                source_games = self.main_crawler.get_kbo_game_list(today)
             main_games = {
-                game.get("G_ID"): game for game in self.main_crawler.get_kbo_game_list(today)
+                game.get("G_ID"): game for game in source_games
             }
         except Exception:
             return payload

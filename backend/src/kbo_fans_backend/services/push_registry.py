@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import fcntl
 import hashlib
 import json
@@ -8,6 +9,7 @@ import os
 import re
 import tempfile
 import threading
+import time
 import uuid
 from contextlib import contextmanager
 from copy import deepcopy
@@ -23,6 +25,7 @@ from kbo_fans_backend.schemas.push import (
     PushReceiptRequest,
     PushRegisterRequest,
 )
+from kbo_fans_backend.utils.resilience import UpstreamBusyError
 
 _PUSH_OUTBOX_COMPLETED_LIMIT = 512
 _PUSH_OUTBOX_TARGET_LEASE_SECONDS = 60
@@ -37,6 +40,7 @@ _RUNTIME_STATE_TTL_SECONDS = 90 * 24 * 60 * 60
 _PUSH_OUTBOX_PENDING_TTL_SECONDS = 7 * 24 * 60 * 60
 _PUSH_OUTBOX_PENDING_LIMIT = 2048
 _SYNC_HEARTBEAT_MIN_WRITE_INTERVAL_SECONDS = 30
+_PUSH_REGISTRY_LOCK_WAIT_SECONDS = 2.0
 
 
 class PushRegistryCapacityError(RuntimeError):
@@ -79,6 +83,7 @@ class PushRegistry:
         max_pending_outbox_events: Optional[int] = None,
         runtime_state_now_provider: Optional[Callable[[], datetime]] = None,
         sync_heartbeat_min_write_interval_seconds: Optional[int] = None,
+        lock_wait_timeout_seconds: Optional[float] = None,
     ) -> None:
         settings = get_settings()
         self.path = Path(path or settings.push_registry_path).expanduser()
@@ -210,6 +215,12 @@ class PushRegistry:
             0,
             int(configured_heartbeat_interval),
         )
+        configured_lock_wait = (
+            _PUSH_REGISTRY_LOCK_WAIT_SECONDS
+            if lock_wait_timeout_seconds is None
+            else float(lock_wait_timeout_seconds)
+        )
+        self._lock_wait_timeout_seconds = max(0.0, configured_lock_wait)
         configured_confirmation_seconds = (
             _SCORE_CORRECTION_CONFIRMATION_SECONDS
             if score_correction_confirmation_seconds is None
@@ -1097,6 +1108,52 @@ class PushRegistry:
         }
         return sorted(game_ids)
 
+    def live_activity_sync_registration_summary(self) -> dict[str, Any]:
+        """Read the worker's registration gates from one registry snapshot."""
+        data = self._load()
+        now = self._registration_now()
+        activities = data.get("liveActivities", {})
+        devices = data.get("devices", {})
+        start_tokens = data.get("liveActivityStartTokens", {})
+
+        game_ids = {
+            str(activity.get("gameId"))
+            for activity in activities.values()
+            if isinstance(activity, dict)
+            and activity.get("gameId")
+            and self._registration_is_active(
+                activity,
+                ttl_seconds=self._live_activity_registration_ttl_seconds,
+                section_name="liveActivities",
+                now=now,
+            )
+        }
+        has_devices = any(
+            isinstance(registration, dict)
+            and self._registration_is_active(
+                registration,
+                ttl_seconds=self._device_registration_ttl_seconds,
+                section_name="devices",
+                now=now,
+            )
+            for registration in devices.values()
+        )
+        has_start_tokens = any(
+            isinstance(registration, dict)
+            and self._registration_is_active(
+                registration,
+                ttl_seconds=self._live_activity_start_token_ttl_seconds,
+                section_name="liveActivityStartTokens",
+                now=now,
+            )
+            for registration in start_tokens.values()
+        )
+        return {
+            "liveActivityGameIds": sorted(game_ids),
+            "hasDeviceRegistrations": has_devices,
+            "hasStartTokens": has_start_tokens,
+        }
+
     def live_activity_start_token_count(self) -> int:
         data = self._load()
         tokens = data.get("liveActivityStartTokens", {})
@@ -1884,6 +1941,103 @@ class PushRegistry:
             event["updatedAt"] = now.isoformat()
             return claim_id
 
+    def claim_push_outbox_targets(
+        self,
+        event_id: str,
+        targets: list[str],
+    ) -> dict[str, str]:
+        now = datetime.now(timezone.utc)
+        now_iso = now.isoformat()
+        claims: dict[str, str] = {}
+        with self._mutate_data() as data:
+            event = _push_outbox_event(data, event_id)
+            if event is None:
+                return claims
+            for target in dict.fromkeys(str(item).strip() for item in targets):
+                if not target:
+                    continue
+                target_state = _push_outbox_target(event, target)
+                if target_state is None or target_state.get("status") == "sent":
+                    continue
+
+                claimed_at = _parse_iso_datetime(target_state.get("claimedAt"))
+                if target_state.get("status") == "sending" and claimed_at is not None:
+                    lease_age = now - claimed_at
+                    if lease_age.total_seconds() < _PUSH_OUTBOX_TARGET_LEASE_SECONDS:
+                        continue
+
+                claim_id = uuid.uuid4().hex
+                target_state.update(
+                    {
+                        "status": "sending",
+                        "attempts": int(target_state.get("attempts") or 0) + 1,
+                        "claimId": claim_id,
+                        "claimedAt": now_iso,
+                        "updatedAt": now_iso,
+                    }
+                )
+                target_state.pop("lastError", None)
+                claims[target] = claim_id
+
+            if claims:
+                event["updatedAt"] = now_iso
+        return claims
+
+    def resolve_push_outbox_targets(
+        self,
+        event_id: str,
+        results: list[dict[str, Any]],
+    ) -> dict[str, bool]:
+        applied: dict[str, bool] = {}
+        now = _now_iso()
+        with self._mutate_data() as data:
+            event = _push_outbox_event(data, event_id)
+            if event is None:
+                return applied
+
+            for result in results:
+                if not isinstance(result, dict):
+                    continue
+                target = str(result.get("topic") or result.get("target") or "").strip()
+                claim_id = str(result.get("claimId") or "").strip()
+                target_state = _push_outbox_target(event, target)
+                if not target or not claim_id or target_state is None:
+                    continue
+                if target_state.get("status") == "sent":
+                    continue
+                if target_state.get("claimId") != claim_id:
+                    continue
+
+                if result.get("sent"):
+                    target_state.update(
+                        {
+                            "status": "sent",
+                            "messageId": result.get("messageId"),
+                            "sentAt": now,
+                            "updatedAt": now,
+                        }
+                    )
+                    target_state.pop("claimedAt", None)
+                    target_state.pop("claimId", None)
+                    target_state.pop("lastError", None)
+                else:
+                    target_state.update(
+                        {
+                            "status": "pending",
+                            "lastError": str(result.get("error") or "push send failed")[:500],
+                            "updatedAt": now,
+                        }
+                    )
+                    target_state.pop("claimedAt", None)
+                    target_state.pop("claimId", None)
+                applied[target] = True
+
+            if applied:
+                event["updatedAt"] = now
+                if _push_outbox_event_complete(event):
+                    event["completedAt"] = now
+        return applied
+
     def mark_push_outbox_target_sent(
         self,
         event_id: str,
@@ -2273,13 +2427,13 @@ class PushRegistry:
         return heartbeat if isinstance(heartbeat, dict) else {}
 
     def _load(self) -> dict[str, Any]:
-        with self._thread_lock:
+        with self._thread_lock_guard():
             with self._file_lock(exclusive=False):
                 return self._load_unlocked()
 
     @contextmanager
     def _mutate_data(self) -> Iterator[dict[str, Any]]:
-        with self._thread_lock:
+        with self._thread_lock_guard():
             with self._file_lock(exclusive=True):
                 data = self._load_unlocked()
                 original = deepcopy(data)
@@ -2298,6 +2452,19 @@ class PushRegistry:
                         ):
                             raise PushRegistryCapacityError("registry byte capacity reached")
                         self._save_unlocked(data)
+
+    @contextmanager
+    def _thread_lock_guard(self) -> Iterator[None]:
+        if self._lock_wait_timeout_seconds <= 0:
+            acquired = self._thread_lock.acquire(blocking=False)
+        else:
+            acquired = self._thread_lock.acquire(timeout=self._lock_wait_timeout_seconds)
+        if not acquired:
+            raise UpstreamBusyError("push registry thread lock is busy")
+        try:
+            yield
+        finally:
+            self._thread_lock.release()
 
     def _prune_runtime_state(self, data: dict[str, Any]) -> None:
         now = self._runtime_state_now()
@@ -2340,7 +2507,19 @@ class PushRegistry:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         lock_mode = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
         with self._lock_path.open("a+", encoding="utf-8") as lock_file:
-            fcntl.flock(lock_file.fileno(), lock_mode)
+            deadline = time.monotonic() + self._lock_wait_timeout_seconds
+            while True:
+                try:
+                    fcntl.flock(lock_file.fileno(), lock_mode | fcntl.LOCK_NB)
+                except OSError as error:
+                    if error.errno not in (errno.EACCES, errno.EAGAIN):
+                        raise
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise UpstreamBusyError("push registry file lock is busy") from error
+                    time.sleep(min(0.01, remaining))
+                else:
+                    break
             try:
                 yield
             finally:

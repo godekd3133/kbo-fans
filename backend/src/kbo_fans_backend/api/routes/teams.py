@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import concurrent.futures
+from contextlib import contextmanager
+from typing import Iterator
 
 from fastapi import APIRouter, HTTPException, Path, Query
 
@@ -14,6 +16,22 @@ from kbo_fans_backend.schemas.common import ApiEnvelope
 
 router = APIRouter(prefix="/team")
 _KBO_TEAM_IDS = frozenset(("LG", "KT", "SK", "SS", "NC", "HH", "LT", "HT", "OB", "WO"))
+
+
+@contextmanager
+def _team_records_executor(
+    max_workers: int,
+) -> Iterator[concurrent.futures.ThreadPoolExecutor]:
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+    try:
+        yield executor
+    except BaseException:
+        # A failed team-records source must not wait for its sibling to hit a
+        # crawler timeout before the API can expose the failure.
+        executor.shutdown(wait=False, cancel_futures=True)
+        raise
+    else:
+        executor.shutdown(wait=True)
 
 
 def _normalize_team_id(team_id: str) -> str:
@@ -49,11 +67,22 @@ def get_team_records(
     season: int = Query(..., ge=1900, le=2100),
 ) -> ApiEnvelope[dict]:
     team_id = _normalize_team_id(team_id)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        players_future = executor.submit(service.get_team_players, team_id, season)
-        stats_future = executor.submit(team_stats_service.get_team_stats, team_id, season)
-        players_payload = players_future.result()
-        stats_payload = stats_future.result()
+    players_future = None
+    stats_future = None
+    try:
+        with _team_records_executor(max_workers=2) as executor:
+            players_future = executor.submit(service.get_team_players, team_id, season)
+            stats_future = executor.submit(team_stats_service.get_team_stats, team_id, season)
+            for future in concurrent.futures.as_completed((players_future, stats_future)):
+                future.result()
+            players_payload = players_future.result()
+            stats_payload = stats_future.result()
+    except Exception:
+        if players_future is not None:
+            players_future.cancel()
+        if stats_future is not None:
+            stats_future.cancel()
+        raise
 
     return ApiEnvelope.success_response(
         {

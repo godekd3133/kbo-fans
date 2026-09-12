@@ -9,6 +9,10 @@ class UpstreamBusyError(RuntimeError):
     """Raised when bounded upstream work cannot accept another waiter."""
 
 
+class UpstreamUnavailableError(RuntimeError):
+    """Raised when an upstream source cannot establish a valid response."""
+
+
 class UpstreamDeadlineExceeded(TimeoutError):
     """Raised when an upstream aggregate exceeds its absolute time budget."""
 

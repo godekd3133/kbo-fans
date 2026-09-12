@@ -2,11 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/kbo_time.dart';
+import '../../core/widgets/app_design_system.dart';
 import '../../core/widgets/app_motion.dart';
+import '../../core/widgets/app_page_frame.dart';
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
 import '../../services/game_event_alert_service.dart';
@@ -29,6 +32,7 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
   late Future<Map<String, dynamic>> _pushFuture;
   bool _localNotificationBusy = false;
   bool _remoteNotificationBusy = false;
+  bool _refreshingAllDiagnostics = false;
 
   @override
   void initState() {
@@ -49,10 +53,38 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
   }
 
   void _refreshAllDiagnostics() {
+    if (_refreshingAllDiagnostics) {
+      return;
+    }
+    final diagnosticsFuture = _load();
+    final pushFuture = _loadPushState();
     setState(() {
-      _future = _load();
-      _pushFuture = _loadPushState();
+      _refreshingAllDiagnostics = true;
+      _future = diagnosticsFuture;
+      _pushFuture = pushFuture;
     });
+    unawaited(_settleAllDiagnostics(diagnosticsFuture, pushFuture));
+  }
+
+  Future<void> _settleAllDiagnostics(
+    Future<List<_DiagnosticResult>> diagnosticsFuture,
+    Future<Map<String, dynamic>> pushFuture,
+  ) async {
+    await Future.wait<void>([
+      _settleDiagnosticFuture(diagnosticsFuture),
+      _settleDiagnosticFuture(pushFuture),
+    ]);
+    if (mounted) {
+      setState(() => _refreshingAllDiagnostics = false);
+    }
+  }
+
+  Future<void> _settleDiagnosticFuture(Future<dynamic> future) async {
+    try {
+      await future;
+    } catch (_) {
+      // FutureBuilder owns the visible error state; this only tracks busy UI.
+    }
   }
 
   Future<List<_DiagnosticResult>> _load() async {
@@ -171,163 +203,240 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('API 진단')),
-      body: FutureBuilder<List<_DiagnosticResult>>(
-        future: _future,
-        builder: (context, snapshot) {
-          Widget child;
-          if (!snapshot.hasData) {
-            child = Center(
-              key: ValueKey('api-diagnostics-loading'),
-              child: CircularProgressIndicator(color: AppColors.live),
-            );
-            return AppMotionSwitcher(child: child);
-          }
+    final router = GoRouter.maybeOf(context);
+    void goBack() {
+      if (router?.canPop() == true) {
+        router!.pop();
+      } else if (router != null) {
+        router.go('/settings');
+      } else {
+        Navigator.of(context).maybePop();
+      }
+    }
 
-          final results = snapshot.data!;
-          child = ListView(
-            key: const ValueKey('api-diagnostics-ready'),
-            padding: const EdgeInsets.all(16),
+    return Scaffold(
+      body: SafeArea(
+        child: AppPageFrame(
+          child: Column(
             children: [
-              AppMotionListItem(
-                index: 0,
-                child: Text(
-                  'health / scoreboard / schedule 상태를 한 번에 확인합니다.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: AppPageHeader(
+                  eyebrow: '운영 도구',
+                  title: 'API 진단',
+                  subtitle: '화면 데이터와 푸시 연결 상태를 한 번에 확인합니다.',
+                  onBack: goBack,
+                  trailing: IconButton(
+                    tooltip: '다시 진단',
+                    onPressed: _refreshingAllDiagnostics
+                        ? null
+                        : _refreshAllDiagnostics,
+                    icon: _refreshingAllDiagnostics
+                        ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppTheme.colorsOf(context).accent,
+                            ),
+                          )
+                        : const Icon(Icons.refresh_rounded),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              for (int index = 0; index < results.length; index++) ...[
-                AppMotionListItem(
-                  index: index + 1,
-                  child: _DiagnosticCard(result: results[index]),
-                ),
-                const SizedBox(height: 10),
-              ],
-              FutureBuilder<Map<String, dynamic>>(
-                future: _pushFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return AppMotionListItem(
-                      index: results.length + 1,
-                      child: const _DiagnosticCard(
-                        key: ValueKey('api-diagnostics-push-loading'),
-                        result: _DiagnosticResult(
-                          key: 'push',
-                          ok: false,
-                          muted: true,
-                          elapsedMs: 0,
-                          detail: '푸시 상태 확인 중',
-                          note: '진단 결과를 불러오고 있습니다.',
+              Expanded(
+                child: FutureBuilder<List<_DiagnosticResult>>(
+                  future: _future,
+                  builder: (context, snapshot) {
+                    Widget child;
+                    if (!snapshot.hasData) {
+                      child = Center(
+                        key: ValueKey('api-diagnostics-loading'),
+                        child: CircularProgressIndicator(
+                          color: AppTheme.colorsOf(context).accent,
                         ),
-                      ),
-                    );
-                  }
-                  if (snapshot.hasError) {
-                    return AppMotionListItem(
-                      index: results.length + 1,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _DiagnosticCard(
-                            key: const ValueKey('api-diagnostics-push-error'),
-                            result: _DiagnosticResult(
-                              key: 'push',
-                              ok: false,
-                              elapsedMs: 0,
-                              detail: '푸시 상태를 확인할 수 없습니다',
-                              note: describeAsyncError(snapshot.error!),
+                      );
+                      return AppMotionSwitcher(child: child);
+                    }
+
+                    final results = snapshot.data!;
+                    child = ListView(
+                      key: const ValueKey('api-diagnostics-ready'),
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                      children: [
+                        AppMotionListItem(
+                          index: 0,
+                          child: Text(
+                            'health / scoreboard / schedule 상태를 한 번에 확인합니다.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          TextButton.icon(
-                            key: const ValueKey('api-diagnostics-push-retry'),
-                            onPressed: _refreshPushState,
-                            icon: const Icon(Icons.refresh_rounded, size: 18),
-                            label: const Text('푸시 상태 다시 시도'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  final data = snapshot.data ?? const <String, dynamic>{};
-                  final topics = (data['topics'] as List<dynamic>? ?? const [])
-                      .join(', ');
-                  final status = data['status'] as String? ?? 'idle';
-                  final reason = data['reason'] as String?;
-                  final remotePushAvailable =
-                      data['remotePushAvailable'] == true;
-                  final localGameAlertsEnabled =
-                      data['localGameEventAlertsEnabled'] == true;
-                  final localGameAlertsForced =
-                      data['localGameEventAlertsForced'] == true;
-                  final apiBaseUrl = data['apiBaseUrl'] as String? ?? '-';
-                  final isLocalSkipped =
-                      !shouldUseRemotePushServices(
-                        isWeb: false,
-                        useBackendApi: AppConfig.instance.shouldUseBackendApi,
-                      ) &&
-                      status == 'skipped';
-                  return AppMotionListItem(
-                    index: results.length + 1,
-                    child: _DiagnosticCard(
-                      result: _DiagnosticResult(
-                        key: 'push',
-                        ok: data['initialized'] == true,
-                        muted: isLocalSkipped,
-                        elapsedMs: 0,
-                        detail:
-                            '${_pushDetailPrefix(status)} initialized=${data['initialized']} tokenReady=${data['tokenReady']}'
-                            ' remote=${remotePushAvailable ? 'on' : 'off'}'
-                            ' localAlerts=${localGameAlertsEnabled ? 'on' : 'off'}'
-                            '${topics.isNotEmpty ? ' topics=$topics' : ''}',
-                        note: _pushReasonLabel(
-                          status: status,
-                          reason: reason,
-                          isLocalSkipped: isLocalSkipped,
-                          localGameAlertsForced: localGameAlertsForced,
-                          apiBaseUrl: apiBaseUrl,
                         ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 10),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _localNotificationBusy
-                        ? null
-                        : () => unawaited(_sendLocalNotificationTest()),
-                    icon: const Icon(Icons.notifications_none_outlined),
-                    label: Text(_localNotificationBusy ? '확인 중' : '로컬 알림 테스트'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _remoteNotificationBusy
-                        ? null
-                        : () => unawaited(_sendRemoteNotificationTest()),
-                    icon: const Icon(Icons.notifications_active_outlined),
-                    label: Text(_remoteNotificationBusy ? '요청 중' : '원격 푸시 테스트'),
-                  ),
-                  TextButton.icon(
-                    onPressed: _refreshAllDiagnostics,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('다시 진단'),
-                  ),
-                ],
+                        const SizedBox(height: 16),
+                        for (
+                          int index = 0;
+                          index < results.length;
+                          index++
+                        ) ...[
+                          AppMotionListItem(
+                            index: index + 1,
+                            child: _DiagnosticCard(result: results[index]),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                        FutureBuilder<Map<String, dynamic>>(
+                          future: _pushFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return AppMotionListItem(
+                                index: results.length + 1,
+                                child: const _DiagnosticCard(
+                                  key: ValueKey('api-diagnostics-push-loading'),
+                                  result: _DiagnosticResult(
+                                    key: 'push',
+                                    ok: false,
+                                    muted: true,
+                                    elapsedMs: 0,
+                                    detail: '푸시 상태 확인 중',
+                                    note: '진단 결과를 불러오고 있습니다.',
+                                  ),
+                                ),
+                              );
+                            }
+                            if (snapshot.hasError) {
+                              return AppMotionListItem(
+                                index: results.length + 1,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _DiagnosticCard(
+                                      key: const ValueKey(
+                                        'api-diagnostics-push-error',
+                                      ),
+                                      result: _DiagnosticResult(
+                                        key: 'push',
+                                        ok: false,
+                                        elapsedMs: 0,
+                                        detail: '푸시 상태를 확인할 수 없습니다',
+                                        note: describeAsyncError(
+                                          snapshot.error!,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    TextButton.icon(
+                                      key: const ValueKey(
+                                        'api-diagnostics-push-retry',
+                                      ),
+                                      onPressed: _refreshPushState,
+                                      icon: const Icon(
+                                        Icons.refresh_rounded,
+                                        size: 18,
+                                      ),
+                                      label: const Text('푸시 상태 다시 시도'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                            final data =
+                                snapshot.data ?? const <String, dynamic>{};
+                            final topics =
+                                (data['topics'] as List<dynamic>? ?? const [])
+                                    .join(', ');
+                            final status = data['status'] as String? ?? 'idle';
+                            final reason = data['reason'] as String?;
+                            final remotePushAvailable =
+                                data['remotePushAvailable'] == true;
+                            final localGameAlertsEnabled =
+                                data['localGameEventAlertsEnabled'] == true;
+                            final localGameAlertsForced =
+                                data['localGameEventAlertsForced'] == true;
+                            final apiBaseUrl =
+                                data['apiBaseUrl'] as String? ?? '-';
+                            final isLocalSkipped =
+                                !shouldUseRemotePushServices(
+                                  isWeb: false,
+                                  useBackendApi:
+                                      AppConfig.instance.shouldUseBackendApi,
+                                ) &&
+                                status == 'skipped';
+                            return AppMotionListItem(
+                              index: results.length + 1,
+                              child: _DiagnosticCard(
+                                result: _DiagnosticResult(
+                                  key: 'push',
+                                  ok: data['initialized'] == true,
+                                  muted: isLocalSkipped,
+                                  elapsedMs: 0,
+                                  detail:
+                                      '${_pushDetailPrefix(status)} initialized=${data['initialized']} tokenReady=${data['tokenReady']}'
+                                      ' remote=${remotePushAvailable ? 'on' : 'off'}'
+                                      ' localAlerts=${localGameAlertsEnabled ? 'on' : 'off'}'
+                                      '${topics.isNotEmpty ? ' topics=$topics' : ''}',
+                                  note: _pushReasonLabel(
+                                    status: status,
+                                    reason: reason,
+                                    isLocalSkipped: isLocalSkipped,
+                                    localGameAlertsForced:
+                                        localGameAlertsForced,
+                                    apiBaseUrl: apiBaseUrl,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: _localNotificationBusy
+                                  ? null
+                                  : () =>
+                                        unawaited(_sendLocalNotificationTest()),
+                              icon: const Icon(
+                                Icons.notifications_none_outlined,
+                              ),
+                              label: Text(
+                                _localNotificationBusy ? '확인 중' : '로컬 알림 테스트',
+                              ),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: _remoteNotificationBusy
+                                  ? null
+                                  : () => unawaited(
+                                      _sendRemoteNotificationTest(),
+                                    ),
+                              icon: const Icon(
+                                Icons.notifications_active_outlined,
+                              ),
+                              label: Text(
+                                _remoteNotificationBusy ? '요청 중' : '원격 푸시 테스트',
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: _refreshAllDiagnostics,
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('다시 진단'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                    return AppMotionSwitcher(child: child);
+                  },
+                ),
               ),
             ],
-          );
-          return AppMotionSwitcher(child: child);
-        },
+          ),
+        ),
       ),
     );
   }
@@ -363,55 +472,80 @@ class _DiagnosticCard extends StatelessWidget {
         : result.ok
         ? AppColors.positive
         : AppColors.live;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    final statusLabel = result.muted
+        ? '확인하지 않음'
+        : result.ok
+        ? '정상'
+        : '실패';
+    final semanticLabel = [
+      result.key,
+      statusLabel,
+      result.detail,
+      '${result.elapsedMs.toStringAsFixed(0)}밀리초',
+      ?result.note,
+    ].join(', ');
+    return Semantics(
+      key: ValueKey('api-diagnostics-semantics-${result.key}'),
+      container: true,
+      label: semanticLabel,
+      child: ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                result.muted
-                    ? Icons.pause_circle_outline
-                    : result.ok
-                    ? Icons.check_circle_outline
-                    : Icons.error_outline,
-                size: 18,
-                color: color,
+              Row(
+                children: [
+                  Icon(
+                    result.muted
+                        ? Icons.pause_circle_outline
+                        : result.ok
+                        ? Icons.check_circle_outline
+                        : Icons.error_outline,
+                    size: 18,
+                    color: color,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    result.key,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${result.elapsedMs.toStringAsFixed(0)}ms',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
+              const SizedBox(height: 8),
               Text(
-                result.key,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '${result.elapsedMs.toStringAsFixed(0)}ms',
+                result.detail,
                 style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
+              if (result.note != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  result.note!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSupporting,
+                  ),
+                ),
+              ],
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            result.detail,
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-          ),
-          if (result.note != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              result.note!,
-              style: TextStyle(fontSize: 12, color: AppColors.textSupporting),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }

@@ -147,6 +147,19 @@ deploy only the runtime code while preserving `/etc/kbo-fans/backend.env`:
 file is missing. Use the regular `--env-file` form only when intentionally
 replacing the backend environment.
 
+After a deploy, run the standard release gate. To compare the first request
+with the immediately warmed process/runtime cache, set
+`RELEASE_API_HEALTH_PERFORMANCE=true`; the script prints `cold` and `warm`
+phases with endpoint-level seconds and does not mutate the backend.
+
+```bash
+RELEASE_API_HEALTH_PERFORMANCE=true \
+RELEASE_API_HEALTH_DATE=YYYY-MM-DD \
+RELEASE_API_HEALTH_MONTH=YYYY-MM \
+RELEASE_API_HEALTH_SEASON=YYYY \
+./scripts/release-api-health-check.sh https://<release-api>/api
+```
+
 The deploy script packages only the backend runtime files and read-only seed
 snapshots, uploads them with `scp`, installs Python dependencies into
 `/opt/kbo-fans/venv`, then restarts:

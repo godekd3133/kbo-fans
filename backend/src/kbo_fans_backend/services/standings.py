@@ -34,7 +34,11 @@ class StandingsService:
         cached = self._cache.get(season)
         if cached is not None:
             return cached
-        snapshot_record = self.snapshot_store.load("standings_latest", str(season))
+        snapshot_record = (
+            self.snapshot_store.load("standings_latest", str(season))
+            if self._is_historical_season(season)
+            else None
+        )
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
         if self._can_use_snapshot_before_crawling(season, snapshot):
             self._cache.set(season, snapshot)

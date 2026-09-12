@@ -14,6 +14,12 @@ Environment=PYTHONUNBUFFERED=1
 ExecStart=/opt/kbo-fans/venv/bin/python -m kbo_fans_backend.scheduler.live_activity_sync_loop
 Restart=always
 RestartSec=5
+# A synchronous sync tick may be inside a bounded upstream/APNs request when
+# deploy sends SIGTERM.  Do not let a wedged worker hold a rolling deploy open
+# indefinitely; give the handler time to finish, then kill the remaining
+# process group.
+TimeoutStopSec=30s
+KillMode=mixed
 Nice=5
 NoNewPrivileges=true
 PrivateTmp=true

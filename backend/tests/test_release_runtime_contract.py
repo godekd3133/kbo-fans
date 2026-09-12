@@ -81,6 +81,24 @@ def test_lightsail_rolling_release_reads_new_seed_without_overwriting_runtime(
         config_module.get_settings.cache_clear()
 
 
+def test_lightsail_sync_worker_shutdown_is_bounded() -> None:
+    service_path = "infra/aws/lightsail/systemd/kbo-fans-sync-worker.service"
+    service = _read(service_path)
+
+    # A synchronous sync tick can be inside a bounded upstream/APNs request
+    # when deploy sends SIGTERM.  Keep restart bounded instead of allowing a
+    # wedged worker to hold the deployment SSH session indefinitely.
+    assert "TimeoutStopSec=30s" in service
+    assert "KillMode=mixed" in service
+
+
+def test_lightsail_deploy_bounds_remote_command() -> None:
+    deploy_script = _read("scripts/lightsail-deploy.sh")
+
+    assert "--remote-timeout-seconds" in deploy_script
+    assert "timeout --foreground --signal=TERM --kill-after=15s" in deploy_script
+
+
 def test_aws_runtime_templates_inject_kbo_relay_credentials() -> None:
     required_tokens = [
         "KBO_RELAY_USER_ID",
@@ -126,6 +144,10 @@ def test_release_health_gate_checks_relay_endpoint() -> None:
 
     assert "gameId" in body
     assert "/relay" in body
+    assert "%{time_total}" in body
+    assert "seconds=" in body
+    assert "RELEASE_API_HEALTH_PERFORMANCE" in body
+    assert "performance_phase=warm" in body
     assert "TZ=Asia/Seoul date +%Y-%m-%d" in body
     assert "TZ=Asia/Seoul date +%Y-%m" in body
     assert "TZ=Asia/Seoul date +%Y" in body

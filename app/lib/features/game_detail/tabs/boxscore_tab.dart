@@ -9,6 +9,7 @@ import '../../../core/constants/team_data.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/kbo_player_image_cache.dart';
 import '../../../core/utils/kbo_time.dart';
+import '../../../core/widgets/app_design_system.dart';
 import '../../../core/widgets/app_motion.dart';
 import '../../../core/widgets/kbo_team_logo_image.dart';
 import '../../../data/models/boxscore.dart';
@@ -71,7 +72,9 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       loading: () => Center(
         child: Padding(
           padding: EdgeInsets.all(24),
-          child: CircularProgressIndicator(color: AppColors.live),
+          child: CircularProgressIndicator(
+            color: AppTheme.colorsOf(context).accent,
+          ),
         ),
       ),
       error: (_, _) => _buildUnavailableState(
@@ -147,7 +150,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
             constraints: BoxConstraints(maxWidth: maxWidth),
             child: RefreshIndicator(
               onRefresh: widget.onRefresh ?? () async {},
-              color: AppColors.live,
+              color: AppTheme.colorsOf(context).accent,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
@@ -361,6 +364,8 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
           teamName: _selectedTeamName,
           accent: accent,
           title: isLiveContext ? '실시간 기록 추적' : '팀 기록 요약',
+          statusLabel: isLiveContext ? 'LIVE' : null,
+          statusColor: isLiveContext ? colors.live : null,
           metrics: isLiveContext
               ? hasLiveBatterStats
                     ? [
@@ -910,6 +915,8 @@ class _BoxscoreSummaryPanel extends StatelessWidget {
   final String teamName;
   final Color accent;
   final String title;
+  final String? statusLabel;
+  final Color? statusColor;
   final List<_SummaryMetric> metrics;
 
   const _BoxscoreSummaryPanel({
@@ -917,6 +924,8 @@ class _BoxscoreSummaryPanel extends StatelessWidget {
     required this.teamName,
     required this.accent,
     required this.title,
+    this.statusLabel,
+    this.statusColor,
     required this.metrics,
   });
 
@@ -931,6 +940,46 @@ class _BoxscoreSummaryPanel extends StatelessWidget {
         final metricWidth = useSingleColumnMetrics
             ? constraints.maxWidth
             : (constraints.maxWidth - 8) / 2;
+        final identity = Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _TeamLogo(teamId: teamId, fallback: teamName, size: 38),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    teamName,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: accent,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+        final status = statusLabel == null
+            ? null
+            : AppStatusPill(
+                key: const ValueKey('boxscore-live-status'),
+                label: statusLabel!,
+                color: statusColor,
+                showDot: true,
+              );
 
         return Container(
           width: double.infinity,
@@ -947,38 +996,21 @@ class _BoxscoreSummaryPanel extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _TeamLogo(teamId: teamId, fallback: teamName, size: 38),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                              height: 1.1,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            teamName,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: accent,
-                              fontWeight: FontWeight.w900,
-                              height: 1.1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                if (status == null)
+                  identity
+                else if (useReflowLayout || textScale >= 1.5)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [identity, const SizedBox(height: 8), status],
+                  )
+                else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(child: identity),
+                      status,
+                    ],
+                  ),
                 const SizedBox(height: 14),
                 if (useReflowLayout)
                   Wrap(
@@ -1598,6 +1630,7 @@ class _RecordDataRow extends StatelessWidget {
       label: semanticLabel,
       button: onTap != null,
       enabled: onTap == null ? null : true,
+      onTap: onTap,
       child: AppPressable(
         pressedScale: onTap == null ? 1 : 0.99,
         onTap: onTap,

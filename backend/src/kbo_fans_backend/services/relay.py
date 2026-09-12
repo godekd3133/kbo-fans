@@ -46,11 +46,20 @@ class RelayService:
         game_id: str,
         after: Optional[int] = None,
         force_refresh: bool = False,
+        game: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         if not force_refresh:
             cached = self._relay_cache.get(game_id)
             if cached is not None:
                 return self._after(cached, after)
+
+            if self._is_past_game_id(game_id):
+                historical_snapshot = self.snapshot_store.load_payload("relay", game_id)
+                if self._has_detailed_snapshot(game_id, historical_snapshot):
+                    payload = self._without_current_at_bat(historical_snapshot)
+                    self._relay_cache.set(game_id, payload)
+                    logger.info("relay historical snapshot hit %s", game_id)
+                    return self._after(payload, after)
 
             runtime_snapshot = self.snapshot_store.load_recent_payload(
                 self._RUNTIME_CACHE_NAMESPACE,
@@ -68,6 +77,7 @@ class RelayService:
                 game_id,
                 after=None,
                 force_refresh=force_refresh,
+                game=game,
             ),
         )
         cached_after_fetch = self._relay_cache.get(game_id)
@@ -79,21 +89,45 @@ class RelayService:
             self._relay_cache.set(game_id, payload)
         return self._after(payload, after)
 
+    def get_cached_relay(self, game_id: str) -> Optional[dict[str, Any]]:
+        """Return a complete relay already present in process/runtime cache.
+
+        This is intentionally read-only: a cache miss does not authenticate or
+        crawl KBO. It is used by live-context consumers that already run after
+        the relay warm step.
+        """
+        cached = self._relay_cache.get(game_id)
+        if self._has_full_relay_payload_for_game(game_id, cached):
+            return cached
+
+        runtime_snapshot = self.snapshot_store.load_recent_payload(
+            self._RUNTIME_CACHE_NAMESPACE,
+            game_id,
+            self._runtime_cache_max_age_seconds,
+        )
+        if self._has_full_relay_payload_for_game(game_id, runtime_snapshot):
+            self._relay_cache.set(game_id, runtime_snapshot)
+            return runtime_snapshot
+        return None
+
     def _get_relay_uncached(
         self,
         game_id: str,
         after: Optional[int] = None,
         force_refresh: bool = False,
+        game: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        game = self.scoreboard_service.get_game(
-            game_id,
-            force_refresh=force_refresh,
-        )
-        snapshot = self.snapshot_store.load_payload("relay", game_id)
+        if not isinstance(game, dict) or game.get("gameId") != game_id:
+            game = self.scoreboard_service.get_game(
+                game_id,
+                force_refresh=force_refresh,
+            )
+        is_past_game = self._is_past_game_id(game_id)
+        snapshot = self.snapshot_store.load_payload("relay", game_id) if is_past_game else None
         game_status = game.get("status") if game is not None else None
 
         if (
-            self._is_past_game_id(game_id)
+            is_past_game
             and game_status == "FINAL"
             and self._has_detailed_snapshot(game_id, snapshot)
         ):
@@ -111,7 +145,7 @@ class RelayService:
             return self._summary_payload(game_id, game, after=after)
 
         if (
-            self._is_past_game_id(game_id)
+            is_past_game
             and game_status == "FINAL"
             and not self._has_detailed_snapshot(game_id, snapshot)
         ):
@@ -129,7 +163,7 @@ class RelayService:
             payload = self._payload_from_crawler(game_id, game, game_status, relay)
             return self._after(payload, after)
         except Exception:
-            if self._is_past_game_id(game_id) and self._has_detailed_snapshot(game_id, snapshot):
+            if is_past_game and self._has_detailed_snapshot(game_id, snapshot):
                 snapshot = self._without_current_at_bat(snapshot)
                 if after is not None:
                     snapshot = {

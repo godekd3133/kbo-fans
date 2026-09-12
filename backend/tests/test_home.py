@@ -1,3 +1,4 @@
+import logging
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -40,6 +41,23 @@ class _BlockingScoreboardService:
         return {"date": date, "games": []}
 
 
+class _ObservedHomeSectionService:
+    def __init__(self) -> None:
+        self.started = threading.Event()
+
+    def get_month_schedule(self, month: str):
+        self.started.set()
+        return {"month": month, "days": []}
+
+    def get_standings(self, season: int):
+        self.started.set()
+        return {"season": season, "standings": []}
+
+    def get_overview(self, season: int):
+        self.started.set()
+        return {"season": season, "leaders": {"hr": []}, "featured": {}}
+
+
 class _FailingScheduleService:
     def get_month_schedule(self, month: str):
         raise RuntimeError("schedule unavailable")
@@ -48,6 +66,74 @@ class _FailingScheduleService:
 class _EmptyScheduleService:
     def get_month_schedule(self, month: str):
         return {"month": month, "days": []}
+
+
+class _HomeScheduleService:
+    def __init__(self) -> None:
+        self.home_calls = 0
+        self.normal_calls = 0
+
+    def get_month_schedule_for_home(self, month: str):
+        self.home_calls += 1
+        return {"month": month, "days": []}
+
+    def get_month_schedule(self, month: str):
+        self.normal_calls += 1
+        raise AssertionError("home should use the aggregate schedule loader")
+
+
+class _HomeScheduleWithGameService:
+    def __init__(self) -> None:
+        self.home_calls = 0
+        self.normal_calls = 0
+
+    def get_month_schedule_for_home(self, month: str):
+        self.home_calls += 1
+        date = f"{month}-01"
+        return {
+            "month": month,
+            "days": [
+                {
+                    "date": date,
+                    "games": [
+                        {
+                            "gameId": f"{date.replace('-', '')}LGOB0",
+                            "time": "18:30",
+                            "awayId": "LG",
+                            "awayName": "LG",
+                            "awayScore": None,
+                            "homeId": "OB",
+                            "homeName": "두산",
+                            "homeScore": None,
+                            "stadium": "잠실",
+                            "status": "SCHEDULED",
+                        }
+                    ],
+                }
+            ],
+        }
+
+    def get_month_schedule(self, month: str):
+        self.normal_calls += 1
+        return {"month": month, "days": []}
+
+
+class _ScoreboardWithFinalGameService:
+    def get_home_scoreboard(self, date: str):
+        return {
+            "date": date,
+            "games": [
+                {
+                    "gameId": f"{date.replace('-', '')}LGOB0",
+                    "status": "FINAL",
+                    "statusLabel": "경기종료",
+                    "startTime": "18:30",
+                    "stadium": "잠실",
+                    "away": {"teamId": "LG", "score": 4},
+                    "home": {"teamId": "OB", "score": 2},
+                }
+            ],
+        }
 
 
 class _MonthBoundaryScheduleService:
@@ -121,6 +207,23 @@ class _EmptyRecordsOverviewService:
         return {"season": season, "leaders": {"hr": []}, "featured": {}}
 
 
+class _HomeRecordsOverviewService:
+    def get_home_overview(self, season: int):
+        return {
+            "season": season,
+            "leaders": {
+                "avg": [],
+                "hr": [],
+                "era": [],
+                "strikeouts": [],
+            },
+            "featured": {},
+        }
+
+    def get_overview(self, season: int):
+        raise AssertionError("home should use the lightweight records overview")
+
+
 class _BlockingRecordsOverviewService:
     def __init__(self) -> None:
         self.started = threading.Event()
@@ -130,6 +233,53 @@ class _BlockingRecordsOverviewService:
         self.started.set()
         assert self.release.wait(timeout=2)
         return {"season": season, "leaders": {"hr": []}, "featured": {}}
+
+
+class _BlockingHomeScheduleService:
+    def __init__(self) -> None:
+        self.started = threading.Event()
+        self.release = threading.Event()
+
+    def get_month_schedule_for_home(self, month: str):
+        self.started.set()
+        assert self.release.wait(timeout=2)
+        return {"month": month, "days": []}
+
+
+class _FailingHomeRecordsOverviewService:
+    def __init__(self) -> None:
+        self.started = threading.Event()
+
+    def get_home_overview(self, season: int):
+        self.started.set()
+        raise RuntimeError("home records unavailable")
+
+
+class _BlockingPreviousMonthScheduleService:
+    def __init__(self) -> None:
+        self.previous_started = threading.Event()
+        self.previous_release = threading.Event()
+        self.previous_calls = 0
+
+    def get_month_schedule_for_home(self, month: str):
+        return {"month": month, "days": []}
+
+    def get_month_schedule(self, month: str):
+        self.previous_calls += 1
+        self.previous_started.set()
+        assert self.previous_release.wait(timeout=2)
+        return {"month": month, "days": []}
+
+
+class _BlockingHomeStandingsService:
+    def __init__(self) -> None:
+        self.started = threading.Event()
+        self.release = threading.Event()
+
+    def get_standings(self, season: int):
+        self.started.set()
+        assert self.release.wait(timeout=2)
+        return {"season": season, "standings": []}
 
 
 def test_current_data_routes_share_runtime_services() -> None:
@@ -144,6 +294,11 @@ def test_current_data_routes_share_runtime_services() -> None:
     assert teams.service is games.boxscore_service.player_stats_service
     assert players.service is teams.service
     assert teams.team_stats_service is team_stats_service
+    assert scoreboard.service._schedule_source is schedule.service._schedule_source
+    assert scoreboard.service._main_source is schedule.service._main_source
+    assert games.lineup_service._main_source is scoreboard.service._main_source
+    assert games.boxscore_service.crawler.main_source is scoreboard.service._main_source
+    assert games.boxscore_service.crawler.relay_service is games.relay_service
 
 
 def test_get_home_returns_aggregate_payload(monkeypatch) -> None:
@@ -240,6 +395,72 @@ def test_current_home_does_not_mask_records_overview_failure() -> None:
         service.get_home("2999-01-01", my_team="LG")
 
 
+def test_home_uses_lightweight_records_overview_loader() -> None:
+    service = HomeService(
+        scoreboard_service=_EmptyScoreboardService(),
+        schedule_service=_EmptyScheduleService(),
+        standings_service=_EmptyStandingsService(),
+        records_overview_service=_HomeRecordsOverviewService(),
+    )
+
+    payload = service.get_home("2999-01-01", my_team=None)
+
+    assert payload["date"] == "2999-01-01"
+
+
+def test_home_logs_upstream_section_timing_without_payload_data(caplog) -> None:
+    service = HomeService(
+        scoreboard_service=_EmptyScoreboardService(),
+        schedule_service=_EmptyScheduleService(),
+        standings_service=_EmptyStandingsService(),
+        records_overview_service=_EmptyRecordsOverviewService(),
+    )
+
+    with caplog.at_level(logging.INFO, logger="kbo_fans_backend.services.home"):
+        service.get_home("2999-01-01", my_team="LG")
+
+    assert "home_upstream_timing" in caplog.text
+    assert "date=2999-01-01" in caplog.text
+    assert "scoreboardMs=" in caplog.text
+    assert "scheduleMs=" in caplog.text
+    assert "standingsMs=" in caplog.text
+    assert "recordsMs=" in caplog.text
+    assert "home_total_timing" in caplog.text
+
+
+def test_home_uses_aggregate_schedule_loader() -> None:
+    schedule = _HomeScheduleService()
+    service = HomeService(
+        scoreboard_service=_EmptyScoreboardService(),
+        schedule_service=schedule,
+        standings_service=_EmptyStandingsService(),
+        records_overview_service=_EmptyRecordsOverviewService(),
+    )
+
+    payload = service.get_home("2999-01-01", my_team=None)
+
+    assert payload["date"] == "2999-01-01"
+    assert schedule.home_calls == 1
+    assert schedule.normal_calls == 0
+
+
+def test_home_merges_scoreboard_state_into_aggregate_schedule() -> None:
+    schedule = _HomeScheduleWithGameService()
+    service = HomeService(
+        scoreboard_service=_ScoreboardWithFinalGameService(),
+        schedule_service=schedule,
+        standings_service=_EmptyStandingsService(),
+        records_overview_service=_EmptyRecordsOverviewService(),
+    )
+
+    payload = service.get_home("2999-01-01", my_team="LG")
+
+    assert payload["myTeamBrief"]["recentGamesCount"] == 1
+    assert payload["myTeamBrief"]["recentWins"] == 1
+    assert payload["myTeamBrief"]["recentSummaries"][0]["score"] == "4:2"
+    assert schedule.home_calls == 1
+
+
 def test_current_scheduled_home_uses_short_cache_instead_of_stable_cache(monkeypatch) -> None:
     monkeypatch.setattr(
         "kbo_fans_backend.services.home.current_kbo_date",
@@ -280,6 +501,27 @@ def test_concurrent_home_requests_share_one_aggregate_load() -> None:
     assert scoreboard.calls == 1
 
 
+def test_home_starts_secondary_sections_while_scoreboard_is_in_flight() -> None:
+    scoreboard = _BlockingScoreboardService()
+    sections = _ObservedHomeSectionService()
+    service = HomeService(
+        scoreboard_service=scoreboard,
+        schedule_service=sections,
+        standings_service=sections,
+        records_overview_service=sections,
+        aggregate_timeout_seconds=2.0,
+    )
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(service.get_home, "2999-01-01", my_team=None)
+        assert scoreboard.started.wait(timeout=0.5)
+        try:
+            assert sections.started.wait(timeout=0.5)
+        finally:
+            scoreboard.release.set()
+        future.result(timeout=2)
+
+
 def test_current_home_aggregate_exits_when_one_section_never_completes() -> None:
     records = _BlockingRecordsOverviewService()
     service = HomeService(
@@ -299,6 +541,69 @@ def test_current_home_aggregate_exits_when_one_section_never_completes() -> None
         records.release.set()
 
     assert time.monotonic() - started_at < 0.3
+
+
+def test_current_home_late_section_failure_does_not_wait_for_first_section() -> None:
+    schedule = _BlockingHomeScheduleService()
+    records = _FailingHomeRecordsOverviewService()
+    service = HomeService(
+        scoreboard_service=_EmptyScoreboardService(),
+        schedule_service=schedule,
+        standings_service=_EmptyStandingsService(),
+        records_overview_service=records,
+        aggregate_timeout_seconds=2.0,
+    )
+    errors = []
+
+    def load() -> None:
+        try:
+            service.get_home("2999-01-01", my_team="LG")
+        except BaseException as error:
+            errors.append(error)
+
+    thread = threading.Thread(target=load)
+    thread.start()
+    assert schedule.started.wait(timeout=1)
+    assert records.started.wait(timeout=1)
+    try:
+        thread.join(timeout=0.2)
+        assert not thread.is_alive()
+    finally:
+        schedule.release.set()
+        thread.join(timeout=2)
+
+    assert len(errors) == 1
+    assert str(errors[0]) == "home records unavailable"
+
+
+def test_home_starts_previous_month_before_other_sections_finish() -> None:
+    schedule = _BlockingPreviousMonthScheduleService()
+    standings = _BlockingHomeStandingsService()
+    service = HomeService(
+        scoreboard_service=_EmptyScoreboardService(),
+        schedule_service=schedule,
+        standings_service=standings,
+        records_overview_service=_EmptyRecordsOverviewService(),
+        aggregate_timeout_seconds=2.0,
+    )
+    result = {}
+
+    def load() -> None:
+        result["payload"] = service.get_home("2026-10-01", my_team="LG")
+
+    thread = threading.Thread(target=load)
+    thread.start()
+    assert standings.started.wait(timeout=1)
+    try:
+        assert schedule.previous_started.wait(timeout=0.5)
+    finally:
+        schedule.previous_release.set()
+        standings.release.set()
+        thread.join(timeout=2)
+
+    assert not thread.is_alive()
+    assert result["payload"]["date"] == "2026-10-01"
+    assert schedule.previous_calls == 1
 
 
 def test_current_home_my_team_recent_results_cross_month_boundary() -> None:
@@ -839,6 +1144,57 @@ def test_my_team_brief_excludes_scheduled_zero_score_from_recent_results() -> No
             "score": "5:2",
         }
     ]
+
+
+def test_quick_items_treat_scheduled_zero_score_as_matchup() -> None:
+    service = HomeService.__new__(HomeService)
+
+    items = service._build_quick_items(
+        my_team_brief={
+            "teamId": "LG",
+            "teamLabel": "LG 트윈스",
+            "todayGameId": "20260520LGSS0",
+        },
+        overview={"leaders": {}, "featured": {}},
+        games=[
+            {
+                "gameId": "20260520LGSS0",
+                "status": "SCHEDULED",
+                "inning": "17:00 예정",
+                "stadium": "대구",
+                "away": {"teamId": "LG", "shortName": "LG", "score": 0},
+                "home": {"teamId": "SS", "shortName": "삼성", "score": 0},
+            }
+        ],
+        season=2026,
+    )
+
+    assert items[0]["title"] == "LG vs 삼성"
+
+
+def test_quick_items_format_ticket_open_at_for_users() -> None:
+    service = HomeService.__new__(HomeService)
+
+    items = service._build_quick_items(
+        my_team_brief={
+            "teamId": "LG",
+            "teamLabel": "LG 트윈스",
+            "todayGameId": None,
+            "nextGame": {
+                "awayName": "LG",
+                "homeName": "삼성",
+                "ticketInfo": {
+                    "vendorName": "티켓링크",
+                    "openAt": "2026-09-06T11:00:00+09:00",
+                },
+            },
+        },
+        overview={"leaders": {}, "featured": {}},
+        games=[],
+        season=2026,
+    )
+
+    assert items[0]["subtitle"] == "티켓링크 · 9월 6일 11:00 KST"
 
 
 def test_my_team_brief_keeps_recent_five_results() -> None:

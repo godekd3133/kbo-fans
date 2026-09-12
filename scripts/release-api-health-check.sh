@@ -13,9 +13,15 @@ TODAY="${RELEASE_API_HEALTH_DATE:-$(TZ=Asia/Seoul date +%Y-%m-%d)}"
 MONTH="${RELEASE_API_HEALTH_MONTH:-$(TZ=Asia/Seoul date +%Y-%m)}"
 SEASON="${RELEASE_API_HEALTH_SEASON:-$(TZ=Asia/Seoul date +%Y)}"
 ALLOW_INSECURE="${ALLOW_INSECURE_RELEASE_API:-false}"
+PERFORMANCE_CHECK="${RELEASE_API_HEALTH_PERFORMANCE:-false}"
 
 if [[ -z "$BASE_URL" ]]; then
   echo "Release API base URL is empty." >&2
+  exit 1
+fi
+
+if [[ "$PERFORMANCE_CHECK" != "true" && "$PERFORMANCE_CHECK" != "false" ]]; then
+  echo "RELEASE_API_HEALTH_PERFORMANCE must be true or false." >&2
   exit 1
 fi
 
@@ -109,9 +115,11 @@ check_endpoint() {
   local url="$BASE_URL$path"
   local response_file
   local http_code
+  local elapsed_seconds
+  local curl_result
 
   response_file="$(mktemp)"
-  if ! http_code="$(
+  if ! curl_result="$(
     curl \
       --silent \
       --show-error \
@@ -119,13 +127,15 @@ check_endpoint() {
       --connect-timeout "$TIMEOUT_SECONDS" \
       --max-time "$TIMEOUT_SECONDS" \
       --output "$response_file" \
-      --write-out '%{http_code}' \
+      --write-out '%{http_code} %{time_total}' \
       "$url"
   )"; then
     echo "endpoint=$label status=fail url=$url" >&2
     rm -f "$response_file"
     exit 1
   fi
+
+  read -r http_code elapsed_seconds <<< "$curl_result"
 
   if [[ ! "$http_code" =~ ^2[0-9][0-9]$ ]]; then
     echo "endpoint=$label status=fail http=$http_code url=$url" >&2
@@ -156,16 +166,14 @@ PY
   fi
 
   rm -f "$response_file"
-  echo "endpoint=$label status=ok http=$http_code"
+  echo "endpoint=$label status=ok http=$http_code seconds=$elapsed_seconds"
 }
-
-check_endpoint "/api/health" "/health"
-check_endpoint "/api/scoreboard/home" "/scoreboard/home?date=$TODAY"
 
 check_relay_endpoint_from_scoreboard() {
   python3 - "$BASE_URL" "$TODAY" "$TIMEOUT_SECONDS" <<'PY'
 import json
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -206,21 +214,38 @@ if not game_id:
     print("endpoint=/api/game/{gameId}/relay status=skip reason=no-scoreboard-games")
     raise SystemExit(0)
 
+relay_started_at = time.monotonic()
 relay = fetch_json(f"/game/{urllib.parse.quote(game_id)}/relay")
+relay_seconds = time.monotonic() - relay_started_at
 data = relay.get("data") or {}
 relay_items = data.get("relayItems") or []
 current_at_bat = data.get("currentAtBat") is not None
 print(
     f"endpoint=/api/game/{game_id}/relay status=ok "
-    f"relay_items={len(relay_items)} current_at_bat={str(current_at_bat).lower()}"
+    f"relay_items={len(relay_items)} current_at_bat={str(current_at_bat).lower()} "
+    f"seconds={relay_seconds:.6f}"
 )
 PY
 }
 
-check_relay_endpoint_from_scoreboard
-check_endpoint "/api/home" "/home?date=$TODAY"
-check_endpoint "/api/schedule" "/schedule?month=$MONTH"
-check_endpoint "/api/standings" "/standings?season=$SEASON"
-check_endpoint "/api/records/overview" "/records/overview?season=$SEASON"
+run_endpoint_checks() {
+  check_endpoint "/api/health" "/health"
+  check_endpoint "/api/scoreboard/home" "/scoreboard/home?date=$TODAY"
+  check_relay_endpoint_from_scoreboard
+  check_endpoint "/api/home" "/home?date=$TODAY"
+  check_endpoint "/api/schedule" "/schedule?month=$MONTH"
+  check_endpoint "/api/standings" "/standings?season=$SEASON"
+  check_endpoint "/api/records/overview" "/records/overview?season=$SEASON"
+}
+
+if [[ "$PERFORMANCE_CHECK" == "true" ]]; then
+  echo "performance_phase=cold"
+fi
+run_endpoint_checks
+
+if [[ "$PERFORMANCE_CHECK" == "true" ]]; then
+  echo "performance_phase=warm"
+  run_endpoint_checks
+fi
 
 echo "Release API health gate passed."

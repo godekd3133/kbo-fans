@@ -11,6 +11,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/kbo_player_image_cache.dart';
 import '../../core/utils/kbo_time.dart';
 import '../../core/widgets/app_artwork_card.dart';
+import '../../core/widgets/app_design_system.dart';
 import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
@@ -237,6 +238,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   String? _lastScheduleLoadLogKey;
   int? _pendingSelectedDay;
   bool _gameDetailNavigationInFlight = false;
+  bool _refreshingSchedule = false;
   late String _observedKboDate;
 
   @override
@@ -260,19 +262,29 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       '${_currentMonth.year}-${_currentMonth.month.toString().padLeft(2, '0')}';
 
   Future<void> _refreshSchedule() async {
-    final season = _currentMonth.year;
-    if (_viewMode == ScheduleViewMode.matchup) {
-      for (final yearMonth in kboScheduleSeasonMonths(season)) {
-        ref.invalidate(scheduleProvider(yearMonth));
-      }
-      ref.invalidate(seasonScheduleProvider(season));
-      await ref.read(seasonScheduleProvider(season).future);
+    if (_refreshingSchedule) {
       return;
     }
+    setState(() => _refreshingSchedule = true);
+    final season = _currentMonth.year;
+    try {
+      if (_viewMode == ScheduleViewMode.matchup) {
+        for (final yearMonth in kboScheduleSeasonMonths(season)) {
+          ref.invalidate(scheduleProvider(yearMonth));
+        }
+        ref.invalidate(seasonScheduleProvider(season));
+        await ref.read(seasonScheduleProvider(season).future);
+        return;
+      }
 
-    ref.invalidate(scheduleProvider(_yearMonth));
-    ref.invalidate(seasonScheduleProvider(season));
-    await ref.read(scheduleProvider(_yearMonth).future);
+      ref.invalidate(scheduleProvider(_yearMonth));
+      ref.invalidate(seasonScheduleProvider(season));
+      await ref.read(scheduleProvider(_yearMonth).future);
+    } finally {
+      if (mounted) {
+        setState(() => _refreshingSchedule = false);
+      }
+    }
   }
 
   void _openGameDetail(ScheduleGame scheduleGame) {
@@ -679,55 +691,35 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       key: const ValueKey('schedule-month-header'),
       width: double.infinity,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 34),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    DateFormat(
-                      'MMM yyyy',
-                      'en_US',
-                    ).format(_currentMonth).toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSupporting,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    '일정',
-                    style: TextStyle(
-                      fontSize: 25,
-                      fontWeight: FontWeight.w900,
-                      height: 1.05,
-                    ),
-                  ),
-                ],
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
+        child: AppPageHeader(
+          eyebrow: DateFormat(
+            'MMM yyyy',
+            'en_US',
+          ).format(_currentMonth).toUpperCase(),
+          title: '일정',
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _HeaderIconButton(
+                icon: Icons.chevron_left_rounded,
+                semanticLabel: '이전 달',
+                onTap: () => _changeMonth(-1),
               ),
-            ),
-            _HeaderIconButton(
-              icon: Icons.chevron_left_rounded,
-              semanticLabel: '이전 달',
-              onTap: () => _changeMonth(-1),
-            ),
-            const SizedBox(width: 8),
-            _HeaderIconButton(
-              icon: Icons.chevron_right_rounded,
-              semanticLabel: '다음 달',
-              onTap: () => _changeMonth(1),
-            ),
-            const SizedBox(width: 8),
-            _HeaderIconButton(
-              icon: Icons.today_rounded,
-              semanticLabel: '오늘로 이동',
-              onTap: _goToToday,
-            ),
-          ],
+              const SizedBox(width: 6),
+              _HeaderIconButton(
+                icon: Icons.chevron_right_rounded,
+                semanticLabel: '다음 달',
+                onTap: () => _changeMonth(1),
+              ),
+              const SizedBox(width: 6),
+              _HeaderIconButton(
+                icon: Icons.today_rounded,
+                semanticLabel: '오늘로 이동',
+                onTap: _goToToday,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -807,7 +799,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
     return RefreshIndicator(
       onRefresh: _refreshSchedule,
-      color: AppColors.live,
+      color: AppTheme.colorsOf(context).accent,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
@@ -1000,6 +992,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   Widget _legendRow() {
+    final colors = AppTheme.colorsOf(context);
     return Align(
       alignment: Alignment.centerLeft,
       child: Wrap(
@@ -1007,14 +1000,14 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         runSpacing: 8,
         children: [
           _legendItem(
-            AppColors.live,
+            colors.live,
             '경기 있는 날짜',
             style: _CalendarLegendStyle.outline,
           ),
-          _legendItem(AppColors.accent, '마이팀 경기'),
-          _legendItem(AppColors.textSupporting, '일반 경기'),
+          _legendItem(colors.accent, '마이팀 경기'),
+          _legendItem(colors.textSupporting, '일반 경기'),
           _legendItem(
-            AppColors.live,
+            colors.accent,
             '선택한 날짜',
             style: _CalendarLegendStyle.filled,
           ),
@@ -1028,6 +1021,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     String label, {
     _CalendarLegendStyle style = _CalendarLegendStyle.dot,
   }) {
+    final colors = AppTheme.colorsOf(context);
     final marker = switch (style) {
       _CalendarLegendStyle.dot => BoxDecoration(
         color: color,
@@ -1054,7 +1048,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         const SizedBox(width: 6),
         Text(
           label,
-          style: TextStyle(fontSize: 11, color: AppColors.textSupporting),
+          style: TextStyle(fontSize: 11, color: colors.textSupporting),
         ),
       ],
     );
@@ -1065,6 +1059,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     required bool selected,
     required VoidCallback onTap,
   }) {
+    final colors = AppTheme.colorsOf(context);
     return AppPressable(
       onTap: () {
         FocusManager.instance.primaryFocus?.unfocus();
@@ -1073,18 +1068,26 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       pressedScale: 0.97,
       semanticSelected: selected,
       child: Container(
+        key: ValueKey('schedule-view-$label'),
         height: 42,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? AppColors.cardSub : Colors.transparent,
+          color: selected
+              ? colors.accent.withValues(alpha: 0.14)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(7),
+          border: Border.all(
+            color: selected
+                ? colors.accent.withValues(alpha: 0.45)
+                : Colors.transparent,
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w800,
-            color: selected ? AppColors.textPrimary : AppColors.textSecondary,
+            color: selected ? colors.accent : colors.textSecondary,
           ),
         ),
       ),
@@ -1096,6 +1099,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     required bool selected,
     required VoidCallback onTap,
   }) {
+    final colors = AppTheme.colorsOf(context);
     return AppPressable(
       onTap: () {
         FocusManager.instance.primaryFocus?.unfocus();
@@ -1104,21 +1108,24 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       pressedScale: 0.96,
       semanticSelected: selected,
       child: Container(
+        key: ValueKey('schedule-filter-$label'),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? AppColors.cardSub : Colors.transparent,
+          color: selected
+              ? colors.accent.withValues(alpha: 0.14)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected
-                ? AppColors.textSecondary
-                : AppColors.divider.withValues(alpha: 0.72),
+                ? colors.accent.withValues(alpha: 0.62)
+                : colors.divider.withValues(alpha: 0.72),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 12,
-            color: selected ? AppColors.textPrimary : AppColors.textSecondary,
+            color: selected ? colors.accent : colors.textSecondary,
             fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
           ),
         ),
@@ -1368,7 +1375,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           loading: _buildGameListLoading,
           error: (error, _) => RefreshIndicator(
             onRefresh: _refreshSchedule,
-            color: AppColors.live,
+            color: AppTheme.colorsOf(context).accent,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               children: [_buildScheduleErrorContent(error)],
@@ -1398,7 +1405,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       loading: _buildGameListLoading,
       error: (error, _) => RefreshIndicator(
         onRefresh: _refreshSchedule,
-        color: AppColors.live,
+        color: AppTheme.colorsOf(context).accent,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [_buildScheduleErrorContent(error)],
@@ -1472,6 +1479,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     Set<int> gameDays,
     Set<int> myTeamDays,
   ) {
+    final colors = AppTheme.colorsOf(context);
     final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
     final firstDay = DateTime(month.year, month.month, 1);
     final lastDay = DateTime(month.year, month.month + 1, 0);
@@ -1508,21 +1516,19 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               usesDenseCalendarSpacing ? 4 : 8,
             ),
             decoration: BoxDecoration(
-              color: AppColors.card.withValues(alpha: 0.88),
+              color: colors.card.withValues(alpha: 0.88),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: AppColors.divider.withValues(alpha: 0.88),
-              ),
+              border: Border.all(color: colors.divider.withValues(alpha: 0.88)),
             ),
             child: Column(
               children: [
                 Row(
                   children: weekdays.map((d) {
                     final color = d == '토'
-                        ? AppColors.accent
+                        ? colors.accent
                         : d == '일'
-                        ? AppColors.live
-                        : AppColors.textSupporting;
+                        ? colors.live
+                        : colors.textSupporting;
                     return Expanded(
                       child: Center(
                         child: Text(
@@ -1594,6 +1600,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     AnimatedContainer(
+                                      key: ValueKey(
+                                        'schedule-date-cell-${date.year}-${date.month}-${date.day}',
+                                      ),
                                       duration:
                                           MediaQuery.of(
                                             context,
@@ -1606,21 +1615,29 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(7),
                                         color: isSelected
-                                            ? AppColors.live.withValues(
-                                                alpha: 0.62,
+                                            ? colors.accent.withValues(
+                                                alpha: 0.24,
                                               )
                                             : isToday
-                                            ? AppColors.cardSub
+                                            ? colors.cardSub
                                             : null,
                                         border: hasGame || isToday
                                             ? Border.all(
-                                                color: hasGame
-                                                    ? AppColors.live.withValues(
-                                                        alpha: isSelected
-                                                            ? 0.82
-                                                            : 0.62,
+                                                color: isSelected
+                                                    ? colors.accent.withValues(
+                                                        alpha: 0.82,
                                                       )
-                                                    : AppColors.divider,
+                                                    : hasGame
+                                                    ? colors.live.withValues(
+                                                        alpha: 0.62,
+                                                      )
+                                                    : colors.divider,
+                                              )
+                                            : isSelected
+                                            ? Border.all(
+                                                color: colors.accent.withValues(
+                                                  alpha: 0.82,
+                                                ),
                                               )
                                             : null,
                                       ),
@@ -1629,16 +1646,16 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                                         style: TextStyle(
                                           fontSize: 14,
                                           color: isSelected
-                                              ? AppColors.textPrimary
+                                              ? colors.textPrimary
                                               : !isInCurrentMonth
-                                              ? AppColors.textSupporting
+                                              ? colors.textSupporting
                                               : isPast
-                                              ? AppColors.textSupporting
+                                              ? colors.textSupporting
                                               : isSaturday
-                                              ? AppColors.accent
+                                              ? colors.accent
                                               : isSunday
-                                              ? AppColors.live
-                                              : AppColors.textPrimary,
+                                              ? colors.live
+                                              : colors.textPrimary,
                                           fontWeight: isSelected || isToday
                                               ? FontWeight.w900
                                               : FontWeight.w800,
@@ -1652,7 +1669,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                                             ? Icon(
                                                 Icons.star_rounded,
                                                 size: 8,
-                                                color: AppColors.accent,
+                                                color: colors.accent,
                                               )
                                             : Container(
                                                 width: 4,
@@ -1662,8 +1679,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                                                 ),
                                                 decoration: BoxDecoration(
                                                   shape: BoxShape.circle,
-                                                  color:
-                                                      AppColors.textSupporting,
+                                                  color: colors.textSupporting,
                                                 ),
                                               ),
                                       ),
@@ -1891,7 +1907,11 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   Widget _buildGameListLoading() {
-    return Center(child: CircularProgressIndicator(color: AppColors.live));
+    return Center(
+      child: CircularProgressIndicator(
+        color: AppTheme.colorsOf(context).accent,
+      ),
+    );
   }
 
   Widget _buildGameListLoadingSection() {
@@ -1925,8 +1945,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton(
-                onPressed: _refreshSchedule,
-                child: const Text('다시 시도'),
+                key: const ValueKey('schedule-error-retry'),
+                onPressed: _refreshingSchedule ? null : _refreshSchedule,
+                child: Text(_refreshingSchedule ? '확인 중' : '다시 시도'),
               ),
             ),
           ],
@@ -1951,7 +1972,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     if (stadiums.isEmpty) {
       return RefreshIndicator(
         onRefresh: _refreshSchedule,
-        color: AppColors.live,
+        color: AppTheme.colorsOf(context).accent,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
@@ -1966,7 +1987,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
     return RefreshIndicator(
       onRefresh: _refreshSchedule,
-      color: AppColors.live,
+      color: AppTheme.colorsOf(context).accent,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -2051,7 +2072,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     if (items.isEmpty) {
       return RefreshIndicator(
         onRefresh: _refreshSchedule,
-        color: AppColors.live,
+        color: AppTheme.colorsOf(context).accent,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
@@ -2071,7 +2092,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
     return RefreshIndicator(
       onRefresh: _refreshSchedule,
-      color: AppColors.live,
+      color: AppTheme.colorsOf(context).accent,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -2257,24 +2278,21 @@ class _HeaderIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      label: semanticLabel,
-      button: true,
-      child: Tooltip(
-        message: semanticLabel,
-        child: AppPressable(
-          onTap: onTap,
-          pressedScale: 0.94,
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.divider),
-            ),
-            child: Icon(icon, color: AppColors.textPrimary, size: 20),
+    return Tooltip(
+      message: semanticLabel,
+      child: AppPressable(
+        semanticLabel: semanticLabel,
+        onTap: onTap,
+        pressedScale: 0.94,
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.divider),
           ),
+          child: Icon(icon, color: AppColors.textPrimary, size: 20),
         ),
       ),
     );

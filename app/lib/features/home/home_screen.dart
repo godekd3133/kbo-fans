@@ -16,6 +16,7 @@ import '../../core/widgets/app_artwork_card.dart';
 import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
+import '../../core/widgets/app_design_system.dart';
 import '../../core/widgets/game_status_badge.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
@@ -32,6 +33,7 @@ import '../../data/providers.dart';
 import '../../data/repositories/game_repository.dart';
 import '../../services/game_event_alert_service.dart';
 import '../../services/live_activity_service.dart';
+import '../../services/notification_inbox_service.dart';
 import '../../services/widget_sync_service.dart';
 import 'widgets/game_day_focus_card.dart';
 
@@ -463,7 +465,8 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with WidgetsBindingObserver {
   Timer? _refreshTimer;
   String? _refreshTimerKey;
   bool _scoreboardRefreshInFlight = false;
@@ -487,19 +490,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? _lastScoreboardRefreshErrorLogKey;
   String? _lastPreviousScoreboardErrorLogKey;
   bool _gameDetailNavigationInFlight = false;
+  int? _unreadNotificationCount;
+  int _unreadNotificationLoadRevision = 0;
+  StreamSubscription<void>? _notificationInboxChangesSubscription;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _homeLoadStartedAtMicros = DateTime.now().microsecondsSinceEpoch;
     unawaited(_loadFollowState());
+    unawaited(_loadUnreadNotificationCount());
+    _notificationInboxChangesSubscription = NotificationInboxService
+        .instance
+        .changes
+        .listen((_) {
+          if (mounted) {
+            unawaited(_loadUnreadNotificationCount());
+          }
+        });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_notificationInboxChangesSubscription?.cancel());
     _scrollController.dispose();
     _refreshTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_loadUnreadNotificationCount());
+    }
   }
 
   @override
@@ -744,7 +769,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 height: 22,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.2,
-                  color: AppColors.live,
+                  color: AppColors.accent,
                 ),
               ),
             )
@@ -863,7 +888,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final liveMyTeamGame = _liveMyTeamGameFor(games, myTeamId);
     return RefreshIndicator(
       onRefresh: () => _invalidateTodayScoreboard(forceNetwork: true),
-      color: AppColors.live,
+      color: AppTheme.colorsOf(context).accent,
       child: AppPageFrame(
         child: CustomScrollView(
           controller: _scrollController,
@@ -1618,7 +1643,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return _QuickContentItemData(
       eyebrow: item.eyebrow,
       title: item.title,
-      subtitle: item.subtitle,
+      subtitle: _quickItemSubtitle(item),
       route: item.route,
       teamId: item.teamId,
       imageUrl: item.imageUrl,
@@ -1626,11 +1651,65 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  String _quickItemSubtitle(HomeQuickItem item) {
+    final subtitle = item.subtitle;
+    if (!item.eyebrow.contains('예매')) {
+      return subtitle;
+    }
+
+    final iso = RegExp(
+      r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})',
+    ).firstMatch(subtitle);
+    if (iso == null) {
+      return subtitle;
+    }
+    final instant = parseKboDateTime(iso.group(0));
+    if (instant == null) {
+      return subtitle;
+    }
+    final time = kboCivilDateTime(instant);
+    final display =
+        '${time.month}월 ${time.day}일 ${time.hour.toString().padLeft(2, '0')}'
+        ':${time.minute.toString().padLeft(2, '0')} KST 오픈';
+    return subtitle.replaceRange(iso.start, iso.end, display);
+  }
+
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 16, 8),
-      child: _HeaderBar(height: 56, date: ref.watch(kboDateProvider)),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      child: _HeaderBar(
+        height: 56,
+        date: ref.watch(kboDateProvider),
+        unreadNotificationCount: _unreadNotificationCount,
+        onOpenNotifications: () => unawaited(_openNotificationInbox(context)),
+      ),
     );
+  }
+
+  Future<void> _openNotificationInbox(BuildContext context) async {
+    await context.push('/notifications');
+    if (mounted) {
+      unawaited(_loadUnreadNotificationCount());
+    }
+  }
+
+  Future<void> _loadUnreadNotificationCount() async {
+    final requestRevision = ++_unreadNotificationLoadRevision;
+    try {
+      final entries = await NotificationInboxService.instance.loadEntries();
+      if (!mounted || requestRevision != _unreadNotificationLoadRevision) {
+        return;
+      }
+      final unreadCount = entries.where((entry) => !entry.read).length;
+      if (_unreadNotificationCount == unreadCount) {
+        return;
+      }
+      setState(() => _unreadNotificationCount = unreadCount);
+    } catch (error) {
+      DevConsole.instance.warn(
+        'HOME unread notification count unavailable: $error',
+      );
+    }
   }
 
   void _scheduleRefresh(List<Game> games, String? myTeamId) {
@@ -1836,24 +1915,73 @@ class _HeaderIconButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback onPressed;
+  final int? badgeCount;
 
   const _HeaderIconButton({
     required this.icon,
     required this.tooltip,
     required this.onPressed,
+    this.badgeCount,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: IconButton(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 26),
-        color: AppColors.textPrimary,
-        constraints: const BoxConstraints.tightFor(width: 40, height: 40),
-        padding: EdgeInsets.zero,
-        splashRadius: 22,
+    final colors = AppTheme.colorsOf(context);
+    final count = badgeCount ?? 0;
+    final hasBadge = count > 0;
+    final badgeLabel = count > 99 ? '99+' : '$count';
+    final accessibleTooltip = hasBadge
+        ? '$tooltip · 읽지 않은 알림 $badgeLabel개'
+        : tooltip;
+    return Semantics(
+      container: true,
+      excludeSemantics: true,
+      label: accessibleTooltip,
+      button: true,
+      onTap: onPressed,
+      child: Tooltip(
+        message: accessibleTooltip,
+        child: IconButton(
+          onPressed: onPressed,
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(icon, size: 26),
+              if (hasBadge)
+                Positioned(
+                  right: -7,
+                  top: -7,
+                  child: Container(
+                    key: const ValueKey('home-notification-unread-badge'),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: colors.live,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: colors.surface, width: 1.5),
+                    ),
+                    child: Text(
+                      badgeLabel,
+                      style: TextStyle(
+                        color: colors.readableForegroundOn(colors.live),
+                        fontSize: 9,
+                        height: 1,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          color: colors.textPrimary,
+          constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+          padding: EdgeInsets.zero,
+          splashRadius: 22,
+        ),
       ),
     );
   }
@@ -1862,8 +1990,15 @@ class _HeaderIconButton extends StatelessWidget {
 class _HeaderBar extends StatelessWidget {
   final double height;
   final String date;
+  final int? unreadNotificationCount;
+  final VoidCallback onOpenNotifications;
 
-  const _HeaderBar({required this.height, required this.date});
+  const _HeaderBar({
+    required this.height,
+    required this.date,
+    required this.unreadNotificationCount,
+    required this.onOpenNotifications,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1871,36 +2006,62 @@ class _HeaderBar extends StatelessWidget {
     final logoAsset = isLight
         ? 'assets/visuals/kbo_header_logo_light.png'
         : 'assets/visuals/kbo_header_logo.png';
+    final parsedDate = DateTime.tryParse(date);
+    final weekday = parsedDate == null
+        ? ''
+        : const ['월', '화', '수', '목', '금', '토', '일'][parsedDate.weekday - 1];
+    final dateLabel = parsedDate == null
+        ? date
+        : '${DateFormat('M월 d일').format(parsedDate)} $weekday';
+    final viewportWidth = MediaQuery.sizeOf(context).width;
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final compactHeader = viewportWidth <= 340 || textScale >= 1.4;
 
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: height),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          Image.asset(
+            logoAsset,
+            key: const ValueKey('home-header-logo'),
+            width: compactHeader ? 28 : 36,
+            height: compactHeader ? 24 : 28,
+            fit: BoxFit.contain,
+            alignment: Alignment.centerLeft,
+          ),
+          if (!compactHeader) ...[
+            const SizedBox(width: 6),
+            Text(
+              'KBO Fans',
+              maxLines: 1,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 19,
+                height: 1,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(width: 10),
+          ] else
+            const SizedBox(width: 6),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Image.asset(
-                  logoAsset,
-                  key: const ValueKey('home-header-logo'),
-                  width: 74,
-                  height: 24,
-                  fit: BoxFit.contain,
-                  alignment: Alignment.centerLeft,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${DateFormat('M월 d일').format(DateTime.parse(date))}의 야구',
-                  style: const TextStyle(fontSize: 20, height: 1.2),
-                ),
-              ],
+            child: Text(
+              dateLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           _HeaderIconButton(
             icon: Icons.notifications_none_rounded,
             tooltip: '알림함',
-            onPressed: () => context.push('/notifications'),
+            badgeCount: unreadNotificationCount,
+            onPressed: onOpenNotifications,
           ),
           const SizedBox(width: 4),
           _HeaderIconButton(
@@ -3151,144 +3312,219 @@ class _LiveMyTeamGameCard extends StatelessWidget {
         ? game.statusLabel!.trim()
         : 'LIVE';
     final stadiumText = game.stadium.trim().isEmpty ? '구장 미정' : game.stadium;
+    final scoreText = game.hasVerifiedScore
+        ? '${game.away.displayScore}:${game.home.displayScore}'
+        : '점수 확인 중';
 
     return AppPressable(
       key: const ValueKey('home-live-my-team-game'),
       onTap: onOpenRelay,
       pressedScale: 0.988,
-      child: _sectionCard(
-        padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
-        accentColor: AppColors.live,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      semanticLabel:
+          '${myTeam.teamName} ${game.away.displayScore} 대 '
+          '${game.home.displayScore}, $inningText',
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: colors.card,
+          borderRadius: BorderRadius.circular(AppUi.heroRadius),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Stack(
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.live.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: AppColors.live.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: Text(
-                    'LIVE',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    '내 경기 진행 중',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
-                  ),
-                ),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 23,
-                  color: AppColors.textSecondary,
-                ),
-              ],
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 3,
+              child: ColoredBox(color: AppColors.live),
             ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _LiveTeamScoreInline(
-                    team: myTeamInfo,
-                    fallbackLabel: myTeam.shortName,
-                    score: myTeam.displayScore,
-                    highlighted: true,
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 9),
-                  child: Text(
-                    ':',
-                    style: TextStyle(
-                      fontSize: 22,
-                      height: 1,
-                      color: accent,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: _LiveTeamScoreInline(
-                    team: opponentInfo,
-                    fallbackLabel: opponent.shortName,
-                    score: opponent.displayScore,
-                    alignEnd: true,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 9),
-            Row(
-              children: [
-                Icon(
-                  Icons.sports_baseball_rounded,
-                  size: 15,
-                  color: AppColors.live,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '$inningText · $stadiumText',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.live.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: AppColors.live.withValues(alpha: 0.34),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(17, 16, 16, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
                     children: [
-                      Icon(
-                        Icons.notes_rounded,
-                        size: 14,
-                        color: AppColors.textPrimary,
+                      AppStatusPill(
+                        label: 'LIVE',
+                        color: AppColors.live,
+                        showDot: true,
                       ),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '내 경기 진행 중',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
                       Text(
-                        '문자중계 보기',
+                        stadiumText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w900,
+                          color: colors.textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 18),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: _LiveTeamScoreInline(
+                          team: myTeamInfo,
+                          fallbackLabel: myTeam.teamName,
+                          score: myTeam.displayScore,
+                          highlighted: true,
+                          logoSize: 58,
+                          showScore: false,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        flex: 0,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              inningText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: game.hasVerifiedScore
+                                    ? colors.textSecondary
+                                    : colors.ballYellow,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  game.away.displayScore,
+                                  style: TextStyle(
+                                    color: accent,
+                                    fontSize: 36,
+                                    height: 0.95,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                  ),
+                                  child: Text(
+                                    ':',
+                                    style: TextStyle(
+                                      color: colors.textSecondary,
+                                      fontSize: 27,
+                                      height: 1,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  game.home.displayScore,
+                                  style: TextStyle(
+                                    color: colors.textPrimary,
+                                    fontSize: 36,
+                                    height: 0.95,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _LiveTeamScoreInline(
+                          team: opponentInfo,
+                          fallbackLabel: opponent.teamName,
+                          score: opponent.displayScore,
+                          alignEnd: true,
+                          logoSize: 58,
+                          showScore: false,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (!game.hasVerifiedScore) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      scoreText,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: colors.ballYellow,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 11,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(AppUi.compactRadius),
+                      border: Border.all(color: colors.divider),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.sports_baseball_rounded,
+                          size: 16,
+                          color: AppColors.live,
+                        ),
+                        const SizedBox(width: 7),
+                        Expanded(
+                          child: Text(
+                            '$inningText · $stadiumText',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: colors.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '문자중계 보기',
+                          style: TextStyle(
+                            color: colors.accent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 18,
+                          color: colors.accent,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -3303,6 +3539,8 @@ class _LiveTeamScoreInline extends StatelessWidget {
   final String score;
   final bool highlighted;
   final bool alignEnd;
+  final double logoSize;
+  final bool showScore;
 
   const _LiveTeamScoreInline({
     required this.team,
@@ -3310,6 +3548,8 @@ class _LiveTeamScoreInline extends StatelessWidget {
     required this.score,
     this.highlighted = false,
     this.alignEnd = false,
+    this.logoSize = 28,
+    this.showScore = true,
   });
 
   @override
@@ -3319,8 +3559,8 @@ class _LiveTeamScoreInline extends StatelessWidget {
     final logo = _TeamLogo(
       team: team,
       fallbackLabel: fallbackLabel,
-      size: 28,
-      visualScale: 1.18,
+      size: logoSize,
+      visualScale: logoSize >= 48 ? 1.08 : 1.18,
     );
     final label = Expanded(
       child: Column(
@@ -3364,25 +3604,20 @@ class _LiveTeamScoreInline extends StatelessWidget {
       ),
     );
 
+    final labelWithScore = showScore
+        ? [label, const SizedBox(width: 8), scoreText]
+        : [label];
+    final scoreWithLabel = showScore
+        ? [scoreText, const SizedBox(width: 8), label]
+        : [label];
+
     return Row(
       mainAxisAlignment: alignEnd
           ? MainAxisAlignment.end
           : MainAxisAlignment.start,
       children: alignEnd
-          ? [
-              scoreText,
-              const SizedBox(width: 8),
-              label,
-              const SizedBox(width: 7),
-              logo,
-            ]
-          : [
-              logo,
-              const SizedBox(width: 7),
-              label,
-              const SizedBox(width: 8),
-              scoreText,
-            ],
+          ? [...scoreWithLabel, const SizedBox(width: 7), logo]
+          : [logo, const SizedBox(width: 7), ...labelWithScore],
     );
   }
 }
@@ -3422,7 +3657,7 @@ class _TodayGamesReferenceCard extends StatelessWidget {
           title: headerTitle,
           showAction: false,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 5),
         _sectionCard(
           key: const ValueKey('home-today-games-card'),
           padding: EdgeInsets.zero,
@@ -3444,6 +3679,7 @@ class _TodayGamesReferenceCard extends StatelessWidget {
                   _TodayGameReferenceRow(
                     key: ValueKey('home-today-game-${entry.$2.gameId}'),
                     game: entry.$2,
+                    myTeamId: myTeamId,
                     awayRecord: _teamRecordText(
                       standingsByTeamId[entry.$2.away.teamId],
                     ),
@@ -3460,6 +3696,7 @@ class _TodayGamesReferenceCard extends StatelessWidget {
                   _TodayGameReferenceRow(
                     key: ValueKey('home-previous-game-${entry.$2.gameId}'),
                     game: entry.$2,
+                    myTeamId: myTeamId,
                     awayRecord: _teamRecordText(
                       standingsByTeamId[entry.$2.away.teamId],
                     ),
@@ -3534,6 +3771,7 @@ class _TodayGameGroupLabel extends StatelessWidget {
 
 class _TodayGameReferenceRow extends StatelessWidget {
   final Game game;
+  final String? myTeamId;
   final String awayRecord;
   final String homeRecord;
   final bool isMyTeam;
@@ -3543,6 +3781,7 @@ class _TodayGameReferenceRow extends StatelessWidget {
   const _TodayGameReferenceRow({
     super.key,
     required this.game,
+    required this.myTeamId,
     required this.awayRecord,
     required this.homeRecord,
     required this.isMyTeam,
@@ -3552,10 +3791,14 @@ class _TodayGameReferenceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    final myTeamAccent = colors.readableAccent(
+      KboTeams.byId(myTeamId ?? '')?.primaryColor ?? colors.accent,
+    );
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final largeText = textScale >= 1.3;
     final rowHeight = largeText
-        ? (48 * textScale).clamp(72.0, 104.0).toDouble()
+        ? (48 * textScale).clamp(72.0, 112.0).toDouble()
         : 48.0;
     final statusText = secondaryTextForGameStatus(
       game.status,
@@ -3570,10 +3813,11 @@ class _TodayGameReferenceRow extends StatelessWidget {
       child: SizedBox(
         height: rowHeight,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 5, 14, 5),
+          key: ValueKey('home-today-game-surface-${game.gameId}'),
+          padding: const EdgeInsets.fromLTRB(14, 5, 12, 5),
           decoration: BoxDecoration(
             color: isMyTeam
-                ? AppColors.live.withValues(alpha: 0.04)
+                ? myTeamAccent.withValues(alpha: 0.08)
                 : Colors.transparent,
             border: Border(
               top: BorderSide(
@@ -3589,7 +3833,7 @@ class _TodayGameReferenceRow extends StatelessWidget {
           child: Row(
             children: [
               SizedBox(
-                width: 48,
+                width: 54,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -3627,7 +3871,7 @@ class _TodayGameReferenceRow extends StatelessWidget {
                 ),
               ),
               SizedBox(
-                width: 58,
+                width: 68,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
@@ -3791,9 +4035,9 @@ class _RecentFlowReferenceCard extends StatelessWidget {
                   padding: const EdgeInsets.all(14),
                   child: _ReferenceEmptyState(
                     title: '최근 5경기를 불러오지 못했습니다',
-                    subtitle: '순위 화면에서 다시 확인해 주세요.',
-                    actionLabel: '순위 보기',
-                    onAction: () => context.go('/standings'),
+                    subtitle: '일정 화면에서 최근 경기 결과를 다시 확인해 주세요.',
+                    actionLabel: '일정 보기',
+                    onAction: () => context.go('/schedule'),
                   ),
                 )
               else if (rows.isEmpty)
@@ -3801,9 +4045,9 @@ class _RecentFlowReferenceCard extends StatelessWidget {
                   padding: const EdgeInsets.all(14),
                   child: _ReferenceEmptyState(
                     title: '표시할 최근 5경기가 없습니다',
-                    subtitle: '공식 종료 경기 결과가 확인되면 보여줍니다.',
-                    actionLabel: '순위 보기',
-                    onAction: () => context.go('/standings'),
+                    subtitle: '공식 종료 경기 결과는 일정 화면에서 확인할 수 있습니다.',
+                    actionLabel: '일정 보기',
+                    onAction: () => context.go('/schedule'),
                   ),
                 )
               else
@@ -4014,6 +4258,7 @@ class _RecentFlowTeamHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     return Row(
       children: [
         _TeamLogo(
@@ -4035,9 +4280,11 @@ class _RecentFlowTeamHeader extends StatelessWidget {
           textAlign: TextAlign.end,
           style: TextStyle(
             fontSize: 13,
-            color: trailingText.contains('연승') || trailingText.contains('승')
-                ? AppColors.live
-                : AppColors.textSecondary,
+            color: trailingText.contains('연승')
+                ? colors.positive
+                : trailingText.contains('연패')
+                ? colors.live
+                : colors.textSecondary,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -4103,7 +4350,7 @@ class _StandingsSnapshotCard extends StatelessWidget {
           title: '순위',
           showAction: false,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 5),
         _sectionCard(
           padding: EdgeInsets.zero,
           child: Column(
@@ -4208,66 +4455,66 @@ class _StandingSnapshotRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final team = KboTeams.byId(standing.teamId);
+    final colors = AppTheme.colorsOf(context);
+    final teamAccent = colors.readableAccent(
+      team?.primaryColor ?? colors.accent,
+    );
     final games = standing.wins + standing.losses + standing.draws;
     final compact = MediaQuery.sizeOf(context).width <= 340;
 
-    return Semantics(
-      button: true,
-      label: '${team?.shortName ?? standing.teamName} 순위 전체 보기',
-      child: AppPressable(
-        onTap: onTap,
-        pressedScale: 0.99,
-        pressedOpacity: 0.84,
-        child: Container(
-          padding: EdgeInsets.fromLTRB(
-            compact ? 10 : 14,
-            3,
-            compact ? 10 : 14,
-            3,
+    return AppPressable(
+      semanticLabel: '${team?.shortName ?? standing.teamName} 순위 전체 보기',
+      onTap: onTap,
+      pressedScale: 0.99,
+      pressedOpacity: 0.84,
+      child: Container(
+        key: ValueKey('home-standings-row-surface-${standing.teamId}'),
+        padding: EdgeInsets.fromLTRB(
+          compact ? 10 : 14,
+          3,
+          compact ? 10 : 14,
+          3,
+        ),
+        decoration: BoxDecoration(
+          color: highlighted ? teamAccent.withValues(alpha: 0.16) : null,
+          border: Border(
+            bottom: BorderSide(color: colors.divider.withValues(alpha: 0.5)),
           ),
-          decoration: BoxDecoration(
-            color: highlighted ? AppColors.live.withValues(alpha: 0.22) : null,
-            border: Border(
-              bottom: BorderSide(
-                color: AppColors.divider.withValues(alpha: 0.5),
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              _StandingCell('${standing.rank}', width: compact ? 30 : 34),
-              Expanded(
-                child: Row(
-                  children: [
-                    _TeamLogo(
-                      team: team,
-                      fallbackLabel: standing.teamName,
-                      size: compact ? 16 : 18,
-                      visualScale: 1.25,
-                    ),
-                    SizedBox(width: compact ? 4 : 7),
-                    Expanded(
-                      child: Text(
-                        team?.shortName ?? standing.teamName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
+        ),
+        child: Row(
+          children: [
+            _StandingCell('${standing.rank}', width: compact ? 30 : 34),
+            Expanded(
+              child: Row(
+                children: [
+                  _TeamLogo(
+                    team: team,
+                    fallbackLabel: standing.teamName,
+                    size: compact ? 16 : 18,
+                    visualScale: 1.25,
+                  ),
+                  SizedBox(width: compact ? 4 : 7),
+                  Expanded(
+                    child: Text(
+                      team?.shortName ?? standing.teamName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              _StandingCell('$games', width: compact ? 30 : 34),
-              _StandingCell('${standing.wins}', width: compact ? 26 : 30),
-              _StandingCell('${standing.losses}', width: compact ? 26 : 30),
-              _StandingCell('${standing.draws}', width: compact ? 26 : 30),
-              _StandingCell(standing.pct, width: compact ? 42 : 48),
-              _StandingCell(_gbLabel(standing.gb), width: compact ? 38 : 44),
-            ],
-          ),
+            ),
+            _StandingCell('$games', width: compact ? 30 : 34),
+            _StandingCell('${standing.wins}', width: compact ? 26 : 30),
+            _StandingCell('${standing.losses}', width: compact ? 26 : 30),
+            _StandingCell('${standing.draws}', width: compact ? 26 : 30),
+            _StandingCell(standing.pct, width: compact ? 42 : 48),
+            _StandingCell(_gbLabel(standing.gb), width: compact ? 38 : 44),
+          ],
         ),
       ),
     );
@@ -4336,7 +4583,7 @@ class _ReferenceSectionHeader extends StatelessWidget {
         Text(
           title,
           style: const TextStyle(
-            fontSize: 17,
+            fontSize: 19,
             fontWeight: FontWeight.w900,
             letterSpacing: 0,
           ),
@@ -4464,11 +4711,12 @@ class _ResultBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     final color = switch (result) {
-      '승' => AppColors.live,
-      '패' => AppColors.textSupporting,
-      '무' => AppColors.accent,
-      _ => AppColors.divider,
+      '승' => colors.positive,
+      '패' => colors.live,
+      '무' => colors.accent,
+      _ => colors.divider,
     };
     final label = switch (result) {
       '승' => '승',
@@ -4478,6 +4726,7 @@ class _ResultBubble extends StatelessWidget {
     };
 
     return Container(
+      key: ValueKey('home-result-bubble-$result'),
       width: size,
       height: size,
       alignment: Alignment.center,
@@ -4724,6 +4973,12 @@ class _KboInsightScoreStrip extends StatelessWidget {
     final awayTeam = KboTeams.byId(awayTeamId ?? '');
     final homeTeam = KboTeams.byId(homeTeamId ?? '');
     final score = _parseKboBriefScoreTitle(item.title);
+    final matchup = _parseKboBriefMatchupTitle(item.title);
+    final hasNumericScore =
+        score.awayLabel.isNotEmpty && score.homeLabel.isNotEmpty;
+    final hasPregameMatchup = !hasNumericScore && matchup != null;
+    final awayLabel = matchup?.awayLabel ?? score.awayLabel;
+    final homeLabel = matchup?.homeLabel ?? score.homeLabel;
     final isLive = _kboBriefScoreStripIsLive(item);
     final statusLabel = isLive ? 'LIVE' : _kboBriefBadgeLabel(item);
     final statusColor = isLive ? AppColors.live : AppColors.textSecondary;
@@ -4734,6 +4989,7 @@ class _KboInsightScoreStrip extends StatelessWidget {
       ),
       pressedScale: 0.988,
       child: Container(
+        key: const ValueKey('kbo-brief-score-strip'),
         padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
         decoration: BoxDecoration(
           color: AppColors.cardSub.withValues(alpha: 0.78),
@@ -4760,6 +5016,7 @@ class _KboInsightScoreStrip extends StatelessWidget {
                   ),
                   child: Text(
                     statusLabel,
+                    key: ValueKey('kbo-brief-status-${item.type}'),
                     style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textPrimary,
@@ -4775,39 +5032,48 @@ class _KboInsightScoreStrip extends StatelessWidget {
                     size: 30,
                   ),
                 const SizedBox(width: 7),
-                Text(
-                  score.awayLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
+                if (awayLabel.isNotEmpty && hasNumericScore)
+                  Text(
+                    awayLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
                 const SizedBox(width: 8),
-                Flexible(
-                  fit: FlexFit.tight,
+                Expanded(
                   child: Text(
-                    score.value,
+                    hasNumericScore
+                        ? score.value
+                        : hasPregameMatchup
+                        ? '${awayLabel.isEmpty ? '원정' : awayLabel} vs '
+                              '${homeLabel.isEmpty ? '홈' : homeLabel}'
+                        : score.value,
+                    key: hasPregameMatchup
+                        ? const ValueKey('kbo-brief-pregame-matchup')
+                        : null,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 20,
+                    style: TextStyle(
+                      fontSize: hasNumericScore ? 20 : 16,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  score.homeLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
+                if (homeLabel.isNotEmpty && hasNumericScore)
+                  Text(
+                    homeLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
                 const SizedBox(width: 7),
                 if (homeTeam != null)
                   _TeamLogo(
@@ -4818,6 +5084,7 @@ class _KboInsightScoreStrip extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   _kboBriefTimeLabel(item),
+                  key: ValueKey('kbo-brief-time-${item.type}'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -5118,6 +5385,24 @@ _KboBriefScore _parseKboBriefScoreTitle(String title) {
   );
 }
 
+_KboBriefMatchup? _parseKboBriefMatchupTitle(String title) {
+  final match = RegExp(r'^\s*(.+?)\s+vs\s+(.+?)\s*$').firstMatch(title);
+  if (match == null) {
+    return null;
+  }
+  return _KboBriefMatchup(
+    awayLabel: match.group(1)?.trim() ?? '',
+    homeLabel: match.group(2)?.trim() ?? '',
+  );
+}
+
+class _KboBriefMatchup {
+  final String awayLabel;
+  final String homeLabel;
+
+  const _KboBriefMatchup({required this.awayLabel, required this.homeLabel});
+}
+
 class _KboBriefScore {
   final String awayLabel;
   final String value;
@@ -5161,7 +5446,16 @@ String _kboBriefCompactSubtitle(HomeKboBriefItem item) {
 
 String _kboBriefTimeLabel(HomeKboBriefItem item) {
   final match = RegExp(r'([0-9]+회[초말]?)').firstMatch(item.subtitle);
-  return match?.group(1) ?? _kboBriefBadgeLabel(item);
+  if (match != null) {
+    return match.group(1)!;
+  }
+  if (item.type == 'big_match') {
+    return RegExp(
+          r'\b([0-9]{1,2}:[0-9]{2})\b',
+        ).firstMatch(item.subtitle)?.group(1) ??
+        _kboBriefBadgeLabel(item);
+  }
+  return _kboBriefBadgeLabel(item);
 }
 
 Color _kboBriefAccent(String type) {
@@ -5422,7 +5716,9 @@ class _QuickContentListItem extends ConsumerWidget {
                   loading: () => SizedBox(
                     height: 220,
                     child: Center(
-                      child: CircularProgressIndicator(color: AppColors.live),
+                      child: CircularProgressIndicator(
+                        color: AppTheme.colorsOf(context).accent,
+                      ),
                     ),
                   ),
                   error: (error, stackTrace) => Column(

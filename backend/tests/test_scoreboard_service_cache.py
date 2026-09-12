@@ -1,11 +1,15 @@
 import json
+import logging
 import threading
 import time
 from pathlib import Path
 
 import pytest
 
-from kbo_fans_backend.services.scoreboard import ScoreboardService
+from kbo_fans_backend.services.scoreboard import (
+    GameScheduleUnavailableError,
+    ScoreboardService,
+)
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.storage.live_scoreboard_store import LiveScoreboardStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
@@ -78,6 +82,18 @@ class _StubScoreboardCrawler:
         }
 
 
+class _NoHistoricalSnapshotLoadStore(JsonSnapshotStore):
+    def __init__(self, base_dir: str):
+        super().__init__(base_dir=base_dir)
+        self.loads = []
+
+    def load(self, namespace: str, key: str):
+        self.loads.append((namespace, key))
+        if namespace in {"scoreboard", "games"}:
+            raise AssertionError(f"current path must not load {namespace} snapshot")
+        return super().load(namespace, key)
+
+
 class _MultiGameScheduleCrawler:
     def __init__(self):
         self.calls = 0
@@ -144,6 +160,28 @@ class _SlowScheduleCrawler(_StubScheduleCrawler):
 
     def release(self):
         self._gate.set()
+
+
+class _BlockingScheduleCrawler(_StubScheduleCrawler):
+    def __init__(self):
+        super().__init__()
+        self.started = threading.Event()
+        self.release_event = threading.Event()
+
+    def get_games_by_date(self, date: str):
+        self.started.set()
+        assert self.release_event.wait(timeout=2)
+        return super().get_games_by_date(date)
+
+
+class _ObservedMainCrawler(_StubMainCrawler):
+    def __init__(self):
+        super().__init__()
+        self.started = threading.Event()
+
+    def get_kbo_game_list(self, date: str):
+        self.started.set()
+        return super().get_kbo_game_list(date)
 
 
 class _FailingScheduleCrawler:
@@ -352,6 +390,47 @@ def test_get_scoreboard_uses_ttl_cache_for_same_date(tmp_path: Path) -> None:
     assert scoreboard.calls == 0
 
 
+def test_get_game_surfaces_schedule_failure_without_returning_missing(tmp_path: Path) -> None:
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_FailingScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    with pytest.raises(GameScheduleUnavailableError, match="schedule unavailable"):
+        service.get_game("29990331HTLG0")
+
+
+@pytest.mark.parametrize("surface", ["full", "home", "compact", "game"])
+def test_current_scoreboard_surfaces_skip_historical_snapshot_reads(
+    tmp_path: Path,
+    surface: str,
+) -> None:
+    snapshot_store = _NoHistoricalSnapshotLoadStore(str(tmp_path / "snapshots"))
+    game_id = "29990331HTLG0"
+    service = ScoreboardService(
+        main_crawler=_MutableMainCrawler(game_id) if surface == "game" else _StubMainCrawler(),
+        schedule_crawler=(
+            _MutableScheduleCrawler(game_id) if surface == "game" else _StubScheduleCrawler()
+        ),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=snapshot_store,
+    )
+
+    if surface == "full":
+        payload = service.get_scoreboard("2999-03-31")
+    elif surface == "home":
+        payload = service.get_home_scoreboard("2999-03-31")
+    elif surface == "compact":
+        payload = service.get_compact_scoreboard("2999-03-31", my_team="HT")
+    else:
+        payload = service.get_game(game_id)
+
+    assert payload is not None
+    assert not any(namespace in {"scoreboard", "games"} for namespace, _ in snapshot_store.loads)
+
+
 @pytest.mark.parametrize("surface", ["full", "home", "game"])
 def test_force_refresh_wins_same_date_cache_race(
     tmp_path: Path,
@@ -524,6 +603,178 @@ def test_get_home_scoreboard_does_not_fetch_per_game_detail(tmp_path: Path) -> N
     assert scoreboard.game_ids == []
 
 
+def test_home_scoreboard_logs_source_timing_without_payload_data(
+    tmp_path: Path,
+    caplog,
+) -> None:
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_StubScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    with caplog.at_level(
+        logging.INFO,
+        logger="kbo_fans_backend.services.scoreboard",
+    ):
+        service.get_home_scoreboard("2026-03-31")
+
+    assert "home_scoreboard_timing" in caplog.text
+    assert "date=2026-03-31" in caplog.text
+    assert "scheduleMs=" in caplog.text
+    assert "mainMs=" in caplog.text
+    assert "home_scoreboard_total_timing" in caplog.text
+
+
+def test_get_home_scoreboard_starts_main_list_while_schedule_is_in_flight(
+    tmp_path: Path,
+) -> None:
+    schedule = _BlockingScheduleCrawler()
+    main = _ObservedMainCrawler()
+    service = ScoreboardService(
+        main_crawler=main,
+        schedule_crawler=schedule,
+        scoreboard_crawler=_TrackingScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    thread = threading.Thread(target=lambda: service.get_home_scoreboard("2999-03-31"))
+    thread.start()
+    assert schedule.started.wait(timeout=0.5)
+    try:
+        assert main.started.wait(timeout=0.5)
+    finally:
+        schedule.release_event.set()
+    thread.join(timeout=2)
+    assert not thread.is_alive()
+
+
+def test_get_scoreboard_starts_main_list_while_schedule_is_in_flight(
+    tmp_path: Path,
+) -> None:
+    schedule = _BlockingScheduleCrawler()
+    main = _ObservedMainCrawler()
+    service = ScoreboardService(
+        main_crawler=main,
+        schedule_crawler=schedule,
+        scoreboard_crawler=_TrackingScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    thread = threading.Thread(target=lambda: service.get_scoreboard("2999-03-31"))
+    thread.start()
+    assert schedule.started.wait(timeout=0.5)
+    try:
+        assert main.started.wait(timeout=0.5)
+    finally:
+        schedule.release_event.set()
+    thread.join(timeout=2)
+    assert not thread.is_alive()
+
+
+def test_get_game_starts_main_list_while_schedule_is_in_flight(tmp_path: Path) -> None:
+    schedule_started = threading.Event()
+    schedule_release = threading.Event()
+    main_started = threading.Event()
+    game_id = "29990331HTLG0"
+
+    def schedule_games(date: str, force_refresh: bool = False):
+        schedule_started.set()
+        assert schedule_release.wait(timeout=2)
+        return [
+            {
+                "date": date,
+                "time": "18:30",
+                "gameId": game_id,
+                "awayId": "HT",
+                "awayName": "KIA",
+                "homeId": "LG",
+                "homeName": "LG",
+                "stadium": "잠실",
+                "status": "SCHEDULED",
+            }
+        ]
+
+    def main_games(date: str, force_refresh: bool = False):
+        main_started.set()
+        return {game_id: {"G_ID": game_id, "G_TM": "18:30", "GAME_STATE_SC": "1"}}
+
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_StubScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+    service._get_schedule_games_by_date = schedule_games
+    service._get_main_game_map = main_games
+
+    result = {}
+
+    def request() -> None:
+        result["payload"] = service.get_game(game_id)
+
+    thread = threading.Thread(target=request)
+    thread.start()
+    assert schedule_started.wait(timeout=0.5)
+    try:
+        assert main_started.wait(timeout=0.5)
+    finally:
+        schedule_release.set()
+        thread.join(timeout=2)
+
+    assert not thread.is_alive()
+    assert result["payload"]["gameId"] == game_id
+
+
+def test_get_game_schedule_failure_does_not_wait_for_main_future(tmp_path: Path) -> None:
+    barrier = threading.Barrier(2)
+    main_started = threading.Event()
+    main_release = threading.Event()
+    game_id = "29990331HTLG0"
+
+    def schedule_games(date: str, force_refresh: bool = False):
+        barrier.wait(timeout=0.5)
+        raise RuntimeError("schedule unavailable")
+
+    def main_games(date: str, force_refresh: bool = False):
+        barrier.wait(timeout=0.5)
+        main_started.set()
+        main_release.wait(timeout=2)
+        return {}
+
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_StubScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+    service._get_schedule_games_by_date = schedule_games
+    service._get_main_game_map = main_games
+
+    errors = []
+
+    def request() -> None:
+        try:
+            service.get_game(game_id)
+        except BaseException as error:
+            errors.append(error)
+
+    thread = threading.Thread(target=request)
+    thread.start()
+    assert main_started.wait(timeout=1)
+    try:
+        thread.join(timeout=0.2)
+        assert not thread.is_alive()
+    finally:
+        main_release.set()
+        thread.join(timeout=2)
+
+    assert len(errors) == 1
+    assert isinstance(errors[0], GameScheduleUnavailableError)
+    assert str(errors[0]) == "schedule unavailable for game 29990331HTLG0"
+
+
 def test_get_home_scoreboard_uses_fresh_live_state_without_crawling(
     tmp_path: Path,
 ) -> None:
@@ -628,6 +879,29 @@ def test_get_home_scoreboard_ignores_stale_live_state_on_failure(
 
     with pytest.raises(RuntimeError):
         service.get_home_scoreboard("2999-03-31")
+
+
+def test_home_scoreboard_logs_timing_when_schedule_fails(
+    tmp_path: Path,
+    caplog,
+) -> None:
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_FailingScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    with caplog.at_level(
+        logging.INFO,
+        logger="kbo_fans_backend.services.scoreboard",
+    ):
+        with pytest.raises(RuntimeError, match="schedule unavailable"):
+            service.get_home_scoreboard("2999-03-31")
+
+    assert "home_scoreboard_timing" in caplog.text
+    assert "date=2999-03-31" in caplog.text
+    assert "ready=False" in caplog.text
 
 
 def test_prime_home_scoreboard_writes_live_state_for_other_workers(
@@ -792,6 +1066,130 @@ def test_get_compact_scoreboard_uses_lightweight_selected_game(tmp_path: Path) -
     assert schedule.calls == 1
     assert main.calls == 1
     assert scoreboard.game_ids == []
+
+
+def test_lightweight_scheduled_game_does_not_promote_zero_scores(tmp_path: Path) -> None:
+    service = ScoreboardService(
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+    game = service._build_lightweight_game(
+        {
+            "date": "2026-03-31",
+            "time": "18:30",
+            "gameId": "20260331HTLG0",
+            "awayId": "HT",
+            "awayName": "KIA",
+            "awayScore": 0,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": 0,
+            "stadium": "잠실",
+            "status": "SCHEDULED",
+        },
+        {
+            "G_ID": "20260331HTLG0",
+            "G_TM": "18:30",
+            "GAME_STATE_SC": "1",
+            "T_SCORE_CN": "0",
+            "B_SCORE_CN": "0",
+        },
+    )
+
+    assert game["status"] == "SCHEDULED"
+    assert game["away"]["score"] is None
+    assert game["home"]["score"] is None
+
+
+def test_compact_scoreboard_starts_schedule_and_main_together(tmp_path: Path) -> None:
+    barrier = threading.Barrier(2)
+    game_id = "29990331HTLG0"
+
+    def schedule_games(date: str, force_refresh: bool = False):
+        barrier.wait(timeout=0.5)
+        return [
+            {
+                "date": date,
+                "time": "18:30",
+                "gameId": game_id,
+                "awayId": "HT",
+                "awayName": "KIA",
+                "homeId": "LG",
+                "homeName": "LG",
+                "stadium": "잠실",
+                "status": "SCHEDULED",
+            }
+        ]
+
+    def main_games(date: str, force_refresh: bool = False):
+        barrier.wait(timeout=0.5)
+        return {game_id: {"G_ID": game_id, "G_TM": "18:30", "GAME_STATE_SC": "1"}}
+
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_StubScheduleCrawler(),
+        scoreboard_crawler=_TrackingScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+    service._get_schedule_games_by_date = schedule_games
+    service._get_main_game_map = main_games
+
+    payload = service.get_compact_scoreboard("2999-03-31", my_team="HT")
+
+    assert [game["gameId"] for game in payload["games"]] == [game_id]
+
+
+@pytest.mark.parametrize("surface", ["compact", "home", "full"])
+def test_schedule_failure_does_not_wait_for_sibling_future(
+    tmp_path: Path,
+    surface: str,
+) -> None:
+    barrier = threading.Barrier(2)
+    main_started = threading.Event()
+    main_release = threading.Event()
+    errors = []
+
+    def schedule_games(date: str, force_refresh: bool = False):
+        barrier.wait(timeout=0.5)
+        raise RuntimeError("schedule unavailable")
+
+    def main_games(date: str, force_refresh: bool = False):
+        barrier.wait(timeout=0.5)
+        main_started.set()
+        main_release.wait(timeout=2)
+        return {}
+
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_StubScheduleCrawler(),
+        scoreboard_crawler=_TrackingScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+    service._get_schedule_games_by_date = schedule_games
+    service._get_main_game_map = main_games
+
+    def request() -> None:
+        try:
+            if surface == "compact":
+                service.get_compact_scoreboard("2999-03-31", my_team="HT")
+            elif surface == "home":
+                service.get_home_scoreboard("2999-03-31")
+            else:
+                service.get_scoreboard("2999-03-31")
+        except BaseException as error:
+            errors.append(error)
+
+    thread = threading.Thread(target=request)
+    thread.start()
+    assert main_started.wait(timeout=0.5)
+    try:
+        thread.join(timeout=0.2)
+        assert not thread.is_alive()
+    finally:
+        main_release.set()
+        thread.join(timeout=2)
+
+    assert len(errors) == 1
+    assert str(errors[0]) == "schedule unavailable"
 
 
 def test_current_scoreboard_rejects_old_nonterminal_snapshot_on_failure(

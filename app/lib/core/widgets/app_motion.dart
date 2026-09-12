@@ -186,6 +186,7 @@ class _AppPressableState extends State<AppPressable> {
     );
 
     return Semantics(
+      container: widget.semanticLabel != null,
       button: true,
       enabled: semanticEnabled,
       selected: widget.semanticSelected,

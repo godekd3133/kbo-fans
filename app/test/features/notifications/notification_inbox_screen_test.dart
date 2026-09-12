@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
@@ -63,6 +65,45 @@ void main() {
       tester.widget<Icon>(find.byIcon(Icons.chevron_right_rounded)).color,
       AppTheme.darkColors.textSupporting,
     );
+  });
+
+  testWidgets('동시 inbox refresh는 목록과 설정 loader를 중복 호출하지 않는다', (tester) async {
+    final entriesResult = Completer<List<NotificationInboxEntry>>();
+    final settingsResult = Completer<PushNotificationSettings>();
+    var entriesCalls = 0;
+    var settingsCalls = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: NotificationInboxScreen(
+          entriesLoader: () {
+            entriesCalls += 1;
+            return entriesResult.future;
+          },
+          settingsLoader: () {
+            settingsCalls += 1;
+            return settingsResult.future;
+          },
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final refresh = tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+        .onRefresh();
+    await tester.pump();
+
+    expect(entriesCalls, 1);
+    expect(settingsCalls, 1);
+
+    entriesResult.complete(const <NotificationInboxEntry>[]);
+    settingsResult.complete(const PushNotificationSettings.defaults());
+    await refresh;
+    await tester.pumpAndSettle();
+
+    expect(find.text('아직 받은 푸시가 없습니다'), findsOneWidget);
   });
 
   testWidgets(

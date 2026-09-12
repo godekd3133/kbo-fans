@@ -17,11 +17,16 @@ from kbo_fans_backend.services.ticketing import TicketingService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.storage.live_scoreboard_store import LiveScoreboardStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
-from kbo_fans_backend.utils.resilience import UpstreamBusyError
+from kbo_fans_backend.utils.resilience import UpstreamBusyError, UpstreamUnavailableError
 from kbo_fans_backend.utils.singleflight import SingleFlight
+from kbo_fans_backend.utils.source_cache import KboSourceCache
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 logger = logging.getLogger(__name__)
+
+
+class GameScheduleUnavailableError(UpstreamUnavailableError):
+    """Raised when a game lookup cannot determine whether its schedule exists."""
 
 
 class ScoreboardService:
@@ -41,6 +46,8 @@ class ScoreboardService:
         live_scoreboard_store: Optional[LiveScoreboardStore] = None,
         date_lock_wait_timeout_seconds: float = 2.0,
         runtime_cache_max_age_seconds: Optional[float] = None,
+        schedule_source: Optional[KboSourceCache[str, list[dict[str, Any]]]] = None,
+        main_source: Optional[KboSourceCache[str, list[dict[str, Any]]]] = None,
     ) -> None:
         provided_snapshot_store = snapshot_store
         self.main_crawler = main_crawler or MainCrawler()
@@ -79,6 +86,8 @@ class ScoreboardService:
             0.0,
             date_lock_wait_timeout_seconds,
         )
+        self._schedule_source = schedule_source
+        self._main_source = main_source
         configured_runtime_cache_age = (
             runtime_cache_max_age_seconds
             if runtime_cache_max_age_seconds is not None
@@ -107,7 +116,11 @@ class ScoreboardService:
             if cached is not None:
                 logger.info("scoreboard fresh cache while refresh busy %s", date)
                 return cached
-            snapshot = self.snapshot_store.load_payload("scoreboard", date)
+            snapshot = (
+                self.snapshot_store.load_payload("scoreboard", date)
+                if self._is_historical_date(date)
+                else None
+            )
             if self._can_use_historical_scoreboard_snapshot(date, snapshot):
                 return snapshot
             raise
@@ -118,7 +131,11 @@ class ScoreboardService:
         force_refresh: bool,
         started_at: float,
     ) -> dict[str, Any]:
-        snapshot = self.snapshot_store.load_payload("scoreboard", date)
+        snapshot = (
+            self.snapshot_store.load_payload("scoreboard", date)
+            if self._is_historical_date(date)
+            else None
+        )
         if self._can_use_historical_scoreboard_snapshot(date, snapshot):
             logger.info("scoreboard snapshot hit %s", date)
             return snapshot
@@ -153,42 +170,60 @@ class ScoreboardService:
                 logger.info("scoreboard cache hit after wait %s", date)
                 return cached
 
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+        shutdown_without_wait = False
         try:
             schedule_started_at = time.perf_counter()
-            games = self._get_schedule_games_by_date(
+            schedule_future = executor.submit(
+                self._get_schedule_games_by_date,
                 date,
                 force_refresh=force_refresh,
             )
-            logger.info(
-                "scoreboard schedule %s %.0fms (%s games)",
-                date,
-                (time.perf_counter() - schedule_started_at) * 1000,
-                len(games),
-            )
-        except Exception:
-            stale = self._scoreboard_cache.get_stale(date)
-            if self._is_historical_date(date) and stale is not None:
-                logger.warning("scoreboard stale cache fallback %s", date)
-                return stale
-            if self._can_use_scoreboard_snapshot_after_failure(date, snapshot):
-                logger.warning("scoreboard snapshot fallback %s", date)
-                return snapshot
-            raise
-
-        try:
             main_started_at = time.perf_counter()
-            game_list = self._get_main_game_map(
+            main_future = executor.submit(
+                self._get_main_game_map,
                 date,
                 force_refresh=force_refresh,
             )
-            logger.info(
-                "scoreboard main list %s %.0fms",
-                date,
-                (time.perf_counter() - main_started_at) * 1000,
-            )
-        except Exception:
-            game_list = {}
-            logger.warning("scoreboard main list failed %s", date)
+
+            try:
+                games = schedule_future.result()
+                logger.info(
+                    "scoreboard schedule %s %.0fms (%s games)",
+                    date,
+                    (time.perf_counter() - schedule_started_at) * 1000,
+                    len(games),
+                )
+            except Exception:
+                main_future.cancel()
+                # Do not make a failed current schedule wait for an unrelated
+                # Main request. The request itself remains bounded by the
+                # crawler timeout and the executor thread is allowed to finish
+                # without blocking this response path.
+                executor.shutdown(wait=False, cancel_futures=True)
+                shutdown_without_wait = True
+                stale = self._scoreboard_cache.get_stale(date)
+                if self._is_historical_date(date) and stale is not None:
+                    logger.warning("scoreboard stale cache fallback %s", date)
+                    return stale
+                if self._can_use_scoreboard_snapshot_after_failure(date, snapshot):
+                    logger.warning("scoreboard snapshot fallback %s", date)
+                    return snapshot
+                raise
+
+            try:
+                game_list = main_future.result()
+                logger.info(
+                    "scoreboard main list %s %.0fms",
+                    date,
+                    (time.perf_counter() - main_started_at) * 1000,
+                )
+            except Exception:
+                game_list = {}
+                logger.warning("scoreboard main list failed %s", date)
+        finally:
+            if not shutdown_without_wait:
+                executor.shutdown(wait=True)
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=max(1, min(len(games), 5))
         ) as executor:
@@ -246,7 +281,11 @@ class ScoreboardService:
             if live_state is not None:
                 logger.info("home scoreboard live state while refresh busy %s", date)
                 return live_state
-            snapshot = self.snapshot_store.load_payload("scoreboard", date)
+            snapshot = (
+                self.snapshot_store.load_payload("scoreboard", date)
+                if self._is_historical_date(date)
+                else None
+            )
             if self._can_use_historical_scoreboard_snapshot(date, snapshot):
                 return {
                     "date": snapshot["date"],
@@ -259,7 +298,11 @@ class ScoreboardService:
         date: str,
         force_refresh: bool,
     ) -> dict[str, Any]:
-        snapshot = self.snapshot_store.load_payload("scoreboard", date)
+        snapshot = (
+            self.snapshot_store.load_payload("scoreboard", date)
+            if self._is_historical_date(date)
+            else None
+        )
         if self._can_use_historical_scoreboard_snapshot(date, snapshot):
             return {
                 "date": snapshot["date"],
@@ -304,7 +347,11 @@ class ScoreboardService:
             raise
 
     def _prime_home_scoreboard_serialized(self, date: str) -> dict[str, Any]:
-        snapshot = self.snapshot_store.load_payload("scoreboard", date)
+        snapshot = (
+            self.snapshot_store.load_payload("scoreboard", date)
+            if self._is_historical_date(date)
+            else None
+        )
         if self._can_use_historical_scoreboard_snapshot(date, snapshot):
             return {
                 "date": snapshot["date"],
@@ -333,31 +380,60 @@ class ScoreboardService:
                 logger.info("home scoreboard cache hit after wait %s", date)
                 return cached
 
+        timing_started_at = time.perf_counter()
+        schedule_ready_ms = -1.0
+        main_ready_ms = -1.0
+        sources_ready = False
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+        shutdown_without_wait = False
         try:
-            games = self._get_schedule_games_by_date(
+            schedule_future = executor.submit(
+                self._get_schedule_games_by_date,
                 date,
                 force_refresh=force_refresh,
             )
-        except Exception:
-            stale = self._home_scoreboard_cache.get_stale(date)
-            if self._is_historical_date(date) and stale is not None:
-                logger.warning("home scoreboard stale cache fallback %s", date)
-                return stale
-            if self._can_use_scoreboard_snapshot_after_failure(date, snapshot):
-                return {
-                    "date": snapshot["date"],
-                    "games": [self._strip_home_payload(game) for game in snapshot["games"]],
-                }
-            raise
+            main_future = executor.submit(
+                self._get_main_game_map,
+                date,
+                force_refresh=force_refresh,
+            )
 
-        try:
-            game_list = self._get_main_game_map(
+            try:
+                games = schedule_future.result()
+                schedule_ready_ms = (time.perf_counter() - timing_started_at) * 1000
+            except Exception:
+                main_future.cancel()
+                executor.shutdown(wait=False, cancel_futures=True)
+                shutdown_without_wait = True
+                stale = self._home_scoreboard_cache.get_stale(date)
+                if self._is_historical_date(date) and stale is not None:
+                    logger.warning("home scoreboard stale cache fallback %s", date)
+                    return stale
+                if self._can_use_scoreboard_snapshot_after_failure(date, snapshot):
+                    return {
+                        "date": snapshot["date"],
+                        "games": [self._strip_home_payload(game) for game in snapshot["games"]],
+                    }
+                raise
+
+            try:
+                game_list = main_future.result()
+            except Exception:
+                game_list = {}
+                logger.warning("home scoreboard main list failed %s", date)
+            main_ready_ms = (time.perf_counter() - timing_started_at) * 1000
+            sources_ready = True
+        finally:
+            if not shutdown_without_wait:
+                executor.shutdown(wait=True)
+            logger.info(
+                "home_scoreboard_timing date=%s ready=%s scheduleMs=%.1f mainMs=%.1f totalMs=%.1f",
                 date,
-                force_refresh=force_refresh,
+                sources_ready,
+                schedule_ready_ms,
+                main_ready_ms,
+                (time.perf_counter() - timing_started_at) * 1000,
             )
-        except Exception:
-            game_list = {}
-            logger.warning("home scoreboard main list failed %s", date)
 
         payload = {
             "date": date,
@@ -373,6 +449,11 @@ class ScoreboardService:
         }
         self._home_scoreboard_cache.set(date, payload)
         self._save_live_home_scoreboard(date, payload)
+        logger.info(
+            "home_scoreboard_total_timing date=%s totalMs=%.1f",
+            date,
+            (time.perf_counter() - timing_started_at) * 1000,
+        )
         return payload
 
     def get_compact_scoreboard(
@@ -400,7 +481,11 @@ class ScoreboardService:
                     my_team,
                     source="live",
                 )
-            snapshot = self.snapshot_store.load_payload("scoreboard", date)
+            snapshot = (
+                self.snapshot_store.load_payload("scoreboard", date)
+                if self._is_historical_date(date)
+                else None
+            )
             if self._can_use_historical_scoreboard_snapshot(date, snapshot):
                 return self._compact_from_snapshot(date, snapshot, my_team)
             raise
@@ -433,28 +518,44 @@ class ScoreboardService:
             logger.info("compact scoreboard cache hit after wait %s", cache_key)
             return cached
 
-        snapshot = self.snapshot_store.load_payload("scoreboard", date)
+        snapshot = (
+            self.snapshot_store.load_payload("scoreboard", date)
+            if self._is_historical_date(date)
+            else None
+        )
         if self._can_use_historical_scoreboard_snapshot(date, snapshot):
             payload = self._compact_from_snapshot(date, snapshot, my_team)
             self._compact_scoreboard_cache.set(cache_key, payload)
             return payload
 
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+        shutdown_without_wait = False
         try:
-            games = self._get_schedule_games_by_date(date)
-        except Exception:
-            stale = self._compact_scoreboard_cache.get_stale(cache_key)
-            if self._is_historical_date(date) and stale is not None:
-                logger.warning("compact scoreboard stale fallback %s", cache_key)
-                return stale
-            if self._can_use_scoreboard_snapshot_after_failure(date, snapshot):
-                return self._compact_from_snapshot(date, snapshot, my_team)
-            raise
+            schedule_future = executor.submit(self._get_schedule_games_by_date, date)
+            main_future = executor.submit(self._get_main_game_map, date)
 
-        try:
-            game_list = self._get_main_game_map(date)
-        except Exception:
-            game_list = {}
-            logger.warning("compact scoreboard main list failed %s", date)
+            try:
+                games = schedule_future.result()
+            except Exception:
+                main_future.cancel()
+                executor.shutdown(wait=False, cancel_futures=True)
+                shutdown_without_wait = True
+                stale = self._compact_scoreboard_cache.get_stale(cache_key)
+                if self._is_historical_date(date) and stale is not None:
+                    logger.warning("compact scoreboard stale fallback %s", cache_key)
+                    return stale
+                if self._can_use_scoreboard_snapshot_after_failure(date, snapshot):
+                    return self._compact_from_snapshot(date, snapshot, my_team)
+                raise
+
+            try:
+                game_list = main_future.result()
+            except Exception:
+                game_list = {}
+                logger.warning("compact scoreboard main list failed %s", date)
+        finally:
+            if not shutdown_without_wait:
+                executor.shutdown(wait=True)
 
         selected = self._select_compact_game(games, game_list, my_team)
         compact_games = []
@@ -509,7 +610,11 @@ class ScoreboardService:
                     force_refresh=force_refresh,
                 )
         except UpstreamBusyError:
-            snapshot = self.snapshot_store.load_payload("games", game_id)
+            snapshot = (
+                self.snapshot_store.load_payload("games", game_id)
+                if self._is_historical_date(date)
+                else None
+            )
             if force_refresh and not self._can_use_historical_game_snapshot(game_id, snapshot):
                 raise
             cached = self._game_cache.get(game_id)
@@ -525,7 +630,12 @@ class ScoreboardService:
         game_id: str,
         force_refresh: bool,
     ) -> Optional[dict[str, Any]]:
-        snapshot = self.snapshot_store.load_payload("games", game_id)
+        game_date = f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
+        snapshot = (
+            self.snapshot_store.load_payload("games", game_id)
+            if self._is_historical_date(game_date)
+            else None
+        )
         can_use_snapshot = self._can_use_historical_game_snapshot(game_id, snapshot)
         if can_use_snapshot:
             return snapshot
@@ -565,29 +675,48 @@ class ScoreboardService:
                 return cached
 
         date = f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+        shutdown_without_wait = False
         try:
-            games = self._get_schedule_games_by_date(
+            schedule_future = executor.submit(
+                self._get_schedule_games_by_date,
                 date,
                 force_refresh=force_refresh,
             )
-        except Exception:
-            return None
-
-        schedule_game = next(
-            (game for game in games if game.get("gameId") == game_id),
-            None,
-        )
-        if schedule_game is None:
-            return None
-
-        try:
-            game_list = self._get_main_game_map(
+            main_future = executor.submit(
+                self._get_main_game_map,
                 date,
                 force_refresh=force_refresh,
             )
-        except Exception:
-            game_list = {}
-            logger.warning("game summary main list failed %s %s", date, game_id)
+
+            try:
+                games = schedule_future.result()
+            except Exception as error:
+                main_future.cancel()
+                executor.shutdown(wait=False, cancel_futures=True)
+                shutdown_without_wait = True
+                raise GameScheduleUnavailableError(
+                    f"schedule unavailable for game {game_id}"
+                ) from error
+
+            schedule_game = next(
+                (game for game in games if game.get("gameId") == game_id),
+                None,
+            )
+            if schedule_game is None:
+                main_future.cancel()
+                executor.shutdown(wait=False, cancel_futures=True)
+                shutdown_without_wait = True
+                return None
+
+            try:
+                game_list = main_future.result()
+            except Exception:
+                game_list = {}
+                logger.warning("game summary main list failed %s %s", date, game_id)
+        finally:
+            if not shutdown_without_wait:
+                executor.shutdown(wait=True)
 
         game = self._enrich_game(schedule_game, game_list.get(game_id, {}))
         self._game_cache.set(game_id, game)
@@ -629,7 +758,17 @@ class ScoreboardService:
             if cached is not None:
                 logger.info("scoreboard schedule cache hit %s", date)
                 return cached
-        games = self.schedule_crawler.get_games_by_date(date)
+        if self._schedule_source is not None:
+            games = [
+                row
+                for row in self._schedule_source.get(
+                    date[:7],
+                    force_refresh=force_refresh,
+                )
+                if row.get("date") == date
+            ]
+        else:
+            games = self.schedule_crawler.get_games_by_date(date)
         self._schedule_games_cache.set(date, games)
         return games
 
@@ -643,7 +782,11 @@ class ScoreboardService:
             if cached is not None:
                 logger.info("scoreboard main list cache hit %s", date)
                 return cached
-        game_map = {game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)}
+        if self._main_source is not None:
+            source_games = self._main_source.get(date, force_refresh=force_refresh)
+        else:
+            source_games = self.main_crawler.get_kbo_game_list(date)
+        game_map = {game["G_ID"]: game for game in source_games}
         self._main_game_map_cache.set(date, game_map)
         return game_map
 
@@ -676,8 +819,8 @@ class ScoreboardService:
         status_label = self._status_label_for_game(resolved_status, game, main_game)
 
         used_scheduled_fallback = False
-        if not game_id or resolved_status == "SCHEDULED":
-            detail = self._scheduled_fallback_detail(game)
+        if not game_id or resolved_status in {"SCHEDULED", "CANCELLED"}:
+            detail = self._scheduled_fallback_detail(game, scores_available=False)
             used_scheduled_fallback = True
         else:
             try:
@@ -723,7 +866,10 @@ class ScoreboardService:
             resolved_status = self._map_status(main_game.get("GAME_STATE_SC"))
         status_label = self._status_label_for_game(resolved_status, game, main_game)
 
-        detail = self._scheduled_fallback_detail(game)
+        detail = self._scheduled_fallback_detail(
+            game,
+            scores_available=resolved_status not in {"SCHEDULED", "CANCELLED"},
+        )
         if resolved_status == "LIVE" and not main_game:
             detail["inning"] = "진행중"
         elif resolved_status == "FINAL" and not main_game:
@@ -733,7 +879,8 @@ class ScoreboardService:
         elif resolved_status == "SUSPENDED":
             detail["inning"] = "서스펜디드"
 
-        detail = self._merge_main_game_scores(detail, main_game, prefer_main=True)
+        if resolved_status not in {"SCHEDULED", "CANCELLED"}:
+            detail = self._merge_main_game_scores(detail, main_game, prefer_main=True)
         detail = self._backfill_team_identity(game, detail)
         return {
             **game,
@@ -806,7 +953,13 @@ class ScoreboardService:
         return None
 
     @staticmethod
-    def _scheduled_fallback_detail(game: dict[str, Any]) -> dict[str, Any]:
+    def _scheduled_fallback_detail(
+        game: dict[str, Any],
+        *,
+        scores_available: bool = True,
+    ) -> dict[str, Any]:
+        away_score = game.get("awayScore") if scores_available else None
+        home_score = game.get("homeScore") if scores_available else None
         return {
             "inning": f"{game.get('time', '')} 예정".strip() or "예정",
             "stadium": game.get("stadium"),
@@ -817,7 +970,7 @@ class ScoreboardService:
                 "teamName": game.get("awayName"),
                 "shortName": game.get("awayName"),
                 "logoUrl": None,
-                "score": game.get("awayScore"),
+                "score": away_score,
                 "scores": [None] * 9,
                 "hits": None,
                 "errors": None,
@@ -828,7 +981,7 @@ class ScoreboardService:
                 "teamName": game.get("homeName"),
                 "shortName": game.get("homeName"),
                 "logoUrl": None,
-                "score": game.get("homeScore"),
+                "score": home_score,
                 "scores": [None] * 9,
                 "hits": None,
                 "errors": None,

@@ -360,6 +360,28 @@ void main() {
     expect(find.byType(CachedNetworkImage), findsWidgets);
   });
 
+  testWidgets('매칭된 박스스코어 선수 행은 접근성 탭 동작을 제공한다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await _pumpBoxscoreTab(
+        tester,
+        boxscore: _officialBoxscore,
+        players: const [_matchedBatter],
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final row = find.byKey(const ValueKey('boxscore-record-row-노시환'));
+      final data = tester.getSemantics(row).getSemanticsData();
+      expect(data.flagsCollection.isButton, isTrue);
+      expect(data.hasAction(SemanticsAction.tap), isTrue);
+      expect(data.label, contains('선수 기록 보기'));
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   for (final width in <double>[320, 390]) {
     testWidgets('${width.toInt()}px 박스스코어 활약 행은 선수명과 앱 계산 지표를 세로로 보존한다', (
       tester,
@@ -690,6 +712,7 @@ void main() {
 
     expect(find.text('공식 박스스코어 업데이트 전입니다'), findsNothing);
     expect(find.text('실시간 기록 추적'), findsOneWidget);
+    expect(find.byKey(const ValueKey('boxscore-live-status')), findsOneWidget);
     expect(find.text('LIVE 추적'), findsOneWidget);
     expect(find.text('양석환'), findsOneWidget);
     expect(find.text('3회초 현재 타자'), findsOneWidget);

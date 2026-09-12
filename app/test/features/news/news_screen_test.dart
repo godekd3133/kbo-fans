@@ -51,6 +51,70 @@ void main() {
     }
   });
 
+  testWidgets('예정 quick item은 legacy 0대0을 vs로 정규화한다', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          homeAggregateProvider.overrideWith(
+            (ref, key) async => HomeAggregate(
+              date: key.split('|').first,
+              myTeam: 'LG',
+              myTeamBrief: null,
+              kboBrief: null,
+              quickItems: const [
+                HomeQuickItem(
+                  eyebrow: '마이팀 경기',
+                  title: 'LG 0 : 0 삼성',
+                  subtitle: '17:00 예정 · 대구',
+                  route: '/game/20260912LGSS0',
+                ),
+              ],
+            ),
+          ),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const NewsScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('LG vs 삼성'), findsOneWidget);
+    expect(find.text('LG 0 : 0 삼성'), findsNothing);
+  });
+
+  testWidgets('확인된 경기 quick item의 0대0은 실제 동점으로 유지한다', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          homeAggregateProvider.overrideWith(
+            (ref, key) async => HomeAggregate(
+              date: key.split('|').first,
+              myTeam: 'LG',
+              myTeamBrief: null,
+              kboBrief: null,
+              quickItems: const [
+                HomeQuickItem(
+                  eyebrow: '마이팀 경기',
+                  title: 'LG 0 : 0 삼성',
+                  subtitle: '8회말 · 대구',
+                  route: '/game/20260912LGSS0',
+                ),
+              ],
+            ),
+          ),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const NewsScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('LG 0 : 0 삼성'), findsOneWidget);
+    expect(find.text('LG vs 삼성'), findsNothing);
+  });
+
   testWidgets('news requests the current KBO civil date', (tester) async {
     String? requestedKey;
     final expectedDate = _kboDateKey(DateTime.now());
@@ -177,6 +241,43 @@ void main() {
       );
     }
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('브리핑 목적 필터는 경기 상태색과 분리된 액션 블루를 사용한다', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          homeAggregateProvider.overrideWith((ref, key) async {
+            return HomeAggregate(
+              date: key.split('|').first,
+              myTeam: null,
+              myTeamBrief: null,
+              kboBrief: null,
+              quickItems: const [],
+            );
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const NewsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final filter = find.byKey(const ValueKey('news-filter-all'));
+    final tab = tester.widget<AnimatedContainer>(filter);
+    final decoration = tab.decoration! as BoxDecoration;
+    expect(
+      decoration.color,
+      AppTheme.darkColors.accent.withValues(alpha: 0.16),
+    );
+    expect(
+      decoration.border?.top.color,
+      AppTheme.darkColors.accent.withValues(alpha: 0.55),
+    );
+    expect(
+      tester.widget<Text>(find.text('전체')).style?.color,
+      AppTheme.darkColors.accent,
+    );
   });
 
   for (final width in [280.0, 320.0]) {

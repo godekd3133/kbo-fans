@@ -8,6 +8,7 @@ from urllib.parse import quote
 
 import requests
 
+from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
@@ -52,6 +53,7 @@ class YoutubeHighlightService:
         self.session.headers.update({"User-Agent": "Mozilla/5.0"})
         self._thread_local = threading.local()
         self._cache: TtlCache[str, list[dict[str, Any]]] = TtlCache(self._CACHE_TTL_SECONDS)
+        self._singleflight: SingleFlight[str] = SingleFlight()
 
     def fetch_highlights(
         self,
@@ -62,6 +64,30 @@ class YoutubeHighlightService:
         limit: int = 6,
     ) -> list[dict[str, Any]]:
         cache_key = f"{game_id}:{away_name}:{home_name}:{limit}"
+        cached = self._cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        return self._singleflight.call(
+            cache_key,
+            lambda: self._load_highlights(
+                cache_key=cache_key,
+                game_id=game_id,
+                away_name=away_name,
+                home_name=home_name,
+                limit=limit,
+            ),
+        )
+
+    def _load_highlights(
+        self,
+        *,
+        cache_key: str,
+        game_id: str,
+        away_name: str,
+        home_name: str,
+        limit: int,
+    ) -> list[dict[str, Any]]:
         cached = self._cache.get(cache_key)
         if cached is not None:
             return cached

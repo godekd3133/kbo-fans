@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import concurrent.futures
+import logging
 import time
 from datetime import date as date_type
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional
 
 from kbo_fans_backend.core.config import get_settings
@@ -11,7 +12,7 @@ from kbo_fans_backend.services.records_overview import RecordsOverviewService
 from kbo_fans_backend.services.schedule import ScheduleService
 from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.services.standings import StandingsService
-from kbo_fans_backend.utils.kbo_time import current_kbo_date
+from kbo_fans_backend.utils.kbo_time import current_kbo_date, kbo_timezone
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
 from kbo_fans_backend.utils.resilience import (
     BoundedExecutor,
@@ -28,6 +29,47 @@ _HOME_SECTION_EXECUTOR = BoundedExecutor(
     queue_timeout_seconds=0.05,
     thread_name_prefix="home-section",
 )
+logger = logging.getLogger(__name__)
+
+
+def _raise_on_first_failed_future(
+    futures: List[concurrent.futures.Future],
+    *,
+    operations: List[str],
+    deadline: float,
+    now: Callable[[], float],
+    stop_when: Optional[concurrent.futures.Future] = None,
+) -> None:
+    """Surface the first current/future section failure without ordering delay."""
+    pending = set(futures)
+    while pending:
+        timeout_seconds = remaining_seconds(deadline, now=now)
+        if timeout_seconds <= 0:
+            break
+        completed, pending = concurrent.futures.wait(
+            pending,
+            timeout=timeout_seconds,
+            return_when=(
+                concurrent.futures.FIRST_COMPLETED
+                if stop_when is not None
+                else concurrent.futures.FIRST_EXCEPTION
+            ),
+        )
+        for future in completed:
+            future.result()
+        if stop_when is not None and stop_when in completed:
+            return
+        if not completed:
+            break
+
+    for future in futures:
+        if future.done():
+            future.result()
+
+    for operation, future in zip(operations, futures):
+        if not future.done():
+            future.cancel()
+            raise UpstreamDeadlineExceeded(f"{operation} deadline exceeded")
 
 
 class HomeService:
@@ -123,26 +165,27 @@ class HomeService:
         is_current_date: bool,
     ) -> Dict[str, Any]:
         deadline = self._monotonic() + self._aggregate_timeout_seconds
-        scoreboard_future = self._section_executor.submit(
-            self.scoreboard_service.get_home_scoreboard,
-            date,
-        )
-        scoreboard_payload = result_before_deadline(
-            scoreboard_future,
-            deadline=deadline,
-            now=self._monotonic,
-            operation="home scoreboard",
-        )
-        games = scoreboard_payload.get("games", [])
         year_month = date[:7]
         season = int(date[:4])
         allow_partial_sections = self._is_historical_date(date)
-
         section_futures: List[concurrent.futures.Future] = []
+        scoreboard_future: Optional[concurrent.futures.Future] = None
+        previous_schedule_future: Optional[concurrent.futures.Future] = None
+        section_collection_complete = False
+        timing_started_at = time.perf_counter()
+        section_ready_ms: Dict[str, float] = {}
         try:
+            # Start all independent upstream loads before waiting for the
+            # scoreboard. The scoreboard remains the first result we consume,
+            # but a cold home request no longer serializes its total latency as
+            # scoreboard + schedule/standings/records.
+            scoreboard_future = self._section_executor.submit(
+                self.scoreboard_service.get_home_scoreboard,
+                date,
+            )
             section_futures.append(
                 self._section_executor.submit(
-                    self.schedule_service.get_month_schedule,
+                    self._get_home_schedule,
                     year_month,
                 )
             )
@@ -154,10 +197,30 @@ class HomeService:
             )
             section_futures.append(
                 self._section_executor.submit(
-                    self.records_overview_service.get_overview,
+                    self._get_home_records_overview,
                     season,
                 )
             )
+            scoreboard_payload = result_before_deadline(
+                scoreboard_future,
+                deadline=deadline,
+                now=self._monotonic,
+                operation="home scoreboard",
+            )
+            section_ready_ms["scoreboard"] = (time.perf_counter() - timing_started_at) * 1000
+            if not allow_partial_sections:
+                _raise_on_first_failed_future(
+                    section_futures,
+                    operations=[
+                        "home schedule",
+                        "home standings",
+                        "home records overview",
+                    ],
+                    deadline=deadline,
+                    now=self._monotonic,
+                    stop_when=section_futures[0],
+                )
+            games = scoreboard_payload.get("games", [])
             schedule_payload = self._section_result(
                 section_futures[0],
                 {"month": year_month, "days": []},
@@ -165,6 +228,25 @@ class HomeService:
                 deadline=deadline,
                 operation="home schedule",
             )
+            section_ready_ms["schedule"] = (time.perf_counter() - timing_started_at) * 1000
+            schedule_payload = self._merge_scoreboard_into_schedule(
+                schedule_payload,
+                date=date,
+                scoreboard_games=games,
+            )
+            if not allow_partial_sections:
+                previous_schedule_future = self._start_previous_month_schedule(
+                    today=date,
+                    my_team=my_team,
+                    schedule_days=schedule_payload.get("days", []),
+                    deadline=deadline,
+                )
+                _raise_on_first_failed_future(
+                    section_futures[1:],
+                    operations=["home standings", "home records overview"],
+                    deadline=deadline,
+                    now=self._monotonic,
+                )
             standings_payload = self._section_result(
                 section_futures[1],
                 {"season": season, "standings": []},
@@ -172,6 +254,7 @@ class HomeService:
                 deadline=deadline,
                 operation="home standings",
             )
+            section_ready_ms["standings"] = (time.perf_counter() - timing_started_at) * 1000
             overview_payload = self._section_result(
                 section_futures[2],
                 {
@@ -188,15 +271,29 @@ class HomeService:
                 deadline=deadline,
                 operation="home records overview",
             )
+            section_ready_ms["records"] = (time.perf_counter() - timing_started_at) * 1000
+            section_collection_complete = True
         finally:
+            if scoreboard_future is not None:
+                scoreboard_future.cancel()
             for future in section_futures:
                 future.cancel()
+            if previous_schedule_future is not None and not section_collection_complete:
+                previous_schedule_future.cancel()
+            self._log_home_upstream_timing(
+                date=date,
+                historical=allow_partial_sections,
+                complete=section_collection_complete,
+                timing_started_at=timing_started_at,
+                section_ready_ms=section_ready_ms,
+            )
 
         schedule_days = self._schedule_days_with_recent_context(
             today=date,
             my_team=my_team,
             current_schedule_payload=schedule_payload,
             deadline=deadline,
+            previous_schedule_future=previous_schedule_future,
         )
 
         my_team_brief = self._build_my_team_brief(
@@ -224,6 +321,11 @@ class HomeService:
             my_team=my_team,
         )
         self._ensure_deadline(deadline, "home aggregate")
+        logger.info(
+            "home_total_timing date=%s totalMs=%.1f",
+            date,
+            (time.perf_counter() - timing_started_at) * 1000,
+        )
 
         payload = {
             "date": date,
@@ -243,6 +345,168 @@ class HomeService:
             self._stable_cache.set(cache_key, payload)
         return payload
 
+    @staticmethod
+    def _log_home_upstream_timing(
+        *,
+        date: str,
+        historical: bool,
+        complete: bool,
+        timing_started_at: float,
+        section_ready_ms: Dict[str, float],
+    ) -> None:
+        """Log bounded, payload-free section readiness timings for cold-path diagnosis."""
+        logger.info(
+            "home_upstream_timing date=%s historical=%s complete=%s "
+            "scoreboardMs=%.1f scheduleMs=%.1f standingsMs=%.1f recordsMs=%.1f "
+            "fanoutMs=%.1f",
+            date,
+            historical,
+            complete,
+            section_ready_ms.get("scoreboard", -1.0),
+            section_ready_ms.get("schedule", -1.0),
+            section_ready_ms.get("standings", -1.0),
+            section_ready_ms.get("records", -1.0),
+            (time.perf_counter() - timing_started_at) * 1000,
+        )
+
+    def _get_home_records_overview(self, season: int) -> Dict[str, Any]:
+        loader = getattr(self.records_overview_service, "get_home_overview", None)
+        if loader is not None:
+            return loader(season)
+        return self.records_overview_service.get_overview(season)
+
+    def _get_home_schedule(self, month: str) -> Dict[str, Any]:
+        loader = getattr(self.schedule_service, "get_month_schedule_for_home", None)
+        if loader is not None:
+            return loader(month)
+        return self.schedule_service.get_month_schedule(month)
+
+    @classmethod
+    def _merge_scoreboard_into_schedule(
+        cls,
+        payload: Dict[str, Any],
+        *,
+        date: str,
+        scoreboard_games: Any,
+    ) -> Dict[str, Any]:
+        if not isinstance(payload, dict) or not isinstance(scoreboard_games, list):
+            return payload
+
+        valid_scoreboard_games = [
+            game for game in scoreboard_games if isinstance(game, dict)
+        ]
+        if not valid_scoreboard_games:
+            return payload
+        games_by_id = {
+            str(game.get("gameId")): game
+            for game in valid_scoreboard_games
+            if game.get("gameId")
+        }
+
+        days = payload.get("days")
+        if not isinstance(days, list):
+            return payload
+
+        changed = False
+        merged_days: List[Any] = []
+        for day in days:
+            if not isinstance(day, dict) or day.get("date") != date:
+                merged_days.append(day)
+                continue
+
+            raw_games = day.get("games")
+            if not isinstance(raw_games, list):
+                merged_days.append(day)
+                continue
+
+            merged_games: List[Any] = []
+            for schedule_game in raw_games:
+                if not isinstance(schedule_game, dict):
+                    merged_games.append(schedule_game)
+                    continue
+                scoreboard_game = games_by_id.get(str(schedule_game.get("gameId")))
+                if scoreboard_game is None:
+                    scoreboard_game = cls._find_scoreboard_game_by_teams(
+                        schedule_game,
+                        valid_scoreboard_games,
+                    )
+                if scoreboard_game is None:
+                    merged_games.append(schedule_game)
+                    continue
+                merged_games.append(
+                    cls._merge_scoreboard_game(schedule_game, scoreboard_game)
+                )
+                changed = True
+            merged_days.append({**day, "games": merged_games})
+
+        return {**payload, "days": merged_days} if changed else payload
+
+    @staticmethod
+    def _find_scoreboard_game_by_teams(
+        schedule_game: Dict[str, Any],
+        scoreboard_games: List[Any],
+    ) -> Optional[Dict[str, Any]]:
+        away_id = schedule_game.get("awayId")
+        home_id = schedule_game.get("homeId")
+        for candidate in scoreboard_games:
+            if not isinstance(candidate, dict):
+                continue
+            away = candidate.get("away")
+            home = candidate.get("home")
+            if not isinstance(away, dict) or not isinstance(home, dict):
+                continue
+            if away.get("teamId") == away_id and home.get("teamId") == home_id:
+                return candidate
+        return None
+
+    @classmethod
+    def _merge_scoreboard_game(
+        cls,
+        schedule_game: Dict[str, Any],
+        scoreboard_game: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        status = str(scoreboard_game.get("status") or schedule_game.get("status") or "")
+        if not status:
+            return schedule_game
+
+        updated = dict(schedule_game)
+        start_time = scoreboard_game.get("startTime")
+        if isinstance(start_time, str) and start_time:
+            updated["time"] = start_time
+        stadium = scoreboard_game.get("stadium")
+        if isinstance(stadium, str) and stadium:
+            updated["stadium"] = stadium
+
+        updated["status"] = status
+        if scoreboard_game.get("statusLabel") is not None:
+            updated["statusLabel"] = scoreboard_game.get("statusLabel")
+
+        if status in {"LIVE", "FINAL", "SUSPENDED"}:
+            updated["awayScore"] = cls._optional_score(scoreboard_game, "away")
+            updated["homeScore"] = cls._optional_score(scoreboard_game, "home")
+        else:
+            # Current scoreboard is authoritative for scheduled/cancelled
+            # games too: never carry a stale schedule score into the brief.
+            updated["awayScore"] = None
+            updated["homeScore"] = None
+        return updated
+
+    @staticmethod
+    def _optional_score(game: Dict[str, Any], side: str) -> Optional[int]:
+        team = game.get(side)
+        if not isinstance(team, dict):
+            return None
+        value = team.get("score")
+        if isinstance(value, bool) or value is None:
+            return None
+        if isinstance(value, int):
+            return value if value >= 0 else None
+        try:
+            parsed = int(str(value).replace(",", ""))
+        except (TypeError, ValueError):
+            return None
+        return parsed if parsed >= 0 else None
+
     def _schedule_days_with_recent_context(
         self,
         *,
@@ -250,6 +514,7 @@ class HomeService:
         my_team: Optional[str],
         current_schedule_payload: Dict[str, Any],
         deadline: float,
+        previous_schedule_future: Optional[concurrent.futures.Future] = None,
     ) -> List[Dict[str, Any]]:
         schedule_days = list(current_schedule_payload.get("days", []))
         if not my_team:
@@ -265,16 +530,16 @@ class HomeService:
         ):
             return schedule_days
 
-        previous_month = self._previous_year_month(today)
-        if previous_month is None:
+        previous_future = previous_schedule_future
+        if previous_future is None:
+            previous_future = self._start_previous_month_schedule(
+                today=today,
+                my_team=my_team,
+                schedule_days=schedule_days,
+                deadline=deadline,
+            )
+        if previous_future is None:
             return schedule_days
-
-        if remaining_seconds(deadline, now=self._monotonic) <= 0:
-            return schedule_days
-        previous_future = self._section_executor.submit(
-            self.schedule_service.get_month_schedule,
-            previous_month,
-        )
         try:
             previous_payload = result_before_deadline(
                 previous_future,
@@ -287,6 +552,36 @@ class HomeService:
         finally:
             previous_future.cancel()
         return [*previous_payload.get("days", []), *schedule_days]
+
+    def _start_previous_month_schedule(
+        self,
+        *,
+        today: str,
+        my_team: Optional[str],
+        schedule_days: Any,
+        deadline: float,
+    ) -> Optional[concurrent.futures.Future]:
+        if not my_team or not isinstance(schedule_days, list):
+            return None
+        if (
+            self._recent_result_count(
+                schedule_days=schedule_days,
+                my_team=my_team,
+                today=today,
+            )
+            >= 5
+        ):
+            return None
+
+        previous_month = self._previous_year_month(today)
+        if previous_month is None:
+            return None
+        if remaining_seconds(deadline, now=self._monotonic) <= 0:
+            return None
+        return self._section_executor.submit(
+            self.schedule_service.get_month_schedule,
+            previous_month,
+        )
 
     def _build_my_team_brief(
         self,
@@ -674,7 +969,10 @@ class HomeService:
                 {
                     "eyebrow": "예매 오픈 임박",
                     "title": f"{next_game.get('awayName')} vs {next_game.get('homeName')}",
-                    "subtitle": f"{ticket_info.get('vendorName')} · {ticket_info.get('openAt')}",
+                    "subtitle": (
+                        f"{ticket_info.get('vendorName')} · "
+                        f"{self._ticket_open_label(ticket_info.get('openAt'))}"
+                    ),
                     "route": "/schedule",
                     "teamId": my_team_brief.get("teamId") if my_team_brief else None,
                     "fallbackLabel": my_team_brief.get("teamLabel") if my_team_brief else None,
@@ -755,6 +1053,20 @@ class HomeService:
             )
 
         return items[:6]
+
+    @staticmethod
+    def _ticket_open_label(value: Any) -> str:
+        if not isinstance(value, str) or not value.strip():
+            return "예매 시간 미정"
+        try:
+            parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+        except ValueError:
+            return "예매 시간 미정"
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=kbo_timezone())
+        else:
+            parsed = parsed.astimezone(kbo_timezone())
+        return f"{parsed.month}월 {parsed.day}일 {parsed.hour:02d}:{parsed.minute:02d} KST"
 
     def _build_standings_brief_item(
         self,
@@ -1105,6 +1417,8 @@ class HomeService:
 
     @staticmethod
     def _has_verified_scores(game: Dict[str, Any]) -> bool:
+        if str(game.get("status") or "").upper() in {"SCHEDULED", "CANCELLED"}:
+            return False
         return all(
             isinstance(score, int) and not isinstance(score, bool) and score >= 0
             for score in ((game.get(side) or {}).get("score") for side in ("away", "home"))

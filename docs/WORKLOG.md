@@ -2,6 +2,741 @@
 
 ---
 
+## 2026-09-12: 예정 경기 placeholder score 정합성 보강
+
+### 원인과 반영
+
+- 브리핑 AX 트리에서 예정된 LG-삼성 경기가 `LG 0 : 0 삼성`으로 표시되었습니다. 실제 원천은 예정 경기라 양 팀 score가 확인되지 않았지만, `ScoreboardService._build_lightweight_game`가 schedule/Main 목록의 `0`을 nested score로 merge하고 Home quick-item이 이를 verified score로 읽고 있었습니다.
+- backend lightweight scoreboard는 `SCHEDULED`/`CANCELLED` 상태에서 score merge를 건너뛰고 양 팀 score를 `null`로 유지합니다. HomeService도 해당 상태를 verified score로 인정하지 않습니다.
+- 오래된 API/cache payload가 consumer에 들어오는 경우를 위해 브리핑 화면도 예정 marker가 있는 legacy `팀 0 : 0 팀` 제목을 `팀 vs 팀`으로 정규화합니다. LIVE/FINAL에서 확인된 실제 0:0은 변경하지 않습니다.
+
+### 검증
+
+- `backend/.venv/bin/ruff check src tests`: passed
+- `backend/.venv/bin/pytest -q tests/test_home.py tests/test_scoreboard_service_cache.py`: `90 passed`
+- `backend/.venv/bin/pytest -q`: `719 passed`
+- `fvm flutter test --no-pub test/features/news/news_screen_test.dart`: `22 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `620 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- `/api/home?date=2026-09-12&myTeam=LG`: quick item title `LG vs 삼성`
+- `/api/scoreboard/home?date=2026-09-12`: scheduled LG-삼성 scores `null` / `null`
+- fresh Web AX tree: `LG vs 삼성`, no inferred `0 : 0`
+- local API/web: HTTP `200` / HTTP `200`
+- `git diff --check`: passed
+
+## 2026-09-12: 설정 section row 중복 semantics wrapper 제거
+
+### 원인과 반영
+
+- 설정의 탭 가능한 `_SectionRow`가 `AppPressable` 내부 button semantics에 더해 바깥 `Semantics(button: true)`까지 사용해 동일한 row action을 중복 노출하고 있었습니다.
+- 외부 wrapper를 제거하고 `AppPressable`이 row의 tap action과 button semantics를 단일 소유하도록 정리했습니다. 설정 화면의 섹션 제목·설명과 row action 분리 규칙은 유지했습니다.
+
+### 검증
+
+- `fvm flutter test --no-pub test/features/settings/settings_screen_test.dart`: `22 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `618 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- local API/web health: HTTP `200` / HTTP `200`
+- `git diff --check`: passed
+
+## 2026-09-12: 순위·기록실 시즌 selector hit target 보강
+
+### 원인과 반영
+
+- 순위표 season dropdown parent surface는 `minHeight: 36`, 기록실 팀 상세 selector는 `height: 38`로 선언되어 공통 최소 44px 조작 기준을 코드상 보장하지 않았습니다.
+- 두 selector surface를 최소 `44px`로 변경하고 stable key와 geometry 회귀를 추가했습니다. 시즌 변경·KST rollover·Dropdown 계약은 그대로 유지했습니다.
+
+### 검증
+
+- `fvm dart format lib/features/standings/standings_screen.dart lib/features/records/records_screen.dart test/features/standings/standings_screen_test.dart test/features/records/records_screen_rollover_test.dart`
+- `fvm flutter test --no-pub test/features/standings/standings_screen_test.dart test/features/records/records_screen_rollover_test.dart`: `13 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `618 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- local API/web health: HTTP `200` / HTTP `200`
+- `git diff --check`: passed
+
+## 2026-09-12: 홈 헤더 icon hit target 보강
+
+### 원인과 반영
+
+- 홈 헤더 `알림함`·`기록 검색` IconButton이 `40×40` constraints를 명시해 공통 모바일 조작 기준인 최소 44px보다 작게 선언되어 있었습니다.
+- constraints를 `44×44`로 올렸습니다. Flutter Material 기본 tap target이 실제 렌더 크기를 `48×48`로 확장하며, 직접 labeled semantics와 unread count label은 유지됩니다.
+
+### 검증
+
+- `fvm dart format lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
+- `fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name 'home notification header opens notification inbox'`: passed
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `618 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- latest Home AX tree: direct `알림함` and `기록 검색` labeled buttons; focused widget size is at least 44px
+- local API/web health: HTTP `200` / HTTP `200`
+- `git diff --check`: passed
+
+## 2026-09-12: 기록실 마운드 체크 category 색상 분리
+
+### 원인과 반영
+
+- `마운드 체크`는 ERA·다승·세이브·탈삼진을 묶은 투수 기록 category인데, 아이콘 배경과 아이콘에 LIVE red를 사용해 경기 진행 상태처럼 보일 여지가 있었습니다.
+- category 정보는 action blue, LIVE red는 실제 경기 진행·이벤트 의미에만 사용하도록 변경했습니다.
+
+### 검증
+
+- `fvm dart format lib/features/records/records_screen.dart test/features/records/player_image_surfaces_test.dart`
+- `fvm flutter test --no-pub test/features/records/player_image_surfaces_test.dart`: `11 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `618 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- local API/web health: HTTP `200` / HTTP `200`
+- `git diff --check`: passed
+
+## 2026-09-11: 게임 상세 영상 mode chip selected semantics 보강
+
+### 원인과 반영
+
+- 영상 overlay의 `스크롤`·`플레이어 조작` chip은 시각적으로 선택 상태와 action-blue를 표시했지만, `AppPressable`에 `semanticSelected`가 없어 보조기술에는 현재 mode가 전달되지 않았습니다.
+- 공통 pressable selected semantics를 연결해 시각 상태와 접근성 상태를 동기화했습니다.
+
+### 검증
+
+- `fvm dart format lib/features/game_detail/game_detail_screen.dart`
+- `fvm flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart test/core/widgets/app_motion_test.dart`: `37 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `618 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- local API/web health: HTTP `200` / HTTP `200`
+- `git diff --check`: passed
+
+## 2026-09-11: 홈 헤더 icon button semantics 보강
+
+### 원인과 반영
+
+- 홈 헤더의 `알림함`·`기록 검색`은 Tooltip parent에만 설명이 있고 실제 IconButton child에는 label이 없어, AX focus가 button으로 이동할 때 이름을 안정적으로 읽지 못했습니다.
+- badge/count label을 포함한 외부 단일 `Semantics` summary/action node를 추가하고, 시각 IconButton child semantics는 제외했습니다.
+
+### 검증
+
+- `fvm dart format lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
+- `fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name 'home notification header surfaces unread inbox count'`: passed
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `618 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- current Home Web AX tree: `알림함` and `기록 검색` are direct labeled buttons
+- local API/web health: HTTP `200` / HTTP `200`
+- `git diff --check`: passed
+
+## 2026-09-11: 공통 페이지 헤더 semantics 경계 보강
+
+### 원인과 반영
+
+- `AppPageHeader`의 부모 semantics container가 뒤로가기 label과 페이지 제목·subtitle을 한 summary로 합쳐, 알림함 AX tree에서 action label이 `뒤로 푸시 알림 알림함 ...`처럼 오염됐습니다.
+- 헤더 전체를 `container: true, explicitChildNodes: true`로 분리해 뒤로가기 button, eyebrow/title/subtitle, trailing action을 명확한 자식 노드로 유지했습니다.
+
+### 검증
+
+- `fvm dart format lib/core/widgets/app_design_system.dart test/core/widgets/app_design_system_test.dart`
+- `fvm flutter test --no-pub test/core/widgets/app_design_system_test.dart test/core/widgets/app_motion_test.dart`: `9 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `618 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- current notification Web AX tree: separate header container, `뒤로` button, title, subtitle
+- local API/web health: HTTP `200` / HTTP `200`
+- `git diff --check`: passed
+
+## 2026-09-11: 온보딩 편집 뒤로가기 semantics 중복 제거
+
+### 원인과 반영
+
+- 온보딩 편집 모드의 `뒤로`도 외부 Semantics와 tooltip IconButton이 중첩되어, 같은 복귀 action이 중복 노출될 수 있었습니다.
+- 단일 `excludeSemantics` summary/action node로 정리하고, 기존 뒤로가기 테스트에 button·tap action 검증을 추가했습니다.
+
+### 검증
+
+- `fvm dart format lib/features/onboarding/onboarding_screen.dart test/features/onboarding/onboarding_screen_test.dart`
+- `fvm flutter test --no-pub test/features/onboarding/onboarding_screen_test.dart`: `11 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `617 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- `git diff --check`: passed
+
+## 2026-09-11: 기록실 팀 상세 뒤로가기 semantics 중복 제거
+
+### 원인과 반영
+
+- 기록실 팀 상세도 외부 `Semantics(label: '뒤로', button: true)`와 tooltip IconButton이 중첩되어 AX tree에서 `뒤로`가 두 버튼으로 노출됐습니다.
+- 경기 상세와 같은 단일 `excludeSemantics` summary/action node로 정리하고, 복귀 callback을 두 시각/접근성 경로가 공유하도록 만들었습니다.
+
+### 검증
+
+- `fvm dart format lib/features/records/records_screen.dart test/features/records/records_screen_rollover_test.dart`
+- `fvm flutter test --no-pub test/features/records/records_screen_rollover_test.dart`: `3 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `617 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- current records-team Web AX tree: one `뒤로` button separate from title and filters
+- local API/web health: HTTP `200` / HTTP `200`
+- `git diff --check`: passed
+
+## 2026-09-11: 홈 순위·온보딩 카드 semantics 단순화
+
+### 원인과 반영
+
+- 홈 순위 preview row는 외부 `Semantics(button, label)`와 내부 `AppPressable`이 중첩되어 AX tree에서 `팀 순위 전체 보기`가 두 버튼으로 노출됐습니다.
+- 온보딩 팀 card도 외부 selected semantics가 내부 pressable과 분리되어 같은 선택 상태를 중복 구성하고 있었습니다.
+- 두 화면 모두 `AppPressable.semanticLabel`·`semanticSelected`를 직접 사용하도록 정리했습니다.
+
+### 검증
+
+- `fvm dart format lib/features/onboarding/onboarding_screen.dart lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
+- `fvm flutter test --no-pub test/features/home/home_screen_test.dart test/features/onboarding/onboarding_screen_test.dart`: `65 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `617 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- current Home Web AX tree: each standings row is one `팀 순위 전체 보기` button
+- local API/web health: HTTP `200` / HTTP `200`
+- `git diff --check`: passed
+
+## 2026-09-11: 일정 월 헤더 semantics 중복 제거
+
+### 원인과 반영
+
+- 일정의 이전 달·다음 달·오늘 이동 action은 외부 `Semantics`와 내부 `AppPressable`이 중첩되어 Web AX tree에서 각 action이 두 번 노출됐습니다.
+- `_HeaderIconButton`을 공통 labeled `AppPressable`과 Tooltip 조합으로 정리해 월 제목과 action label을 분리했습니다.
+
+### 검증
+
+- `fvm dart format lib/features/schedule/schedule_screen.dart test/features/schedule/schedule_screen_test.dart`
+- `fvm flutter test --no-pub test/features/schedule/schedule_screen_test.dart`: `26 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `616 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- current schedule Web AX tree: `이전 달`, `다음 달`, `오늘로 이동` each appears once
+- local API/web health: HTTP `200` / HTTP `200`
+- `git diff --check`: passed
+
+## 2026-09-11: 공통 AppPressable semantics boundary 보강
+
+### 원인과 반영
+
+- 알림함 AX tree에서 `뒤로` button의 label에 `푸시 알림`, `알림함`, subtitle이 함께 합쳐져, 스크린리더가 action을 페이지 설명 전체와 같이 읽었습니다.
+- custom `semanticLabel`을 사용하는 `AppPressable`만 semantic boundary로 만들었습니다. 시각 layout과 tap/keyboard 동작은 유지하면서, 부모 row의 제목·설명이 action label로 유입되지 않게 했습니다.
+
+### 검증
+
+- `fvm dart format lib/core/widgets/app_motion.dart test/core/widgets/app_motion_test.dart`
+- `fvm flutter test --no-pub test/core/widgets/app_motion_test.dart`: `7 passed`
+- `fvm flutter test --no-pub test/features/notifications/notification_inbox_screen_test.dart`: passed in focused run
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `615 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- current notification Web AX tree: one `뒤로` button, separate page header container
+- local API/web health: HTTP `200` / HTTP `200`
+- `git diff --check`: passed
+
+## 2026-09-11: 설정·박스스코어 접근성 action 정리
+
+### 원인과 반영
+
+- 설정 화면 모드 버튼은 외부 `Semantics`와 내부 `AppPressable`이 각각 button semantics를 만들어, `시스템 모드`와 `시스템`처럼 같은 선택지를 두 번 탐색하게 했습니다.
+- `AppPressable`의 `semanticLabel`·`semanticSelected` 지원을 사용하도록 외부 래퍼를 제거하고, 각 모드를 하나의 stable key와 하나의 button semantics로 노출했습니다.
+- 박스스코어 매칭 선수 행은 시각적으로 선수 기록 진입이 가능했지만, `excludeSemantics` 외부 요약 노드에 `onTap`이 전달되지 않아 보조기술 action이 없었습니다. 외부 요약 노드에 실제 player-detail tap action을 연결했습니다.
+
+### 검증
+
+- `fvm dart format lib/features/settings/settings_screen.dart lib/features/game_detail/tabs/boxscore_tab.dart test/features/settings/settings_screen_test.dart test/features/game_detail/boxscore_tab_test.dart`
+- `fvm flutter test --no-pub test/features/settings/settings_screen_test.dart test/features/game_detail/boxscore_tab_test.dart`: `43 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `614 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- local API/web health: HTTP `200` / HTTP `200`
+- 새 Web bundle의 설정 AX tree에서 모드가 `시스템 모드`·`라이트 모드`·`다크 모드` 단일 button으로 노출됨을 확인
+- `git diff --check`: passed
+
+## 2026-09-11: 경기 상세 뒤로가기 semantics 중복 제거
+
+### 원인과 반영
+
+- 경기 상세 상단은 `Semantics(label: '뒤로', button: true)`가 tooltip을 가진 `IconButton`을 감싸고 있어 Web AX tree에서 뒤로가기가 중첩 button으로 노출됐습니다.
+- 시각 IconButton을 외부 단일 summary/action node의 `excludeSemantics` 자식으로 정리하고, 외부 node에 복귀 `onTap`을 연결했습니다. Flutter 테스트와 브라우저 AX tree 모두에서 이름과 실행 동작을 유지했습니다.
+
+### 검증
+
+- `fvm flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart`: `30 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `614 passed`
+- fresh local Web release bundle: success
+- current Web AX tree: one `뒤로` button; matched player rows are single buttons with `선수 기록 보기`
+- local API/web health: HTTP `200` / HTTP `200`
+- `git diff --check`: passed
+
+## 2026-09-11: 업데이트 소식 접근성 요약 경계 보강
+
+### 원인과 반영
+
+- 업데이트 prompt의 헤더와 변경점은 시각적으로 한 묶음이지만, 다이얼로그 라우트의 semantics 경계에 기대고 있어 보조기술이 버전·변경점을 안정적으로 한 번에 읽는 계약이 테스트로 고정되지 않았습니다.
+- `release_notes_prompt.dart`의 헤더·변경점 그룹을 `container`와 `explicitChildNodes`가 있는 독립 semantics 단위로 만들고, Patch Notes 화면의 현재 버전·릴리즈 카드 요약과 같은 방향으로 맞췄습니다.
+- 비동기 로더 뒤에 다이얼로그 전환이 시작되는 실제 lifecycle을 반영해 prompt semantics 테스트는 `pumpAndSettle` 후 노드를 검증하도록 정리했습니다. 제품 데이터·API·라우팅 계약은 변경하지 않았습니다.
+
+### 검증
+
+- `fvm dart format lib/features/settings/release_notes_prompt.dart test/features/settings/release_notes_prompt_test.dart test/features/settings/release_notes_test.dart`
+- `fvm flutter test --no-pub test/features/settings/release_notes_prompt_test.dart test/features/settings/release_notes_test.dart`: `9 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `612 passed`
+- `fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none` with local backend defines: success
+- local API/web health: HTTP `200` / HTTP `200`
+- `git diff --check`: passed
+
+## 2026-09-11: API 진단 카드 semantics 요약 보강
+
+### 원인과 반영
+
+- 진단 카드의 key·status·detail·소요시간·note가 개별 위젯으로 노출되어 보조기술이 상태를 한 번에 파악하기 어려웠습니다.
+- 카드 전체를 하나의 `Semantics` container로 묶고 시각 텍스트의 중복 semantics를 제외해 `정상/실패/확인하지 않음`과 detail·elapsed·note를 함께 읽도록 보강했습니다.
+
+### 검증
+
+- `fvm dart format lib/features/settings/api_diagnostics_screen.dart test/features/settings/api_diagnostics_screen_test.dart`
+- `fvm flutter test --no-pub test/features/settings/api_diagnostics_screen_test.dart`: `3 passed`
+- 전체 analyze/test와 local Web release bundle은 변경 후 재실행 예정
+
+## 2026-09-11: 선수 상세 refresh 중복 실행 방지
+
+### 원인과 반영
+
+- 선수 상세의 pull-to-refresh와 오류 retry가 같은 player provider를 무효화할 수 있지만, 화면 state에 in-flight guard가 없었습니다.
+- `PlayerDetailScreen`을 stateful consumer로 전환해 선수·시즌 단위 refresh를 coalescing하고, 기존 loading/error/provider 결과 표시를 유지했습니다.
+
+### 검증
+
+- `fvm dart format lib/features/records/player_detail_screen.dart test/features/records/player_detail_screen_test.dart`
+- `fvm flutter test --no-pub test/features/records/player_detail_screen_test.dart`: `5 passed`
+- 전체 analyze/test와 local Web release bundle은 변경 후 재실행 예정
+
+## 2026-09-11: 알림함 loader 동시 호출 정리
+
+### 원인과 반영
+
+- 알림함 초기 로딩 중 pull-to-refresh 또는 목록/설정별 retry가 실행되면 같은 loader가 동시에 호출될 수 있었습니다.
+- entries와 settings 각각에 in-flight Future coalescing을 추가해 동시 호출은 기존 요청을 공유하도록 변경했습니다.
+- 목록/설정 실패 분리, retry, unread count, playbook 표시 계약은 유지했습니다.
+
+### 검증
+
+- `fvm dart format lib/features/notifications/notification_inbox_screen.dart test/features/notifications/notification_inbox_screen_test.dart`
+- `fvm flutter test --no-pub test/features/notifications/notification_inbox_screen_test.dart`: `11 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `611 passed`
+- local Web release bundle: build 성공
+- local Web/API health: HTTP `200` / HTTP `200`
+
+## 2026-09-11: 브리핑 refresh 중복 실행 방지
+
+### 원인과 반영
+
+- 브리핑의 header refresh·pull-to-refresh·오류 retry가 같은 Home aggregate provider를 무효화하지만, 요청 중 재진입 guard가 없었습니다.
+- `_refreshing` 상태를 추가하고 header refresh를 비활성화하면서 action accent spinner를 표시했습니다.
+- 오류 상태의 retry도 같은 guard를 사용하며, KST 날짜 rollover·필터·브리핑 생성 contract는 변경하지 않았습니다.
+
+### 검증
+
+- `fvm dart format lib/features/news/news_screen.dart`
+- `fvm flutter test --no-pub test/features/news/news_screen_test.dart`: `20 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `607 passed`
+- local Web release bundle: build 성공
+- local Web/API health: HTTP `200` / HTTP `200`
+
+## 2026-09-11: 일정 refresh 중복 실행 방지
+
+### 원인과 반영
+
+- 일정의 월별 보기와 시즌 매치업 보기는 여러 schedule provider를 무효화한 뒤 대표 Future를 기다리는데, pull-to-refresh와 오류 retry가 같은 작업에 재진입할 수 있었습니다.
+- `_refreshSchedule`에 in-flight guard를 추가하고, 오류 retry는 refresh 중 비활성화하도록 변경했습니다.
+- 월 이동·매치업 fan-out·상세 진입 background refresh 계약은 변경하지 않았습니다.
+
+### 검증
+
+- `fvm dart format lib/features/schedule/schedule_screen.dart`
+- `fvm flutter test --no-pub test/features/schedule/schedule_screen_test.dart`: `25 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `607 passed`
+- local Web release bundle: build 성공
+- local Web/API health: HTTP `200` / HTTP `200`
+
+## 2026-09-11: 순위표 refresh 중복 실행 방지
+
+### 원인과 반영
+
+- 순위표 header·pull-to-refresh·오류/빈 상태 retry가 같은 standings provider를 무효화하지만, 요청 중 재진입 guard가 없었습니다.
+- 순위 refresh busy state를 추가하고 header와 retry 액션을 비활성화했으며, header/빈 상태에는 action accent spinner를 표시했습니다.
+- 기존 season 전환·순위 데이터·새로고침 완료 대기 계약은 유지했습니다.
+
+### 검증
+
+- `fvm dart format lib/features/standings/standings_screen.dart test/features/standings/standings_screen_test.dart`
+- `fvm flutter test --no-pub test/features/standings/standings_screen_test.dart`: `11 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `607 passed`
+- local Web release bundle: build 성공
+- local Web/API health: HTTP `200` / HTTP `200`
+
+## 2026-09-11: 기록실 refresh 중복 실행 방지
+
+### 원인과 반영
+
+- 기록실 overview와 팀 기록은 header refresh·pull-to-refresh·오류 retry가 같은 Riverpod provider를 무효화하지만, 요청 중 재진입 guard가 없었습니다.
+- overview와 team records 각각에 in-flight guard를 추가하고, header refresh 아이콘을 action accent spinner로 전환했습니다.
+- 요청 중에는 팀 기록 retry와 header refresh를 비활성화해 stale provider 결과가 최신 기록을 덮는 경로를 줄였습니다.
+
+### 검증
+
+- `fvm dart format lib/features/records/records_screen.dart test/features/records/records_screen_error_test.dart`
+- `fvm flutter test --no-pub test/features/records/records_screen_error_test.dart test/features/records/records_renewal_test.dart`: `16 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `607 passed`
+- local Web release bundle: build 성공
+- local Web/API health: HTTP `200` / HTTP `200`
+
+## 2026-09-11: API 진단 중복 실행 방지
+
+### 원인과 반영
+
+- API 진단 헤더의 `다시 진단` 아이콘이 요청 중에도 계속 활성화되어 빠른 연속 탭이 health·scoreboard·schedule·push 진단을 겹치게 만들 수 있었습니다.
+- 진단 전체 요청이 끝날 때까지 버튼을 비활성화하고 action accent spinner를 표시하도록 변경했습니다.
+- 개별 FutureBuilder가 오류를 계속 표시할 수 있도록 busy 추적 Future는 오류를 소비하고, 실제 화면 데이터 Future의 성공·실패 처리는 기존대로 유지했습니다.
+
+### 검증
+
+- `fvm dart format lib/features/settings/api_diagnostics_screen.dart test/features/settings/api_diagnostics_screen_test.dart`
+- `fvm flutter test --no-pub test/features/settings/api_diagnostics_screen_test.dart`: `2 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `606 passed`
+- local Web release bundle: build 성공
+- local Web/API health: HTTP `200` / HTTP `200`
+
+## 2026-09-11: 홈 알림 unread badge 실시간 동기화
+
+### 원인과 반영
+
+- 이전 개선은 홈 진입과 알림함 복귀 시점에는 unread badge를 갱신했지만, 홈을 보고 있는 동안 foreground 알림이 저장되거나 읽음 처리가 일어나면 즉시 반영하지 못했습니다.
+- `NotificationInboxService`에 저장·읽음 변경 stream을 추가하고, HomeScreen이 해당 stream과 `AppLifecycleState.resumed`를 구독하도록 연결했습니다.
+- 여러 비동기 unread 조회가 겹칠 때 이전 응답이 최신 badge를 덮지 않도록 request revision guard를 추가했습니다.
+- 알림 저장 형식·푸시 전달·API 계약은 변경하지 않았습니다.
+
+### 검증
+
+- `fvm dart format` 대상 홈·알림 service·테스트 파일
+- `fvm flutter test --no-pub test/services/notification_inbox_service_test.dart`: `9 passed`
+- `fvm flutter test --no-pub test/features/home/home_screen_test.dart`: `53 passed`
+- `fvm flutter analyze --no-pub` 대상 파일: `No issues found`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `605 passed`
+- local Web release bundle: build 성공
+- local Web/API health: HTTP `200` / HTTP `200`
+
+## 2026-09-11: 홈 알림 unread affordance 보강
+
+### 원인과 반영
+
+- 홈 헤더에는 알림함 진입 아이콘만 있어 저장된 미읽음 경기 신호가 있어도 사용자가 홈에서 상태를 알아차릴 수 없었습니다.
+- 기존 `NotificationInboxService`의 로컬 읽음 상태를 재사용해 미읽음 수가 있을 때만 red badge를 표시하고, tooltip에도 `읽지 않은 알림 N개`를 포함했습니다.
+- 알림함 route에서 돌아오면 다시 읽어 현재 읽음 상태를 반영하며, 알림 저장 형식·푸시 전달·라우팅 계약은 변경하지 않았습니다.
+
+### 검증
+
+- `fvm dart format lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
+- `fvm flutter test --no-pub test/features/home/home_screen_test.dart`: `52 passed`
+- `fvm flutter analyze --no-pub lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`: `No issues found`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `603 passed`
+- local Web release bundle: build 성공
+- local Web/API health: HTTP `200` / HTTP `200`
+
+## 2026-09-11: 기본 Material 내비게이션 선택색 의미 정리
+
+### 원인과 반영
+
+- 커스텀 하단 내비게이션과 NavigationRail은 action blue를 사용하고 있었지만, `ThemeData`의 기본 `BottomNavigationBar` 선택 토큰만 LIVE red로 남아 있었습니다.
+- 기본 Material 하단 내비게이션의 선택색을 테마 action accent로 변경해, 일반 선택과 LIVE 경기 상태의 색상 의미가 보조 화면에서도 일관되도록 했습니다.
+- 경기 상태·이벤트·오류에 사용하는 LIVE red와 데이터 계약·라우팅 동작은 변경하지 않았습니다.
+
+### 검증
+
+- `fvm dart format lib/core/theme/app_theme.dart test/core/theme/app_theme_test.dart`
+- `fvm flutter test --no-pub test/core/theme/app_theme_test.dart`: `13 passed`
+- `fvm flutter analyze --no-pub`: `No issues found`
+- `fvm flutter test --no-pub`: `602 passed`
+- local Web release bundle: build 성공
+
+## 2026-09-11: backend timing bundle Lightsail 배포 및 cold/warm 재검증
+
+### 배포
+
+- 사장님이 앞서 승인한 Lightsail 배포를 최신 backend bundle로 한 번 실행했다. `--preserve-env --skip-caddy --remote-timeout-seconds 600`을 사용해 원격 env/secret/Caddy 설정은 보존했다.
+- 배포 결과는 `lightsail_remote_deploy=status=ok release=20260911040207`, `lightsail_deploy=status=ok`로 종료했다. 배포 직후 internal health HTTP 200, API/worker `active`, `NRestarts=0`, API memory peak 약 `57.7MiB`, worker memory 약 `20.1MiB`를 확인했다.
+- bundle에는 Home·scoreboard·records timing 로그, sync worker `TimeoutStopSec=30s`/`KillMode=mixed`, deploy remote timeout 변경이 포함됐다. 재인증 후 current release와 worker unit contract를 readback해 해당 변경이 원격에 반영된 것을 확인했다.
+
+### 외부 검증
+
+- 최신 release에 `RELEASE_API_HEALTH_PERFORMANCE=true` gate를 순차 실행해 cold/warm 모두 DNS/TLS, health, scoreboard, relay, Home, schedule, standings, records envelope을 통과했다.
+- 같은 날짜 기준 cold는 health `1.376s`, scoreboard `4.203s`, relay `1.324s`, Home `2.273s`, schedule `1.781s`, standings `0.276s`, records `4.484s`; 즉시 warm phase는 health `0.257s`, scoreboard `3.250s`, relay `0.448s`, Home `0.209s`, schedule `0.423s`, standings `0.274s`, records `0.559s`였다.
+- 이전 public cold Home `9.276s`와 비교하면 이번 단일 paired sample의 Home cold는 약 `75.5%` 낮아졌지만, p50/p95·장기 안정성·최신 release의 원격 journal readback 증거로 일반화하지 않는다. local real-KBO cold Home은 약 `0.46~0.61s` 기준으로 별도 유지한다.
+- 배포 후 API file log에서 Home `2.120s`(standings `1.799s`, records `2.045s`), Home records 3-page HR `1.950s`/ERA `1.228s`, full records home-seed 보완 total `4.149s`를 확인했다. scoreboard schedule/Main은 대체로 `0.17~0.35s`였으나 일부 `1.7~3.9s` spike가 함께 발생해 KBO/instance network 변동성을 별도 원인으로 남겼다.
+
+### 코드 검증과 경계
+
+- 배포 직전 local backend 전체 `717 passed`, Ruff, compileall, 두 deploy script syntax, 전체 diff check를 통과했다. release contract는 `21 passed`다.
+- 초기 access-details certificate 만료와 authorization grant 오류 뒤 재인증해 원격 readback을 완료했다. current release `20260911040207`, API/worker `active`, `NRestarts=0`, API peak 약 `60.6MiB`, worker peak 약 `68.6MiB`, available 약 `148MiB`, swap 사용 약 `221MiB`, 최근 kernel journal OOM match 없음(샘플 범위)을 확인했다.
+- 원격 `home.py`, `scoreboard.py`, `records_overview.py`, `kbo-fans-sync-worker.service` SHA-256이 local 파일과 각각 일치했다. 실제 장기 p50/p95와 전체 journal 기간 안정성은 아직 별도 증거로 남긴다.
+- 변경은 아직 commit/push하지 않았고, 기존 dirty app/UI/artifact와 사용자 소유 파일은 건드리지 않았다.
+
+- Flutter 전체 `fvm flutter analyze --no-pub`: `No issues found`
+- Flutter 전체 `fvm flutter test --no-pub`: `603 passed`
+- local Web release bundle: build 성공
+
+## 2026-09-11: pull-to-refresh indicator 의미색 정리
+
+### 원인과 반영
+
+- Home·일정·브리핑·기록·선수·알림·경기 상세의 pull-to-refresh indicator가 LIVE red를 사용해 새로고침 대기와 경기 진행 상태가 섞여 있었다.
+- 모든 대상 RefreshIndicator를 theme action blue로 변경하고, LIVE/event red는 경기 상태에만 유지했다.
+
+### 검증
+
+- `fvm dart format` 대상 9개 Flutter 화면 파일
+- `fvm flutter analyze --no-pub`: `No issues found`
+- Flutter 전체 `fvm flutter test --no-pub`: `601 passed`
+- local Web release bundle: build 성공
+
+## 2026-09-11: 데이터 로딩 indicator 의미색 정리
+
+### 원인과 반영
+
+- 선수 상세, 일정, 순위, 진단, 경기 상세, 홈, 박스스코어, 라인업, 리더보드, 기록실의 일반 데이터 loading spinner가 LIVE red를 사용해 대기 상태가 경기 진행처럼 보일 수 있었다.
+- 데이터 loading indicator를 테마 action blue로 통일하고, LIVE·오류·경기 이벤트 red는 실제 상태 의미에만 남겼다. RefreshIndicator의 기존 동작과 데이터 계약은 변경하지 않았다.
+
+### 검증
+
+- `fvm dart format` 대상 10개 Flutter 화면 파일
+- `fvm flutter analyze --no-pub`: `No issues found`
+- Flutter 전체 `fvm flutter test --no-pub`: `601 passed`
+- local Web release bundle: build 성공
+
+## 2026-09-11: 홈 순위 미리보기 팀 강조색 정리
+
+### 원인과 반영
+
+- 홈 순위 미리보기의 마이팀 row가 LIVE red fill을 사용해, 팀 정체성 강조와 경기 진행 상태가 같은 색으로 보였다.
+- 마이팀 row fill을 해당 구단의 readable team color로 변경하고, LIVE red는 진행 중 경기 카드의 상태 표시로만 유지했다. 순위 데이터·정렬·탐색 동작은 변경하지 않았다.
+- 최근 5경기 결과 bubble과 연승/연패 label은 승리 positive green, 패배 red, 무승부 action blue로 분리했다. LIVE red는 진행 중 경기 상태에만 남겼다.
+- row surface stable key를 추가해 light theme에서 실제 팀색 fill을 직접 검증했다.
+
+### 검증
+
+- `fvm dart format lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
+- `fvm flutter test --no-pub test/features/home/home_screen_test.dart`: `51 passed`
+- 결과 bubble positive 색상과 row team-color fill을 active theme 기준 회귀 검증했다.
+- `fvm flutter analyze --no-pub lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`: `No issues found`
+- Flutter 전체 `fvm flutter analyze --no-pub`: `No issues found`
+- Flutter 전체 `fvm flutter test --no-pub`: `601 passed`
+- local API/Web release bundle: HTTP `200` / build 성공
+
+## 2026-09-11: 업데이트 소식 상태색 정리
+
+### 원인과 반영
+
+- 업데이트 소식의 `현재 설치됨` badge와 변경점 bullet marker가 LIVE red를 사용해 운영 상태와 정보 상태가 섞여 있었다.
+- 설치 버전 badge·bullet marker·현재 release border를 테마 action blue로 변경하고, 진단 화면의 성공/실패 색상과 구분했다.
+- 앱 시작 release-notes prompt의 업데이트 icon과 bullet도 같은 action blue로 맞춰 전체 정보 상태 언어를 일치시켰다.
+
+### 검증
+
+- `fvm dart format lib/features/settings/patch_notes_screen.dart`
+- `fvm flutter analyze --no-pub lib/features/settings/patch_notes_screen.dart`: `No issues found`
+- `fvm flutter test --no-pub test/features/settings/release_notes_prompt_test.dart`: `6 passed`
+- Flutter 전체 `fvm flutter analyze --no-pub`: `No issues found`
+- Flutter 전체 `fvm flutter test --no-pub`: `601 passed`
+- local Web release bundle: build 성공
+
+## 2026-09-11: 경기 상세 하이라이트 모드 선택색 정리
+
+### 원인과 반영
+
+- 경기 상세 하이라이트의 `스크롤`/`플레이어 조작` 모드 칩이 white fill을 사용해, 일반 재생 모드 선택이 경기 상태색과 구분되지 않았다.
+- 모드 칩의 selected surface·border·label을 테마 action blue로 변경하고, LIVE·득점·교체 등 실제 경기 상태/이벤트 색상은 유지했다.
+- 모드 칩에 stable key를 추가해 이후 하이라이트 상태 회귀를 직접 검증할 수 있게 했다.
+
+### 검증
+
+- `fvm dart format lib/features/game_detail/game_detail_screen.dart`
+- `fvm flutter analyze --no-pub lib/features/game_detail/game_detail_screen.dart`: `No issues found`
+- `fvm flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart`: `30 passed`
+- Flutter 전체 `fvm flutter analyze --no-pub`: `No issues found`
+- Flutter 전체 `fvm flutter test --no-pub`: `601 passed`
+- local Web release bundle: build 성공
+
+## 2026-09-11: standalone 리더보드 group 선택색 정리
+
+### 원인과 반영
+
+- 기록실 hub의 리더보드 group 선택은 action blue였지만 standalone 리더보드의 `타자/투수` group button은 white fill을 사용해 같은 기능이 다른 언어로 보였다.
+- standalone group selected surface·border·label을 action blue로 맞추고, metric data row의 의미색은 유지했다.
+
+### 검증
+
+- `fvm dart format lib/features/records/leaderboard_screen.dart test/features/records/leaderboard_screen_test.dart`
+- `fvm flutter test --no-pub test/features/records/leaderboard_screen_test.dart`: `6 passed`
+- Flutter 전체 `fvm flutter analyze --no-pub`: `No issues found`
+- Flutter 전체 `fvm flutter test --no-pub`: `601 passed`
+- local Web release bundle: build 성공
+
+## 2026-09-11: 기록실 일반 선택 상태 정리
+
+### 원인과 반영
+
+- 기록실의 야수/투수 탭과 선수 필터·정렬 칩, 내장 리더보드 그룹·지표 선택이 흰색 또는 회색을 사용해 액션 선택과 기록 의미색이 섞여 있었다.
+- 일반 선택 컨트롤은 테마 action blue로 통일하고, 선수 팀 색상과 리더보드 데이터 행의 metric 색상은 유지했다. 기록 조회·정렬·시즌·API 계약은 변경하지 않았다.
+- 필터·정렬 컨트롤에 stable key를 추가해 선택 surface와 border를 직접 회귀 검증했다.
+
+### 검증
+
+- `fvm dart format lib/features/records/records_screen.dart test/features/records/records_renewal_test.dart`
+- `fvm flutter test --no-pub test/features/records/records_renewal_test.dart`: `14 passed`
+- `fvm flutter analyze --no-pub lib/features/records/records_screen.dart test/features/records/records_renewal_test.dart`: `No issues found`
+- Flutter 전체 `fvm flutter analyze --no-pub`: `No issues found`
+- Flutter 전체 `fvm flutter test --no-pub`: `601 passed`
+- local API/Web release bundle: HTTP `200` / build 성공
+
+## 2026-09-11: 일정 선택 상태 의미 분리
+
+### 원인과 반영
+
+- 일정의 보기 모드와 팀 필터는 회색 선택 상태였고, 선택 날짜는 경기 있는 날짜와 같은 red를 사용해 일반 선택과 경기 존재 의미가 섞여 있었다.
+- 보기 모드·팀 필터·선택 날짜를 테마 action blue로 변경하고, 경기 있는 날짜 outline과 주말/경기 상태의 red 의미는 유지했다. 팀별 매치업 칩은 팀 identity 색상을 유지했다.
+- 달력 선택 셀·보기 모드·필터에 stable key를 추가해 색상 의미와 반응형 회귀를 직접 검증할 수 있게 했다.
+
+### 검증
+
+- `fvm dart format lib/features/schedule/schedule_screen.dart test/features/schedule/schedule_screen_test.dart`
+- `fvm flutter test --no-pub test/features/schedule/schedule_screen_test.dart`: `25 passed`
+- `fvm flutter analyze --no-pub lib/features/schedule/schedule_screen.dart test/features/schedule/schedule_screen_test.dart`: `No issues found`
+- 최신 release web bundle의 안정화된 일정 화면에서 보기 모드·전체 필터·선택 날짜가 blue, 경기 있는 날짜 outline이 red로 분리되는 것을 확인했다.
+- Flutter 전체 `fvm flutter test --no-pub`: `600 passed` (기록실 선택 상태 변경 전 기준)
+
+## 2026-09-11: 브리핑 목적 필터 선택색 정리
+
+### 원인과 반영
+
+- 브리핑의 목적 필터가 `LIVE`/오류와 같은 red를 선택 상태에 사용해, 필터 선택과 카드 콘텐츠 의미를 빠르게 구분하기 어려웠다.
+- 필터 surface·테두리·라벨을 테마 action blue로 변경하고, 경기·순위·기록 카드의 의미색은 유지했다. 브리핑 데이터·필터 동작·KST 기준은 변경하지 않았다.
+
+### 검증
+
+- `fvm dart format lib/features/news/news_screen.dart test/features/news/news_screen_test.dart`
+- `fvm flutter test --no-pub test/features/news/news_screen_test.dart`: `20 passed`
+- `fvm flutter analyze --no-pub lib/features/news/news_screen.dart test/features/news/news_screen_test.dart`: `No issues found`
+- 최신 release web bundle의 390×844 CSS viewport 브리핑 화면에서 `전체` 선택이 action blue로 렌더되고 카드 의미색은 유지되는 것을 확인했다.
+- `fvm flutter analyze --no-pub`: `No issues found`
+- Flutter 전체 `fvm flutter test --no-pub`: `599 passed` (일정 선택 상태 변경 전 기준)
+
+## 2026-09-11: 설정 알림 프리셋 선택색 정리
+
+### 원인과 반영
+
+- 설정 화면의 푸시 프리셋 칩이 마이팀 primary color를 공유해, LG 선택 상태에서는 일반 설정 선택도 경기 상태용 red처럼 보이는 시각 혼동이 있었다.
+- 프리셋 칩은 테마의 action blue를 사용하고, 실제 마이팀 대상 스트립은 기존 팀 색상을 유지하도록 색상 책임을 분리했다. 푸시 저장·권한·토글 계약은 변경하지 않았다.
+
+### 검증
+
+- `fvm flutter test --no-pub test/features/settings/settings_screen_test.dart`: `21 passed`
+- 프리셋 선택색과 selected surface/label 색이 테마 action blue인지 회귀 테스트로 확인했다.
+- 390px CSS viewport 설정 화면에서 마이팀 대상 색상과 프리셋 선택색이 분리되어 렌더되는 것을 확인했다.
+- `fvm flutter analyze --no-pub`: `No issues found`
+- Flutter 전체 `fvm flutter test --no-pub`: `598 passed`
+
+## 2026-09-11: backend cold-path 관측과 배포 timeout 보강
+
+### 반영
+
+- Home aggregate에 `home_upstream_timing`과 `home_total_timing`을 추가해 scoreboard·schedule·standings·records 준비 시각과 payload 조립까지의 전체 시간을 payload/query/credential 없이 기록했다.
+- scoreboard home 경로에 `home_scoreboard_timing`과 `home_scoreboard_total_timing`을 추가해 schedule/Main source 대기와 lightweight payload 조립 비용을 분리했다. 성공·schedule 실패 경로 모두 관측한다.
+- records overview full/home/home-seed 경로에 `records_overview_timing`을 추가해 지표별 page readiness, mode, page count, complete 여부, 전체 fan-out 시간을 기록한다. OPS/OPS+ semantics와 기존 cache/snapshot 계약은 유지한다.
+- Lightsail sync worker에 `TimeoutStopSec=30s`, `KillMode=mixed`를 명시하고, `lightsail-deploy.sh` 원격 명령에 기본 600초 timeout 및 SSH keepalive/connection timeout을 추가했다.
+- `release-api-health-check.sh`가 endpoint별 `time_total`과 relay elapsed를 출력하고, `RELEASE_API_HEALTH_PERFORMANCE=true`에서 cold/warm 두 단계 gate를 순차 실행하도록 보강했다.
+- README와 Lightsail runbook에 performance gate 실행 예시와 read-only/cold-warm 증거 경계를 동기화했다.
+
+### 검증
+
+- backend 전체 `717 passed`, Ruff, compileall, 두 deploy script syntax, `git diff --check` 통과.
+- local real-KBO cold Home 3회는 `458.1ms`, `613.4ms`, `471.5ms`; local full records 2026 cold는 7개 page `574.4ms`였다. 이는 local 단일 표본이다.
+- public performance gate는 cold/warm 모두 DNS/TLS·health·scoreboard·relay·Home·schedule·standings·records를 통과했다. cold Home `9.276s`, warm Home `0.078s` 표본을 확인했으나 새 release 반영·p50/p95 증거로 일반화하지 않았다.
+- AWS session 만료로 Lightsail current release·systemd·memory/swap·OOM journal readback과 새 bundle production deploy는 미완료다. 인증 없이 추가 source/config 변경이나 restart를 하지 않았다.
+
+## 2026-09-11: 페이지별 UI/UX 시안과 상세 화면 공통화
+
+### 요청과 기준
+
+- 사장님 요청에 따라 홈 시안을 다른 화면에도 하나씩 적용하고, 각 화면의 목적·첫 정보·주요 CTA·빈/오류 상태를 페이지별 시안으로 고정했다.
+- 대상 프레임은 390×844이며, 데이터 provider/API 계약·KST 계산·current/historical cache 경계는 변경하지 않았다.
+- 페이지별 기준은 `docs/design_refs/2026-09-10-page-by-page-screens.md`, 캡처 manifest는 `artifacts/uiux-redesign-2026-09-10/page-captures/README.md`에 기록했다.
+
+### 반영
+
+- 리더보드와 선수 상세를 공통 `AppPageHeader`/`AppPageFrame`으로 정리하고, 일반 지표 선택은 LIVE red가 아닌 action blue를 사용하도록 맞췄다.
+- 선수 상세 프로필에는 팀 컬러 rail과 공통 surface를 적용하고, 주요 기록·시즌 기록·최근 경기 순서로 읽히도록 유지했다.
+- API 진단과 업데이트 소식에도 운영 도구/사용자 변경점에 맞는 eyebrow·title·subtitle·back action 헤더를 적용했다.
+- `AppSurface`의 팀 컬러 rail을 `Stack` 레이어로 구현해 `ListView`의 무한 높이 제약에서도 콘텐츠 높이만 사용하도록 보정했다.
+- 알림함, 경기 상세 하위 탭, 온보딩, 기본 탭 화면의 실제 390×844 정상 상태를 함께 점검했다. 로딩 프레임과 TabBarView 전환 중 프레임은 증거에서 제외했다.
+
+### 검증
+
+- `fvm flutter analyze --no-pub` 대상 화면/공통 위젯: 통과.
+- 리더보드 테스트 5개, 선수 상세 테스트 4개, 설정/진단/업데이트 테스트 28개: 통과.
+- Flutter web release build: `APP_ENV=local`, `USE_BACKEND_API=true`, `API_BASE_URL=http://127.0.0.1:8000/api`, `SHOW_DEV_CONSOLE=false` 기준 통과.
+- local FastAPI health: HTTP 200.
+- Chrome 390×844 inline capture: 홈·일정·순위·기록실·브리핑·설정·온보딩·알림함·경기 상세 score/relay·리더보드·선수 상세·API 진단·업데이트 소식 및 안정화된 boxscore/lineup 상태를 확인했다.
+- 실기기 VoiceOver/TalkBack, 실제 FCM/APNs, Live Activity, TestFlight/Play 외부 설치는 이 작업의 증거 범위에 포함하지 않는다.
+
+## 2026-09-11: 알림함과 운영 상세의 반복 사용성 보강
+
+### 반영
+
+- 알림함 헤더를 `AppPageHeader`로 통일하고, `푸시 알림 · 알림함 · 설명 · 모두 읽음` 순서가 좁은 화면에서도 안정적으로 읽히도록 정리했다.
+- 알림함의 전체/안 읽음/경기/브리프 필터 선택을 action blue로 맞춰 일반 선택과 LIVE red를 분리했다. 읽음 저장, 필터 수, 설정 playbook은 기존 계약을 유지한다.
+- API 진단과 업데이트 소식의 back action은 GoRouter stack이 있으면 pop하고, 직접 URL root이면 `/settings`로 이동하도록 보강했다.
+- 설정의 화면 모드 선택 색을 live red에서 action blue로 변경해 선택 상태와 경기 상태를 분리했다. 팀 기반 알림 프리셋의 팀 컬러 표현은 유지했다.
+- 경기 상세 스코어 탭의 정상 이닝 표에서 `scoreLinescore` artwork 레이어를 제거해 R/H/E/B 숫자와 구분선을 우선 표시했다. 빈/오류 상태의 안내 artwork는 유지했다.
+- 라인업 탭에서 비교 데이터가 있을 때도 선발 라인업을 먼저 렌더링하고, 최근 흐름·맞대결 비교를 아래로 이동했다. 선발 투수 기록과 비교 데이터는 삭제하지 않았다.
+- 문자중계의 이닝/장면 filter selected color를 `live red`/white에서 `action blue`로 바꿨다. 득점·교체·종료 이벤트 카드의 의미색은 유지했다.
+- 박스스코어 LIVE context 팀 요약 헤더에 `boxscore-live-status` 상태 pill을 추가했다. 공식 기록 전 단계는 `LIVE`/`집계중`으로 노출하고 기존 확인값은 변경하지 않았다.
+
+### 검증
+
+- 알림함·API 진단·업데이트 화면 대상 analyze 및 회귀 테스트 통과.
+- local Web preview에서 알림함 헤더와 블루 선택 필터가 중앙 max-width 레이아웃 안에서 렌더되는 것을 확인했다.
+
+---
+
+## 2026-09-10: backend 홈 cold-path 병렬화
+
+### 원인과 반영
+
+- 홈 aggregate가 scoreboard 결과를 기다린 뒤 schedule·standings·records를 시작하고, scoreboard home 경로도 schedule 후 Main 목록을 시작해 cold path가 직렬로 누적되는 경계를 확인했다.
+- HomeService와 ScoreboardService의 독립 원천을 먼저 제출하도록 병렬화하고, 홈 전용 기록 요약 경로를 추가해 실제 홈이 사용하는 지표만 준비하도록 보강했다.
+- schedule/Main raw source cache와 singleflight를 runtime sibling service가 공유하도록 연결해 같은 날짜/월의 중복 KBO 조회를 줄였다.
+- records overview의 OPS/OPS+ 동일 원천 재조회, player detail/team stats 동시 miss 중복, current/future 경로의 historical snapshot 확인을 각각 분리해 보정했다.
+- push registry lock, outbox claim, Live Activity sync summary, LIVE 상세 warm의 병렬/ bounded 경계를 유지하면서 관련 runtime 테스트를 보강했다.
+
+### 검증
+
+- backend 대상 회귀와 전체 suite, compileall, ruff, diff check 결과는 해당 변경 당시의 작업 증거로 유지한다. 현재 운영 배포/성능/SLO 판단은 당시 기록을 재사용하지 않고 별도 readback한다.
+
+---
+
 ## 2026-09-07: 경기 확인과 기록 이해를 연결하는 리뉴얼
 
 ### 요청과 근거

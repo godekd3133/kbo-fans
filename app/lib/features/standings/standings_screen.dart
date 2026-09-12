@@ -10,6 +10,7 @@ import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/kbo_time.dart';
 import '../../core/widgets/app_artwork_card.dart';
+import '../../core/widgets/app_design_system.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
@@ -31,6 +32,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
   late int _selectedSeason;
   late int _currentSeason;
   bool _followsCurrentSeason = true;
+  bool _refreshingStandings = false;
 
   @override
   void initState() {
@@ -53,13 +55,35 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
   }
 
   Future<void> _refreshStandings() async {
+    if (_refreshingStandings) {
+      return;
+    }
+    setState(() => _refreshingStandings = true);
     final provider = standingsProvider(_selectedSeason);
-    ref.invalidate(provider);
     try {
+      ref.invalidate(provider);
       await ref.read(provider.future);
     } catch (_) {
       // 화면의 AsyncValue 오류 상태가 재시도 결과를 표시한다.
+    } finally {
+      if (mounted) {
+        setState(() => _refreshingStandings = false);
+      }
     }
+  }
+
+  Widget _standingsRefreshIcon(BuildContext context) {
+    if (!_refreshingStandings) {
+      return Icon(Icons.refresh, size: 20, color: AppColors.textSupporting);
+    }
+    return SizedBox(
+      width: 18,
+      height: 18,
+      child: CircularProgressIndicator(
+        strokeWidth: 2,
+        color: AppTheme.colorsOf(context).accent,
+      ),
+    );
   }
 
   @override
@@ -79,31 +103,28 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                 child: useLargeText
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            useCompactTitle ? 'KBO 순위' : '정규시즌 순위표',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          AppPageHeader(
+                            eyebrow: 'KBO $_selectedSeason 시즌',
+                            title: useCompactTitle ? 'KBO 순위' : '정규시즌 순위표',
+                            subtitle: '10개 구단의 현재 순위와 게임차',
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 4),
                           Row(
                             children: [
                               Expanded(child: _seasonDropdown()),
                               const SizedBox(width: 8),
                               IconButton(
+                                key: const ValueKey('standings-refresh'),
                                 tooltip: '순위 새로고침',
-                                icon: Icon(
-                                  Icons.refresh,
-                                  size: 20,
-                                  color: AppColors.textSupporting,
-                                ),
-                                onPressed: () => unawaited(_refreshStandings()),
+                                icon: _standingsRefreshIcon(context),
+                                onPressed: _refreshingStandings
+                                    ? null
+                                    : () => unawaited(_refreshStandings()),
                               ),
                             ],
                           ),
@@ -112,24 +133,21 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                     : Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              useCompactTitle ? 'KBO 순위' : '정규시즌 순위표',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                              ),
+                            child: AppPageHeader(
+                              eyebrow: 'KBO $_selectedSeason 시즌',
+                              title: useCompactTitle ? 'KBO 순위' : '정규시즌 순위표',
+                              subtitle: '10개 구단의 현재 순위와 게임차',
                             ),
                           ),
                           _seasonDropdown(),
                           const SizedBox(width: 8),
                           IconButton(
+                            key: const ValueKey('standings-refresh'),
                             tooltip: '순위 새로고침',
-                            icon: Icon(
-                              Icons.refresh,
-                              size: 20,
-                              color: AppColors.textSupporting,
-                            ),
-                            onPressed: () => unawaited(_refreshStandings()),
+                            icon: _standingsRefreshIcon(context),
+                            onPressed: _refreshingStandings
+                                ? null
+                                : () => unawaited(_refreshStandings()),
                           ),
                         ],
                       ),
@@ -157,7 +175,9 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                     loading: () => KeyedSubtree(
                       key: ValueKey('standings-loading'),
                       child: Center(
-                        child: CircularProgressIndicator(color: AppColors.live),
+                        child: CircularProgressIndicator(
+                          color: AppTheme.colorsOf(context).accent,
+                        ),
                       ),
                     ),
                     error: (e, _) => KeyedSubtree(
@@ -192,8 +212,9 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                                 Align(
                                   alignment: Alignment.centerLeft,
                                   child: TextButton(
-                                    onPressed: () =>
-                                        unawaited(_refreshStandings()),
+                                    onPressed: _refreshingStandings
+                                        ? null
+                                        : () => unawaited(_refreshStandings()),
                                     child: const Text('다시 시도'),
                                   ),
                                 ),
@@ -816,7 +837,8 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
       for (int year = _currentSeason; year >= 2001; year--) year,
     ];
     return Container(
-      constraints: const BoxConstraints(minHeight: 36),
+      key: const ValueKey('standings-season-dropdown'),
+      constraints: const BoxConstraints(minHeight: 44),
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: AppColors.card,
@@ -876,9 +898,13 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: OutlinedButton.icon(
-                  onPressed: () => unawaited(_refreshStandings()),
-                  icon: const Icon(Icons.refresh_rounded, size: 16),
-                  label: const Text('다시 확인'),
+                  onPressed: _refreshingStandings
+                      ? null
+                      : () => unawaited(_refreshStandings()),
+                  icon: _refreshingStandings
+                      ? _standingsRefreshIcon(context)
+                      : const Icon(Icons.refresh_rounded, size: 16),
+                  label: Text(_refreshingStandings ? '확인 중' : '다시 확인'),
                 ),
               ),
             ],
@@ -945,39 +971,28 @@ class _StandingsPulseRail extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.divider),
       ),
-      child: Stack(
-        children: [
-          const Positioned.fill(
-            child: AppArtworkLayer(
-              assetName: VisualAssets.standingsRace,
-              alignment: Alignment.centerRight,
-              opacity: 0.18,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: useLargeText
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      pulseItems[0],
-                      Divider(color: AppColors.divider, height: 24),
-                      pulseItems[1],
-                      Divider(color: AppColors.divider, height: 24),
-                      pulseItems[2],
-                    ],
-                  )
-                : Row(
-                    children: [
-                      Expanded(child: pulseItems[0]),
-                      const _PulseDivider(),
-                      Expanded(child: pulseItems[1]),
-                      const _PulseDivider(),
-                      Expanded(child: pulseItems[2]),
-                    ],
-                  ),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: useLargeText
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  pulseItems[0],
+                  Divider(color: AppColors.divider, height: 24),
+                  pulseItems[1],
+                  Divider(color: AppColors.divider, height: 24),
+                  pulseItems[2],
+                ],
+              )
+            : Row(
+                children: [
+                  Expanded(child: pulseItems[0]),
+                  const _PulseDivider(),
+                  Expanded(child: pulseItems[1]),
+                  const _PulseDivider(),
+                  Expanded(child: pulseItems[2]),
+                ],
+              ),
       ),
     );
   }

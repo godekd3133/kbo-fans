@@ -78,7 +78,89 @@ void main() {
     expect(find.textContaining('ready initialized=true'), findsOneWidget);
     expect(find.text('푸시 상태를 확인할 수 없습니다'), findsNothing);
   });
+
+  testWidgets('진단 중 빠른 다시 진단 탭은 중복 요청을 만들지 않는다', (tester) async {
+    final initialPush = Completer<Map<String, dynamic>>();
+    final refreshedPush = Completer<Map<String, dynamic>>();
+    var pushAttempts = 0;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [apiClientProvider.overrideWithValue(_FakeApiClient())],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: ApiDiagnosticsScreen(
+            pushStateLoader: () {
+              pushAttempts += 1;
+              return pushAttempts == 1
+                  ? initialPush.future
+                  : refreshedPush.future;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final refreshButton = find.byType(IconButton).first;
+    expect(pushAttempts, 1);
+    expect(tester.widget<IconButton>(refreshButton).onPressed, isNotNull);
+
+    await tester.tap(refreshButton);
+    await tester.pump();
+
+    expect(pushAttempts, 2);
+    expect(tester.widget<IconButton>(refreshButton).onPressed, isNull);
+    expect(find.byType(CircularProgressIndicator), findsAtLeastNWidgets(1));
+
+    refreshedPush.complete(_readyPushState);
+    initialPush.complete(_readyPushState);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<IconButton>(refreshButton).onPressed, isNotNull);
+  });
+
+  testWidgets('진단 카드는 상태와 detail을 하나의 접근성 요약으로 읽는다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [apiClientProvider.overrideWithValue(_FakeApiClient())],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: ApiDiagnosticsScreen(
+              pushStateLoader: () async => _readyPushState,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final data = tester
+          .getSemantics(
+            find.byKey(const ValueKey('api-diagnostics-semantics-health')),
+          )
+          .getSemanticsData();
+      expect(data.label, contains('health'));
+      expect(data.label, contains('정상'));
+      expect(data.label, contains('status=ok'));
+      expect(data.label, contains('밀리초'));
+    } finally {
+      semantics.dispose();
+    }
+  });
 }
+
+const _readyPushState = <String, dynamic>{
+  'status': 'ready',
+  'initialized': true,
+  'tokenReady': true,
+  'remotePushAvailable': true,
+  'localGameEventAlertsEnabled': true,
+  'localGameEventAlertsForced': false,
+  'topics': <String>['team_lg'],
+  'apiBaseUrl': 'https://api.example.test',
+};
 
 class _FakeApiClient extends ApiClient {
   _FakeApiClient() : super(enableRequestTiming: false);

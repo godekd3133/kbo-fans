@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/config/app_config.dart';
+import 'package:kbo_fans/core/constants/team_data.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/core/widgets/app_motion.dart';
 import 'package:kbo_fans/data/models/boxscore.dart';
@@ -21,7 +22,10 @@ import 'package:kbo_fans/data/models/team_stats.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/home/home_screen.dart';
 import 'package:kbo_fans/services/live_activity_service.dart';
+import 'package:kbo_fans/services/notification_inbox_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 void main() {
   testWidgets('공개된 라인업 CTA는 실제 라인업 탭으로 바로 연결한다', (tester) async {
@@ -127,6 +131,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('onboarding-edit-/home'), findsOneWidget);
+  });
+
+  testWidgets('홈 예매 quick item은 ISO timestamp 대신 KST 표시를 사용한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    _ensureAppConfigInitialized();
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    final router = _homeInteractionRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: router),
+        quickItems: const [
+          HomeQuickItem(
+            eyebrow: '예매 오픈 임박',
+            title: 'LG vs 삼성',
+            subtitle: '티켓링크 · 2026-09-06T11:00:00+09:00',
+            route: '/schedule',
+            teamId: 'LG',
+            fallbackLabel: 'LG 트윈스',
+          ),
+        ],
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final subtitle = find.text('티켓링크 · 9월 6일 11:00 KST 오픈');
+    await tester.ensureVisible(subtitle);
+    expect(subtitle, findsOneWidget);
+    expect(find.textContaining('T11:00:00+09:00'), findsNothing);
   });
 
   testWidgets('홈 pull refresh는 새 scoreboard 응답이 끝날 때까지 기다린다', (tester) async {
@@ -716,6 +756,15 @@ void main() {
       find.descendant(of: standingsRow, matching: find.text('62')),
     );
     expect(standingsGames.style?.color, AppTheme.lightColors.textPrimary);
+
+    final standingsRowContainer = tester.widget<Container>(
+      find.byKey(const ValueKey('home-standings-row-surface-LG')),
+    );
+    final rowDecoration = standingsRowContainer.decoration! as BoxDecoration;
+    final lgAccent = AppTheme.lightColors.readableAccent(
+      KboTeams.byId('LG')!.primaryColor,
+    );
+    expect(rowDecoration.color, lgAccent.withValues(alpha: 0.16));
   });
 
   testWidgets('defers home aggregate provider until after scoreboard paint', (
@@ -1321,6 +1370,15 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
+    final winBubble = tester.widget<Container>(
+      find.byKey(const ValueKey('home-result-bubble-승')).first,
+    );
+    final winDecoration = winBubble.decoration! as BoxDecoration;
+    final colors = AppTheme.colorsOf(
+      tester.element(find.byKey(const ValueKey('home-result-bubble-승')).first),
+    );
+    expect(winDecoration.color, colors.positive.withValues(alpha: 0.85));
+
     final narrowMetrics = find.byKey(
       const ValueKey('my-team-brief-narrow-metrics'),
     );
@@ -1766,6 +1824,16 @@ void main() {
     expect(find.byKey(const ValueKey('home-recent-flow-row-SS')), findsNothing);
     expect(find.byKey(const ValueKey('home-recent-flow-row-LG')), findsNothing);
     expect(find.text('표시할 최근 5경기가 없습니다'), findsOneWidget);
+
+    final recentGamesAction = find.descendant(
+      of: find.byKey(const ValueKey('home-standings-card')),
+      matching: find.text('일정 보기'),
+    );
+    await tester.ensureVisible(recentGamesAction);
+    await tester.pumpAndSettle();
+    await tester.tap(recentGamesAction);
+    await tester.pumpAndSettle();
+    expect(find.text('schedule'), findsOneWidget);
   });
 
   testWidgets('recent 5 games row reflows and exposes results at 320px 240%', (
@@ -1832,6 +1900,43 @@ void main() {
     expect(find.text('standings'), findsOneWidget);
   });
 
+  testWidgets('홈 순위 행은 중복 없이 순위 전체 보기 action을 제공한다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+      _ensureAppConfigInitialized();
+      await tester.pumpWidget(
+        _homeInteractionScope(
+          child: MaterialApp.router(routerConfig: _homeInteractionRouter()),
+        ),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      final row = find.byKey(const ValueKey('home-standings-row-HT'));
+      await tester.ensureVisible(row);
+      final data = tester.getSemantics(row).getSemanticsData();
+      expect(data.label, contains('순위 전체 보기'));
+      expect(data.hasAction(SemanticsAction.tap), isTrue);
+
+      final duplicateButtons = <SemanticsNode>[];
+      bool collectDuplicateButtons(SemanticsNode child) {
+        final childData = child.getSemanticsData();
+        if (childData.flagsCollection.isButton ||
+            childData.hasAction(SemanticsAction.tap)) {
+          duplicateButtons.add(child);
+        }
+        child.visitChildren(collectDuplicateButtons);
+        return true;
+      }
+
+      tester.getSemantics(row).visitChildren(collectDuplicateButtons);
+      expect(duplicateButtons, isEmpty);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets('home notification header opens notification inbox', (
     tester,
   ) async {
@@ -1852,10 +1957,124 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
+    expect(
+      tester.getSize(find.byTooltip('알림함')).height,
+      greaterThanOrEqualTo(44),
+    );
+    expect(
+      tester.getSize(find.byTooltip('기록 검색')).height,
+      greaterThanOrEqualTo(44),
+    );
     await tester.tap(find.byTooltip('알림함'));
     await tester.pumpAndSettle();
 
     expect(find.text('notifications'), findsOneWidget);
+  });
+
+  testWidgets('home notification header surfaces unread inbox count', (
+    tester,
+  ) async {
+    _ensureAppConfigInitialized();
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    addTearDown(() {
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
+    });
+    await NotificationInboxService.instance.addPush(
+      messageId: 'home-unread',
+      title: '새 득점',
+      body: '알림 배지 확인',
+      data: const {'type': 'scoring'},
+      route: '/home',
+      source: 'test',
+      read: false,
+      receivedAt: DateTime(2026, 9, 11, 12),
+    );
+    await NotificationInboxService.instance.addPush(
+      messageId: 'home-read',
+      title: '읽은 알림',
+      body: '읽음 상태 확인',
+      data: const {'type': 'baseball_info'},
+      route: '/home',
+      source: 'test',
+      read: true,
+      receivedAt: DateTime(2026, 9, 11, 11),
+    );
+
+    final router = _homeInteractionRouter();
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      _homeInteractionScope(child: MaterialApp.router(routerConfig: router)),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('home-notification-unread-badge')),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('알림함 · 읽지 않은 알림 1개'), findsOneWidget);
+    final semantics = tester.ensureSemantics();
+    try {
+      final data = tester
+          .getSemantics(find.byTooltip('알림함 · 읽지 않은 알림 1개'))
+          .getSemanticsData();
+      expect(data.label, '알림함 · 읽지 않은 알림 1개');
+      expect(data.flagsCollection.isButton, isTrue);
+      expect(data.hasAction(SemanticsAction.tap), isTrue);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets('home notification badge follows inbox changes while mounted', (
+    tester,
+  ) async {
+    _ensureAppConfigInitialized();
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    addTearDown(() {
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
+    });
+
+    final router = _homeInteractionRouter();
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      _homeInteractionScope(child: MaterialApp.router(routerConfig: router)),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('home-notification-unread-badge')),
+      findsNothing,
+    );
+
+    await NotificationInboxService.instance.addPush(
+      messageId: 'mounted-unread',
+      title: '실시간 새 알림',
+      body: '홈에 즉시 반영',
+      data: const {'type': 'scoring'},
+      route: '/home',
+      source: 'foreground',
+      read: false,
+      receivedAt: DateTime(2026, 9, 11, 13),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('home-notification-unread-badge')),
+      findsOneWidget,
+    );
+
+    await NotificationInboxService.instance.markAllRead();
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('home-notification-unread-badge')),
+      findsNothing,
+    );
   });
 
   testWidgets('KBO brief record item renders real player image URL', (
@@ -2255,6 +2474,27 @@ void main() {
     expect(find.text('B'), findsNothing);
     expect(find.text('S'), findsNothing);
     expect(find.text('O'), findsNothing);
+    final strip = find.byKey(const ValueKey('kbo-brief-score-strip'));
+    expect(strip, findsOneWidget);
+    expect(
+      find.descendant(
+        of: strip,
+        matching: find.byKey(const ValueKey('kbo-brief-pregame-matchup')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: strip, matching: find.text('롯데 vs 두산')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: strip, matching: find.text('18:30')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: strip, matching: find.text('예정')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('KBO brief LIVE는 실제 필드가 없는 카운트와 루상을 만들지 않는다', (tester) async {
@@ -2897,6 +3137,7 @@ GoRouter _homeInteractionRouter() {
       ),
       GoRoute(path: '/records', builder: (_, _) => const Text('records')),
       GoRoute(path: '/standings', builder: (_, _) => const Text('standings')),
+      GoRoute(path: '/schedule', builder: (_, _) => const Text('schedule')),
       GoRoute(path: '/news', builder: (_, _) => const Text('news')),
       GoRoute(path: '/onboarding', builder: (_, _) => const Text('onboarding')),
       GoRoute(path: '/settings', builder: (_, _) => const Text('settings')),

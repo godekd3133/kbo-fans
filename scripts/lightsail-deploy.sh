@@ -15,6 +15,7 @@ APP_DIR="/opt/kbo-fans"
 INSTALL_CADDY=true
 PRESERVE_ENV=false
 DRY_RUN=false
+REMOTE_TIMEOUT_SECONDS=600
 RELEASE_ID="$(date -u +%Y%m%d%H%M%S)"
 
 usage() {
@@ -39,6 +40,7 @@ Options:
   --app-dir                    Remote app dir. Default /opt/kbo-fans.
   --skip-caddy                 Do not install or configure Caddy.
   --preserve-env               Keep the existing remote /etc/kbo-fans/backend.env.
+  --remote-timeout-seconds     Bound the remote deployment command. Default: 600.
   --dry-run                    Create and inspect the deployment bundle without SSH.
 EOF
 }
@@ -96,6 +98,10 @@ while [[ $# -gt 0 ]]; do
       PRESERVE_ENV=true
       shift
       ;;
+    --remote-timeout-seconds)
+      REMOTE_TIMEOUT_SECONDS="${2:-}"
+      shift 2
+      ;;
     --dry-run)
       DRY_RUN=true
       shift
@@ -121,6 +127,11 @@ fi
 if [[ "$DRY_RUN" != "true" && -z "$SSH_TARGET" ]]; then
   echo "--host is required unless --dry-run is set." >&2
   usage >&2
+  exit 2
+fi
+
+if ! [[ "$REMOTE_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "--remote-timeout-seconds must be a positive integer." >&2
   exit 2
 fi
 
@@ -174,8 +185,8 @@ if [[ "$DRY_RUN" == "true" ]]; then
   exit 0
 fi
 
-SSH_ARGS=()
-SCP_ARGS=()
+SSH_ARGS=(-o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+SCP_ARGS=(-o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
 if [[ -n "$SSH_KEY" ]]; then
   SSH_ARGS+=(-i "$SSH_KEY")
   SCP_ARGS+=(-i "$SSH_KEY")
@@ -201,7 +212,7 @@ if [[ -n "$APNS_AUTH_KEY_FILE" ]]; then
 fi
 
 ssh "${SSH_ARGS[@]}" "$SSH_TARGET" \
-  "RELEASE_ID='$RELEASE_ID' REMOTE_TMP='$REMOTE_TMP' APP_DIR='$APP_DIR' DOMAIN='$DOMAIN' INSTALL_CADDY='$INSTALL_CADDY' PRESERVE_ENV='$PRESERVE_ENV' HAS_FIREBASE='$([[ -n "$FIREBASE_SERVICE_ACCOUNT_FILE" ]] && echo true || echo false)' HAS_APNS='$([[ -n "$APNS_AUTH_KEY_FILE" ]] && echo true || echo false)' bash -s" <<'REMOTE'
+  "RELEASE_ID='$RELEASE_ID' REMOTE_TMP='$REMOTE_TMP' APP_DIR='$APP_DIR' DOMAIN='$DOMAIN' INSTALL_CADDY='$INSTALL_CADDY' PRESERVE_ENV='$PRESERVE_ENV' HAS_FIREBASE='$([[ -n "$FIREBASE_SERVICE_ACCOUNT_FILE" ]] && echo true || echo false)' HAS_APNS='$([[ -n "$APNS_AUTH_KEY_FILE" ]] && echo true || echo false)' timeout --foreground --signal=TERM --kill-after=15s '${REMOTE_TIMEOUT_SECONDS}s' bash -s" <<'REMOTE'
 set -euo pipefail
 
 SERVICE_USER="kbo-fans"
@@ -214,7 +225,10 @@ fi
 sudo mkdir -p "$RELEASE_DIR" "$APP_DIR/shared" /etc/kbo-fans /var/lib/kbo-fans /var/log/kbo-fans
 sudo tar -xzf "$REMOTE_TMP/kbo-fans-backend.tar.gz" -C "$RELEASE_DIR"
 sudo chown -R root:root "$RELEASE_DIR"
-sudo chown -R "$SERVICE_USER:$SERVICE_USER" /var/lib/kbo-fans /var/log/kbo-fans
+# The worker atomically replaces files below these directories. Do not walk
+# the tree while it is running; transient registry temp files can disappear
+# between find/chown and make a healthy deploy report a false failure.
+sudo chown "$SERVICE_USER:$SERVICE_USER" /var/lib/kbo-fans /var/log/kbo-fans
 
 if [[ "$PRESERVE_ENV" != "true" ]]; then
   sudo install -o root -g "$SERVICE_USER" -m 0640 "$REMOTE_TMP/backend.env" /etc/kbo-fans/backend.env
@@ -278,7 +292,16 @@ sudo systemctl enable kbo-fans-api kbo-fans-sync-worker
 sudo systemctl restart kbo-fans-api
 sudo systemctl restart kbo-fans-sync-worker
 
-curl -fsS http://127.0.0.1:8000/api/health
+if ! curl --fail --silent --show-error \
+  --max-time 3 \
+  --retry 30 \
+  --retry-connrefused \
+  --retry-delay 2 \
+  --retry-max-time 90 \
+  http://127.0.0.1:8000/api/health; then
+  echo "Internal API health did not become ready within 90 seconds." >&2
+  exit 1
+fi
 echo
 systemctl --no-pager --full status kbo-fans-api | sed -n '1,18p'
 systemctl --no-pager --full status kbo-fans-sync-worker | sed -n '1,18p'

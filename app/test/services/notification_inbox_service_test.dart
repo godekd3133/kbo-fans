@@ -14,6 +14,29 @@ void main() {
   });
 
   test(
+    'push inbox change stream emits after writes and read updates',
+    () async {
+      final service = NotificationInboxService.instance;
+      final changes = service.changes.take(3).toList();
+
+      await service.addPush(
+        messageId: 'stream-message',
+        title: '스트림 알림',
+        body: '저장 변경 감지',
+        data: const {'type': 'scoring'},
+        route: '/home',
+        source: 'foreground',
+        read: false,
+        receivedAt: DateTime(2026, 9, 11, 12),
+      );
+      await service.markRead('stream-message');
+      await service.markAllRead();
+
+      expect(await changes, hasLength(3));
+    },
+  );
+
+  test(
     'push inbox stores latest entries in reverse chronological order',
     () async {
       final service = NotificationInboxService.instance;

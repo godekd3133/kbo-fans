@@ -1,5 +1,6 @@
 import concurrent.futures
 import json
+import logging
 import threading
 from pathlib import Path
 
@@ -54,6 +55,77 @@ class _FreshRecordsCrawler:
                 "value": ".500",
             }
         ]
+
+
+class _HomeOverviewCrawler:
+    def __init__(self) -> None:
+        self.home_overview_calls = 0
+        self.overview_calls = 0
+
+    def get_home_overview(self, season: int):
+        self.home_overview_calls += 1
+        return {
+            "season": season,
+            "leaders": {
+                "avg": [
+                    {
+                        "rank": 1,
+                        "playerId": "avg",
+                        "playerType": "hitter",
+                        "metricKey": "AVG",
+                        "name": "Average",
+                        "teamId": "LG",
+                        "value": ".400",
+                    }
+                ],
+                "hr": [
+                    {
+                        "rank": 1,
+                        "playerId": "hr",
+                        "playerType": "hitter",
+                        "metricKey": "HR",
+                        "name": "Home Run",
+                        "teamId": "KT",
+                        "value": "20",
+                    }
+                ],
+                "era": [
+                    {
+                        "rank": 1,
+                        "playerId": "era",
+                        "playerType": "pitcher",
+                        "metricKey": "ERA",
+                        "name": "ERA Pitcher",
+                        "teamId": "HT",
+                        "value": "2.00",
+                    }
+                ],
+                "strikeouts": [
+                    {
+                        "rank": 1,
+                        "playerId": "strikeouts",
+                        "playerType": "pitcher",
+                        "metricKey": "SO",
+                        "name": "Strikeout Pitcher",
+                        "teamId": "OB",
+                        "value": "100",
+                    }
+                ],
+            },
+            "featured": {},
+        }
+
+    def get_overview(self, season: int):
+        self.overview_calls += 1
+        raise AssertionError("Home should not request the full records overview")
+
+    def get_leaderboard(self, season: int, metric: str):
+        return []
+
+
+class _FailingHomeOverviewCrawler(_HomeOverviewCrawler):
+    def get_home_overview(self, season: int):
+        raise RuntimeError("home overview unavailable")
 
 
 class _BlockingOverviewCrawler(_FreshRecordsCrawler):
@@ -414,6 +486,495 @@ def test_concurrent_current_overview_cache_miss_crawls_once(tmp_path) -> None:
     assert duplicate_started is False
     assert crawler.calls == 1
     assert first_payload == second_payload
+
+
+def test_current_home_overview_uses_lightweight_crawler(tmp_path) -> None:
+    crawler = _HomeOverviewCrawler()
+    service = RecordsOverviewService(
+        crawler=crawler,
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    payload = service.get_home_overview(current_kbo_year())
+
+    assert crawler.home_overview_calls == 1
+    assert crawler.overview_calls == 0
+    assert payload["leaders"]["avg"][0]["rank"] == 1
+    assert payload["leaders"]["ops"] == []
+    assert payload["featured"]["todayPitcher"]["name"] == "ERA Pitcher"
+
+
+def test_full_overview_reuses_valid_home_seed_for_missing_groups(tmp_path) -> None:
+    season = current_kbo_year()
+    home_payload = {
+        "season": season,
+        "leaders": {
+            "avg": [{"rank": 1, "playerId": "avg", "value": ".400"}],
+            "hr": [{"rank": 1, "playerId": "hr", "value": "20"}],
+            "era": [{"rank": 1, "playerId": "era", "value": "2.00"}],
+        },
+        "featured": {},
+    }
+
+    class HomeSeedCrawler:
+        def __init__(self) -> None:
+            self.seed_calls = 0
+
+        def get_overview(self, season: int):
+            raise AssertionError("full crawler should not reload seeded home groups")
+
+        def get_overview_from_home(self, season: int, seed):
+            self.seed_calls += 1
+            return {
+                "season": season,
+                "leaders": {
+                    **seed["leaders"],
+                    "ops": [{"rank": 1, "playerId": "ops", "value": "1.000"}],
+                    "opsPlus": [{"rank": 1, "playerId": "ops-plus", "value": "100"}],
+                    "wins": [{"rank": 1, "playerId": "wins", "value": "10"}],
+                    "saves": [{"rank": 1, "playerId": "saves", "value": "5"}],
+                    "strikeouts": [
+                        {"rank": 1, "playerId": "strikeouts", "value": "100"}
+                    ],
+                },
+                "featured": {},
+            }
+
+    crawler = HomeSeedCrawler()
+    service = RecordsOverviewService(
+        crawler=crawler,
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+    service._home_overview_cache.set(season, home_payload)
+
+    payload = service.get_overview(season)
+
+    assert crawler.seed_calls == 1
+    assert payload["leaders"]["avg"][0]["playerId"] == "avg"
+    assert payload["leaders"]["strikeouts"][0]["playerId"] == "strikeouts"
+
+
+def test_full_overview_does_not_use_partial_home_seed(tmp_path) -> None:
+    season = current_kbo_year()
+
+    class FullOnlyCrawler:
+        def get_overview(self, season: int):
+            return {
+                "season": season,
+                "leaders": {
+                    metric: [{"rank": 1, "playerId": metric}]
+                    for metric in (
+                        "avg",
+                        "hr",
+                        "ops",
+                        "opsPlus",
+                        "era",
+                        "wins",
+                        "saves",
+                        "strikeouts",
+                    )
+                },
+                "featured": {},
+            }
+
+        def get_overview_from_home(self, season: int, seed):
+            raise AssertionError("partial Home seed must not complete full overview")
+
+    service = RecordsOverviewService(
+        crawler=FullOnlyCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+    service._home_overview_cache.set(
+        season,
+        {
+            "season": season,
+            "leaders": {
+                "avg": [{"rank": 1, "playerId": "avg"}],
+                "hr": [],
+                "era": [{"rank": 1, "playerId": "era"}],
+            },
+            "featured": {},
+        },
+    )
+
+    payload = service.get_overview(season)
+
+    assert payload["leaders"]["hr"][0]["playerId"] == "hr"
+
+
+def test_home_overview_crawls_only_home_record_metrics(monkeypatch) -> None:
+    crawler = RecordsOverviewCrawler()
+    calls = []
+
+    def fetch_leaders(path, season, metric_key, player_type):
+        del path
+        calls.append(metric_key)
+        return [
+            {
+                "rank": 1,
+                "playerId": metric_key.lower(),
+                "playerType": player_type,
+                "metricKey": metric_key,
+                "name": metric_key,
+                "teamId": "LG",
+                "value": "1",
+            }
+        ]
+
+    monkeypatch.setattr(crawler, "_fetch_leaders", fetch_leaders)
+
+    payload = crawler.get_home_overview(current_kbo_year())
+
+    assert set(calls) == {"AVG", "HR", "ERA"}
+    assert len(calls) == 3
+    assert payload["leaders"]["ops"] == []
+    assert payload["leaders"]["wins"] == []
+    assert payload["leaders"]["saves"] == []
+
+
+def test_home_overview_logs_page_timing_without_payload_data(
+    monkeypatch,
+    caplog,
+) -> None:
+    crawler = RecordsOverviewCrawler()
+
+    monkeypatch.setattr(crawler, "_fetch_leaders", lambda *args, **kwargs: [])
+
+    with caplog.at_level(
+        logging.INFO,
+        logger="kbo_fans_backend.crawlers.records_overview",
+    ):
+        crawler.get_home_overview(current_kbo_year())
+
+    assert "records_overview_timing" in caplog.text
+    assert "mode=home" in caplog.text
+    assert "complete=True" in caplog.text
+    assert "pageCount=3" in caplog.text
+    assert "avgMs=" in caplog.text
+    assert "hrMs=" in caplog.text
+    assert "eraMs=" in caplog.text
+
+
+def test_records_overview_logs_failure_timing_without_payload_data(
+    monkeypatch,
+    caplog,
+) -> None:
+    crawler = RecordsOverviewCrawler()
+
+    def fail_fetch(*args, **kwargs):
+        raise RuntimeError("records page unavailable")
+
+    monkeypatch.setattr(crawler, "_fetch_leaders", fail_fetch)
+
+    with caplog.at_level(
+        logging.INFO,
+        logger="kbo_fans_backend.crawlers.records_overview",
+    ):
+        with pytest.raises(RuntimeError, match="records page unavailable"):
+            crawler.get_overview(current_kbo_year())
+
+    assert "records_overview_timing" in caplog.text
+    assert "mode=full" in caplog.text
+    assert "complete=False" in caplog.text
+
+
+def test_home_seed_overview_logs_page_timing_without_payload_data(
+    monkeypatch,
+    caplog,
+) -> None:
+    crawler = RecordsOverviewCrawler()
+    home_payload = {
+        "season": current_kbo_year(),
+        "leaders": {"avg": [], "hr": [], "era": []},
+    }
+
+    monkeypatch.setattr(crawler, "_fetch_ops_leaders", lambda season: ([], []))
+    monkeypatch.setattr(crawler, "_fetch_leaders", lambda *args, **kwargs: [])
+
+    with caplog.at_level(
+        logging.INFO,
+        logger="kbo_fans_backend.crawlers.records_overview",
+    ):
+        crawler.get_overview_from_home(current_kbo_year(), home_payload)
+
+    assert "records_overview_timing" in caplog.text
+    assert "mode=home_seed" in caplog.text
+    assert "complete=True" in caplog.text
+    assert "pageCount=4" in caplog.text
+
+
+def test_current_season_leader_fetch_uses_get_page_without_post(monkeypatch) -> None:
+    crawler = RecordsOverviewCrawler()
+    html = f'''
+    <select name="{crawler._SEASON_FIELD}">
+      <option value="2025">2025</option>
+      <option selected="selected" value="{current_kbo_year()}">{current_kbo_year()}</option>
+    </select>
+    <table>
+      <tr><th>순위</th><th>선수</th><th>팀</th><th>AVG</th></tr>
+      <tr><td>1</td><td><a href="/Record/Player/HitterDetail/Basic.aspx?playerId=1">
+        Leader</a></td><td>LG</td><td>.400</td></tr>
+    </table>
+    '''
+    monkeypatch.setattr(crawler, "_get_text", lambda *args, **kwargs: html)
+
+    def fail_post(*args, **kwargs):
+        raise AssertionError("current season should not issue a season POST")
+
+    monkeypatch.setattr(crawler, "_post_text", fail_post)
+
+    leaders = crawler._fetch_leaders(
+        crawler._HITTER_AVG_URL,
+        current_kbo_year(),
+        "AVG",
+        "hitter",
+    )
+
+    assert leaders[0]["name"] == "Leader"
+    assert leaders[0]["value"] == ".400"
+
+
+def test_historical_season_leader_fetch_still_posts_selected_season(monkeypatch) -> None:
+    crawler = RecordsOverviewCrawler()
+    historical_season = current_kbo_year() - 1
+    html = f'''
+    <select name="{crawler._SEASON_FIELD}">
+      <option selected="selected" value="{current_kbo_year()}">{current_kbo_year()}</option>
+      <option value="{historical_season}">{historical_season}</option>
+    </select>
+    <table>
+      <tr><th>순위</th><th>선수</th><th>팀</th><th>AVG</th></tr>
+      <tr><td>1</td><td><a href="/Record/Player/HitterDetail/Basic.aspx?playerId=1">
+        Leader</a></td><td>LG</td><td>.400</td></tr>
+    </table>
+    '''
+    post_calls = []
+    monkeypatch.setattr(crawler, "_get_text", lambda *args, **kwargs: html)
+
+    def post_page(*args, **kwargs):
+        post_calls.append(kwargs["data"][crawler._SEASON_FIELD])
+        return html
+
+    monkeypatch.setattr(crawler, "_post_text", post_page)
+
+    leaders = crawler._fetch_leaders(
+        crawler._HITTER_AVG_URL,
+        historical_season,
+        "AVG",
+        "hitter",
+    )
+
+    assert post_calls == [str(historical_season)]
+    assert leaders[0]["name"] == "Leader"
+
+
+def test_overview_reuses_one_ops_page_for_ops_and_ops_plus(monkeypatch) -> None:
+    crawler = RecordsOverviewCrawler()
+    html = """
+    <table>
+      <tr><th>순위</th><th>선수</th><th>팀</th><th>AVG</th><th>HR</th>
+      <th>OPS</th><th>ERA</th><th>W</th><th>SV</th><th>SO</th></tr>
+      <tr><td>1</td><td><a href="/Record/Player/HitterDetail/Basic.aspx?playerId=1">Leader</a></td>
+      <td>LG</td><td>.400</td><td>20</td><td>1.100</td><td>2.00</td>
+      <td>10</td><td>5</td><td>100</td></tr>
+    </table>
+    """
+    calls = []
+
+    def fetch_page(path, season, *, breaker_key):
+        del season, breaker_key
+        calls.append(path)
+        return html
+
+    monkeypatch.setattr(crawler, "_fetch_season_page", fetch_page)
+
+    payload = crawler.get_overview(current_kbo_year())
+
+    assert calls.count(crawler._HITTER_OPS_URL) == 1
+    assert payload["leaders"]["ops"][0]["value"] == "1.100"
+    assert payload["leaders"]["opsPlus"][0]["value"] == "100"
+
+
+def test_full_overview_starts_all_unique_pages_together(monkeypatch) -> None:
+    crawler = RecordsOverviewCrawler()
+    html = """
+    <table>
+      <tr><th>순위</th><th>선수</th><th>팀</th><th>AVG</th><th>HR</th>
+      <th>OPS</th><th>ERA</th><th>W</th><th>SV</th><th>SO</th></tr>
+      <tr><td>1</td><td><a href="/Record/Player/HitterDetail/Basic.aspx?playerId=1">Leader</a></td>
+      <td>LG</td><td>.400</td><td>20</td><td>1.100</td><td>2.00</td>
+      <td>10</td><td>5</td><td>100</td></tr>
+    </table>
+    """
+    started = threading.Event()
+    release = threading.Event()
+    calls = []
+    calls_lock = threading.Lock()
+
+    def fetch_page(path, season, *, breaker_key):
+        del season, breaker_key
+        with calls_lock:
+            calls.append(path)
+            if len(calls) == 7:
+                started.set()
+        assert release.wait(timeout=2)
+        return html
+
+    monkeypatch.setattr(crawler, "_fetch_season_page", fetch_page)
+
+    thread = threading.Thread(target=lambda: crawler.get_overview(current_kbo_year()))
+    thread.start()
+    try:
+        assert started.wait(timeout=1)
+    finally:
+        release.set()
+        thread.join(timeout=2)
+
+    assert not thread.is_alive()
+    assert len(calls) == 7
+
+
+def test_full_overview_failure_does_not_wait_for_sibling_pages(monkeypatch) -> None:
+    crawler = RecordsOverviewCrawler()
+    html = "<table><tr><th>순위</th><th>선수</th><th>팀</th><th>AVG</th></tr></table>"
+    started = threading.Event()
+    release = threading.Event()
+    calls = []
+    calls_lock = threading.Lock()
+
+    def fetch_page(path, season, *, breaker_key):
+        del season, breaker_key
+        with calls_lock:
+            calls.append(path)
+            if len(calls) == 7:
+                started.set()
+        if path == crawler._HITTER_AVG_URL:
+            assert started.wait(timeout=1)
+            raise RuntimeError("records page unavailable")
+        assert release.wait(timeout=2)
+        return html
+
+    monkeypatch.setattr(crawler, "_fetch_season_page", fetch_page)
+
+    errors = []
+
+    def request() -> None:
+        try:
+            crawler.get_overview(current_kbo_year())
+        except BaseException as error:
+            errors.append(error)
+
+    thread = threading.Thread(target=request)
+    thread.start()
+    assert started.wait(timeout=1)
+    try:
+        thread.join(timeout=0.2)
+        assert not thread.is_alive()
+    finally:
+        release.set()
+        thread.join(timeout=2)
+
+    assert len(errors) == 1
+    assert str(errors[0]) == "records page unavailable"
+
+
+def test_full_overview_late_page_failure_does_not_wait_for_first_page(
+    monkeypatch,
+) -> None:
+    crawler = RecordsOverviewCrawler()
+    html = "<table><tr><th>순위</th><th>선수</th><th>팀</th><th>AVG</th></tr></table>"
+    started = threading.Event()
+    release = threading.Event()
+    calls = []
+    calls_lock = threading.Lock()
+
+    def fetch_page(path, season, *, breaker_key):
+        del season, breaker_key
+        with calls_lock:
+            calls.append(path)
+            if len(calls) == 7:
+                started.set()
+        if path == crawler._PITCHER_STRIKEOUTS_URL:
+            raise RuntimeError("strikeouts page unavailable")
+        assert release.wait(timeout=2)
+        return html
+
+    monkeypatch.setattr(crawler, "_fetch_season_page", fetch_page)
+
+    errors = []
+
+    def request() -> None:
+        try:
+            crawler.get_overview(current_kbo_year())
+        except BaseException as error:
+            errors.append(error)
+
+    thread = threading.Thread(target=request)
+    thread.start()
+    assert started.wait(timeout=1)
+    try:
+        thread.join(timeout=0.2)
+        assert not thread.is_alive()
+    finally:
+        release.set()
+        thread.join(timeout=2)
+
+    assert len(errors) == 1
+    assert str(errors[0]) == "strikeouts page unavailable"
+
+
+def test_records_crawler_reuses_recent_page_for_leaderboard_transition(monkeypatch) -> None:
+    crawler = RecordsOverviewCrawler()
+    html = f'''
+    <select name="{crawler._SEASON_FIELD}">
+      <option selected="selected" value="{current_kbo_year()}">{current_kbo_year()}</option>
+    </select>
+    <table>
+      <tr><th>순위</th><th>선수</th><th>팀</th><th>OPS</th></tr>
+      <tr><td>1</td><td><a href="/Record/Player/HitterDetail/Basic.aspx?playerId=1">
+        Leader</a></td><td>LG</td><td>1.100</td></tr>
+    </table>
+    '''
+    get_calls = []
+    monkeypatch.setattr(
+        crawler,
+        "_get_text",
+        lambda *args, **kwargs: get_calls.append(args[0]) or html,
+    )
+    monkeypatch.setattr(
+        crawler,
+        "_post_text",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("current selected page should not POST")
+        ),
+    )
+
+    leaders = crawler._fetch_leaders(
+        crawler._HITTER_OPS_URL,
+        current_kbo_year(),
+        "OPS",
+        "hitter",
+    )
+    leaderboard = crawler._fetch_leaderboard(
+        crawler._HITTER_OPS_URL,
+        current_kbo_year(),
+        "OPS",
+        "hitter",
+    )
+
+    assert len(get_calls) == 1
+    assert leaders[0]["value"] == "1.100"
+    assert leaderboard[0]["value"] == "1.100"
+
+
+def test_current_home_overview_does_not_mask_lightweight_failure(tmp_path) -> None:
+    service = RecordsOverviewService(
+        crawler=_FailingHomeOverviewCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    with pytest.raises(RuntimeError, match="home overview unavailable"):
+        service.get_home_overview(current_kbo_year())
 
 
 def test_concurrent_current_leaderboard_cache_miss_crawls_once(tmp_path) -> None:

@@ -58,9 +58,24 @@ class LiveActivityScoreboardSyncService:
 
     def sync_date(self, date: str) -> dict[str, Any]:
         self._prune_transient_update_backoff(self._sync_now())
-        registered_game_ids = set(self.push_service.registry.live_activity_game_ids())
-        has_push_registrations = self.push_service.registry.has_device_registrations()
-        has_start_tokens = self.push_service.registry.has_live_activity_start_tokens()
+        registration_summary_loader = getattr(
+            self.push_service.registry,
+            "live_activity_sync_registration_summary",
+            None,
+        )
+        if callable(registration_summary_loader):
+            registration_summary = registration_summary_loader()
+            registered_game_ids = set(
+                registration_summary.get("liveActivityGameIds") or []
+            )
+            has_push_registrations = bool(
+                registration_summary.get("hasDeviceRegistrations")
+            )
+            has_start_tokens = bool(registration_summary.get("hasStartTokens"))
+        else:
+            registered_game_ids = set(self.push_service.registry.live_activity_game_ids())
+            has_push_registrations = self.push_service.registry.has_device_registrations()
+            has_start_tokens = self.push_service.registry.has_live_activity_start_tokens()
         if not registered_game_ids and not has_push_registrations and not has_start_tokens:
             return self._record_heartbeat(
                 {
@@ -250,12 +265,13 @@ class LiveActivityScoreboardSyncService:
                     )
                 released_claims[delivery_id] = claim_id
 
-        self.push_service.registry.resolve_live_activity_updates(
-            game_id=update.gameId,
-            content_signature=content_signature,
-            completed_claims=completed_claims,
-            released_claims=released_claims,
-        )
+        if completed_claims or released_claims:
+            self.push_service.registry.resolve_live_activity_updates(
+                game_id=update.gameId,
+                content_signature=content_signature,
+                completed_claims=completed_claims,
+                released_claims=released_claims,
+            )
 
         return {
             "sent": any(message.get("sent") for message in messages),

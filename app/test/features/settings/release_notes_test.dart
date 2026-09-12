@@ -1,4 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kbo_fans/core/theme/app_theme.dart';
+import 'package:kbo_fans/features/settings/patch_notes_screen.dart';
 import 'package:kbo_fans/features/settings/release_notes.dart';
 
 void main() {
@@ -33,5 +36,51 @@ void main() {
       findInstalledReleaseNote(releases, '0.1.8+76')?.subtitle,
       '버전 단위 노트',
     );
+  });
+
+  testWidgets('patch note cards expose one coherent accessibility summary', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      const firstRelease = ReleaseNote(
+        version: '0.1.8+75',
+        subtitle: '라이브 경기 알림',
+        notes: ['알림을 더 안정적으로 받을 수 있습니다.'],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: PatchNotesScreen(
+            loadNotes: () async => const ReleaseNotesData(
+              currentVersion: '0.1.8+75',
+              releases: [firstRelease],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+
+      final versionData = tester
+          .getSemantics(
+            find.byKey(const ValueKey('patch-notes-current-version-semantics')),
+          )
+          .getSemanticsData();
+      expect(versionData.label, contains('현재 설치한 버전'));
+
+      final releaseData = tester
+          .getSemantics(
+            find.byKey(
+              ValueKey('patch-notes-release-semantics-${firstRelease.version}'),
+            ),
+          )
+          .getSemanticsData();
+      expect(releaseData.label, contains('버전 ${firstRelease.version}'));
+      expect(releaseData.label, contains(firstRelease.notes.first));
+    } finally {
+      semantics.dispose();
+    }
   });
 }

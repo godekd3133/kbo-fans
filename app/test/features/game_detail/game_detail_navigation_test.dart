@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -98,6 +99,11 @@ void main() {
 
       expect(find.byTooltip('뒤로'), findsOneWidget);
       expect(find.bySemanticsLabel('뒤로'), findsOneWidget);
+      final backSemantics = tester
+          .getSemantics(find.byKey(const ValueKey('game-detail-back')))
+          .getSemanticsData();
+      expect(backSemantics.flagsCollection.isButton, isTrue);
+      expect(backSemantics.hasAction(SemanticsAction.tap), isTrue);
     } finally {
       semantics.dispose();
     }

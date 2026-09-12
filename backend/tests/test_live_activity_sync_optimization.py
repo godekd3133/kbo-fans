@@ -62,6 +62,16 @@ class _LiveActivitySender:
         return {"sent": True, "statusCode": 200, "apnsId": "test-apns-id"}
 
 
+class _CountingLoadRegistry(PushRegistry):
+    def __init__(self, path: str) -> None:
+        self.load_count = 0
+        super().__init__(path)
+
+    def _load(self):
+        self.load_count += 1
+        return super()._load()
+
+
 class _PermanentFailureSender(_LiveActivitySender):
     def send(self, **kwargs) -> dict:
         self.calls.append(kwargs)
@@ -100,6 +110,46 @@ def test_sync_fetches_relay_once_for_moments_and_live_activity(tmp_path) -> None
     assert relay_service.calls[0] == {"gameId": "20260604LGKT0", "after": None}
     assert response["updatedGames"][0]["sent"] is True
     assert sender.calls[0]["state"].batter == "장성우"
+
+
+def test_idle_sync_reads_registry_registration_summary_once(tmp_path) -> None:
+    registry = _CountingLoadRegistry(str(tmp_path / "push_registry.json"))
+    service = LiveActivityScoreboardSyncService(
+        scoreboard_service=_ScoreboardService(_game()),
+        push_service=PushService(registry=registry, live_activity_sender=_LiveActivitySender()),
+        now_provider=lambda: datetime(2026, 6, 4, 12, 0, tzinfo=timezone.utc),
+    )
+
+    response = service.sync_date("2026-06-04")
+
+    assert response["idle"] is True
+    assert registry.load_count == 1
+
+
+def test_stale_live_activity_fences_skip_empty_resolution(monkeypatch, tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = _LiveActivitySender()
+    push_service = PushService(registry=registry, live_activity_sender=sender)
+    _register_live_activity(push_service)
+    service = _sync_service(
+        registry=registry,
+        sender=sender,
+        game=_game(),
+    )
+    monkeypatch.setattr(registry, "fence_live_activity_update", lambda **_: False)
+    resolve_calls = []
+    original_resolve = registry.resolve_live_activity_updates
+
+    def resolve(**kwargs):
+        resolve_calls.append(kwargs)
+        return original_resolve(**kwargs)
+
+    monkeypatch.setattr(registry, "resolve_live_activity_updates", resolve)
+
+    response = service.sync_date("2026-06-04")
+
+    assert response["updatedGames"][0]["messages"][0]["reason"] == "stale_delivery_claim"
+    assert resolve_calls == []
 
 
 def test_relay_current_state_has_safe_inning_fallback_for_partial_state() -> None:

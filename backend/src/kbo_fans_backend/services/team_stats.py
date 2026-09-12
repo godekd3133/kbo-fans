@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional, Tuple
 from kbo_fans_backend.crawlers.team_stats import TeamStatsCrawler
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_year
+from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
@@ -21,6 +22,7 @@ class TeamStatsService:
         self._team_stats_cache: TtlCache[Tuple[str, int], Dict[str, Any]] = TtlCache(
             self._TEAM_STATS_CACHE_TTL_SECONDS
         )
+        self._team_stats_singleflight: SingleFlight[Tuple[str, int]] = SingleFlight()
 
     def get_team_stats(self, team_id: str, season: int) -> Dict[str, Any]:
         cache_key = (team_id, season)
@@ -28,8 +30,32 @@ class TeamStatsService:
         if cached is not None:
             return cached
 
+        return self._team_stats_singleflight.call(
+            cache_key,
+            lambda: self._load_team_stats(
+                team_id=team_id,
+                season=season,
+                cache_key=cache_key,
+            ),
+        )
+
+    def _load_team_stats(
+        self,
+        *,
+        team_id: str,
+        season: int,
+        cache_key: Tuple[str, int],
+    ) -> Dict[str, Any]:
+        cached = self._get_cached_team_stats(cache_key)
+        if cached is not None:
+            return cached
+
         snapshot_key = f"{team_id}-{season}"
-        snapshot_record = self.snapshot_store.load("team_stats", snapshot_key)
+        snapshot_record = (
+            self.snapshot_store.load("team_stats", snapshot_key)
+            if self._is_historical_season(season)
+            else None
+        )
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
         if self._can_use_snapshot_before_crawling(team_id, season, snapshot):
             return snapshot
