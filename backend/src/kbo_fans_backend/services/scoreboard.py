@@ -299,7 +299,11 @@ class ScoreboardService:
                     force_refresh=force_refresh,
                 )
         except UpstreamBusyError:
-            if force_refresh and not self._is_historical_date(date):
+            if (
+                force_refresh
+                and not self._is_historical_date(date)
+                and date not in self._same_day_final_scoreboard_dates
+            ):
                 raise
             cached = self._home_scoreboard_cache.get(date)
             if cached is not None:
@@ -312,9 +316,12 @@ class ScoreboardService:
             snapshot = (
                 self.snapshot_store.load_payload("scoreboard", date)
                 if self._is_historical_date(date)
+                or date in self._same_day_final_scoreboard_dates
                 else None
             )
-            if self._can_use_historical_scoreboard_snapshot(date, snapshot):
+            if self._can_use_historical_scoreboard_snapshot(
+                date, snapshot
+            ) or self._can_use_terminal_scoreboard_snapshot(date, snapshot):
                 return {
                     "date": snapshot["date"],
                     "games": [self._strip_home_payload(game) for game in snapshot["games"]],
@@ -336,6 +343,18 @@ class ScoreboardService:
                 "date": snapshot["date"],
                 "games": [self._strip_home_payload(game) for game in snapshot["games"]],
             }
+        if snapshot is None and date in self._same_day_final_scoreboard_dates:
+            snapshot = self.snapshot_store.load_payload("scoreboard", date)
+            if self._can_use_terminal_scoreboard_snapshot(date, snapshot):
+                logger.info("home scoreboard same-day final snapshot hit %s", date)
+                return {
+                    "date": snapshot["date"],
+                    "games": [
+                        self._strip_home_payload(game) for game in snapshot["games"]
+                    ],
+                }
+            self._same_day_final_scoreboard_dates.discard(date)
+            snapshot = None
         force_refresh = force_refresh and not self._is_historical_date(date)
 
         if not force_refresh:
@@ -385,6 +404,17 @@ class ScoreboardService:
                 "date": snapshot["date"],
                 "games": [self._strip_home_payload(game) for game in snapshot["games"]],
             }
+        if snapshot is None and date in self._same_day_final_scoreboard_dates:
+            snapshot = self.snapshot_store.load_payload("scoreboard", date)
+            if self._can_use_terminal_scoreboard_snapshot(date, snapshot):
+                return {
+                    "date": snapshot["date"],
+                    "games": [
+                        self._strip_home_payload(game) for game in snapshot["games"]
+                    ],
+                }
+            self._same_day_final_scoreboard_dates.discard(date)
+            snapshot = None
 
         cached = self._home_scoreboard_cache.get(date)
         if cached is not None:
@@ -512,9 +542,12 @@ class ScoreboardService:
             snapshot = (
                 self.snapshot_store.load_payload("scoreboard", date)
                 if self._is_historical_date(date)
+                or date in self._same_day_final_scoreboard_dates
                 else None
             )
-            if self._can_use_historical_scoreboard_snapshot(date, snapshot):
+            if self._can_use_historical_scoreboard_snapshot(
+                date, snapshot
+            ) or self._can_use_terminal_scoreboard_snapshot(date, snapshot):
                 return self._compact_from_snapshot(date, snapshot, my_team)
             raise
 
@@ -551,7 +584,14 @@ class ScoreboardService:
             if self._is_historical_date(date)
             else None
         )
-        if self._can_use_historical_scoreboard_snapshot(date, snapshot):
+        if snapshot is None and date in self._same_day_final_scoreboard_dates:
+            snapshot = self.snapshot_store.load_payload("scoreboard", date)
+            if not self._can_use_terminal_scoreboard_snapshot(date, snapshot):
+                self._same_day_final_scoreboard_dates.discard(date)
+                snapshot = None
+        if self._can_use_historical_scoreboard_snapshot(
+            date, snapshot
+        ) or self._can_use_terminal_scoreboard_snapshot(date, snapshot):
             payload = self._compact_from_snapshot(date, snapshot, my_team)
             self._compact_scoreboard_cache.set(
                 cache_key,
