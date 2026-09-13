@@ -24,6 +24,13 @@
 
 - [ ] Play Console internal testing 업로드는 콘솔 접근 권한이 필요해 미완료. 서명된 `app-release.aab`는 `output/release-0.1.34/`에서 바로 업로드 가능하다.
 
+### 운영 런타임 검증(2026-09-13)
+
+- [x] `push-live-preflight.sh --app-only`: 앱 쪽 Firebase/APNs/Live Activity 사전조건 29개 통과, 실패 0. backend secret 체크는 `--app-only`로 생략(서버 `/etc/kbo-fans/` 소유).
+- [x] 운영 API 실측: `GET /scoreboard/home?date=2026-09-20` 응답에서 SCHEDULED 경기의 `away.score`/`home.score`가 `0`으로 내려옴 → **배포된 Lightsail 백엔드가 `694f082`의 null-score 정규화 이전 빌드**임을 확인.
+- [x] 앱 표시 영향 분석: 예정 경기 카드·quick item·brief는 모두 `status == scheduled` 가드로 `vs`/`예정`을 렌더하므로 `score:0`이 그대로 표시되는 회귀는 없음. 계약 위반은 API 레벨에 한정.
+- [ ] Lightsail 백엔드 재배포: 로컬 SSH 키 전부 `Permission denied`, AWS CLI 세션 만료(`aws login` 필요) → 사용자 인증 후 `lightsail-deploy.sh`로 재배포 필요. 배포 전까지 운영 API의 예정 경기 score는 `0` 유지(표시는 정상).
+
 ### 검증
 
 - release API health gate: `release-api-health-check.sh https://3-39-79-1.sslip.io/api` 전 endpoint HTTP 200 통과
