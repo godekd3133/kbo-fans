@@ -50,6 +50,7 @@
 
 - 신규 테스트 3개: boxscore 마커 재사용(force_refresh 시 재크롤 없음)·마커+스냅샷 없음 시 재크롤, lineup 마커 재사용.
 - backend pytest 전체 731 passed, ruff clean.
+- 배포 대기: AWS 세션 만료로 Lightsail 배포 보류 — `aws login` 후 `lightsail-deploy.sh --preserve-env --skip-caddy`로 배포 예정(릴레이 수정과 동일 경로).
 
 ## 2026-09-13: 폰 환경 속도 개선(백엔드)
 
