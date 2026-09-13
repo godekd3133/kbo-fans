@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-09-13: 당일 종료 경기 relay의 immutable snapshot 미재사용 수정
+
+### 운영 증거
+
+- `/var/log/kbo-fans/backend.log`에서 `GET /api/game/20260913NCOB0/relay`가 10:49(34.8s→504), 10:51(15.0s→504), 14:32(15.9s→504), 14:34(11.7s→200)로 반복 초과 — 일회성 cold가 아니라 구조적 문제.
+- 원인: `RelayService._get_relay_uncached`가 immutable `relay` 스냅샷을 `is_past_game`(전날 이하)일 때만 읽음. 당일 FINAL 경기는 스냅샷이 이미 존재해도(워커의 FINAL 전환 크롤이 `_payload_from_crawler`에서 기록) 읽지 않고 매 요청마다 라이브 크롤 — 5초 L1 TTL 만료마다 12~34s 업스트림 비용.
+- 같은 패턴이 boxscore/lineup에도 있으나 운영 로그에 해당 경로의 지연·504 증거가 없고 구조가 더 복잡(status+boxscore 병렬 fetch)해 이번 범위에서 제외 — 후속 후보로 기록.
+
+### 변경(`backend/src/kbo_fans_backend/services/relay.py`)
+
+- `_get_relay_uncached`에서 `game_status == "FINAL"`이면 날짜와 무관하게 immutable 스냅샷을 읽어 재사용 — 당일 종료 경기의 반복 라이브 크롤 제거.
+- `get_game`(scoreboard) 실패 시에도 detailed 스냅샷이 있으면 반환 — 스냅샷은 FINAL 크롤에서만 기록되므로 존재 자체가 종료 증명. LIVE 경기는 스냅샷이 존재할 수 없어 실패 은폐 없음.
+- 스냅샷이 없는 당일 FINAL은 기존 `_get_historical_relay_with_budget`(0.75s 인라인 예산 + 백그라운드 warm + summary 폴백) 경로로 통합 — 12s+ 블로킹 대신 즉시 요약 반환 후 다음 읽기에서 상세 제공.
+- 크롤 예외 시 스냅샷 폴백도 FINAL 한정으로 확장.
+- 불변 보존: LIVE/현재 경기는 여전히 immutable 스냅샷을 읽지 않음(`test_current_live_relay_skips_immutable_snapshot_read` 통과), SCHEDULED/CANCELLED/SUSPENDED summary 경로 그대로.
+
+### 검증
+
+- `test_relay_service.py` 24 passed(+3 신규: 당일 FINAL 스냅샷 재사용, scoreboard 실패 시 스냅샷 생존, 스냅샷 없는 당일 FINAL의 summary 폴백).
+- backend pytest 전체 728 passed, ruff clean.
+
 ## 2026-09-13: 폰 환경 속도 개선(백엔드)
 
 ### 배경 측정

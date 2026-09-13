@@ -118,37 +118,34 @@ class RelayService:
         game: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         if not isinstance(game, dict) or game.get("gameId") != game_id:
-            game = self.scoreboard_service.get_game(
-                game_id,
-                force_refresh=force_refresh,
-            )
+            try:
+                game = self.scoreboard_service.get_game(
+                    game_id,
+                    force_refresh=force_refresh,
+                )
+            except Exception:
+                # A detailed snapshot is only written after a captured FINAL
+                # state, so it is safe to reuse even when the scoreboard lookup
+                # itself fails.
+                snapshot = self.snapshot_store.load_payload("relay", game_id)
+                if self._has_detailed_snapshot(game_id, snapshot):
+                    return self._after(self._without_current_at_bat(snapshot), after)
+                raise
         is_past_game = self._is_past_game_id(game_id)
-        snapshot = self.snapshot_store.load_payload("relay", game_id) if is_past_game else None
         game_status = game.get("status") if game is not None else None
+        snapshot = (
+            self.snapshot_store.load_payload("relay", game_id)
+            if is_past_game or game_status == "FINAL"
+            else None
+        )
 
-        if (
-            is_past_game
-            and game_status == "FINAL"
-            and self._has_detailed_snapshot(game_id, snapshot)
-        ):
-            snapshot = self._without_current_at_bat(snapshot)
-            if after is not None:
-                snapshot = {
-                    **snapshot,
-                    "relayItems": [
-                        item for item in snapshot.get("relayItems", []) if item["seqNo"] > after
-                    ],
-                }
-            return snapshot
+        if game_status == "FINAL" and self._has_detailed_snapshot(game_id, snapshot):
+            return self._after(self._without_current_at_bat(snapshot), after)
 
         if game_status in {"SCHEDULED", "CANCELLED", "SUSPENDED"}:
             return self._summary_payload(game_id, game, after=after)
 
-        if (
-            is_past_game
-            and game_status == "FINAL"
-            and not self._has_detailed_snapshot(game_id, snapshot)
-        ):
+        if game_status == "FINAL" and not self._has_detailed_snapshot(game_id, snapshot):
             warmed = self._get_historical_relay_with_budget(
                 game_id,
                 game,
@@ -163,16 +160,8 @@ class RelayService:
             payload = self._payload_from_crawler(game_id, game, game_status, relay)
             return self._after(payload, after)
         except Exception:
-            if is_past_game and self._has_detailed_snapshot(game_id, snapshot):
-                snapshot = self._without_current_at_bat(snapshot)
-                if after is not None:
-                    snapshot = {
-                        **snapshot,
-                        "relayItems": [
-                            item for item in snapshot.get("relayItems", []) if item["seqNo"] > after
-                        ],
-                    }
-                return snapshot
+            if self._has_detailed_snapshot(game_id, snapshot):
+                return self._after(self._without_current_at_bat(snapshot), after)
             if game_status == "LIVE" or game is None:
                 raise
 

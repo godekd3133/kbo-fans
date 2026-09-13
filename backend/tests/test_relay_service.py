@@ -433,6 +433,115 @@ def test_current_live_relay_skips_immutable_snapshot_read(tmp_path: Path) -> Non
     assert payload["relayItems"][0]["event"] == "HIT"
 
 
+def test_same_day_final_relay_reuses_detailed_snapshot(tmp_path: Path) -> None:
+    today = current_kbo_date()
+    game_id = f"{today:%Y%m%d}KTLG0"
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    snapshot_store.save(
+        "relay",
+        game_id,
+        {
+            "gameId": game_id,
+            "currentAtBat": {"batter": {"name": "종료 타자"}},
+            "relayItems": [
+                {
+                    "seqNo": 7,
+                    "inning": 9,
+                    "half": "bottom",
+                    "event": "HIT",
+                    "isScoring": False,
+                    "text": "끝내기 안타",
+                    "pitchSequence": "B-S-HIT",
+                }
+            ],
+        },
+    )
+    service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": game_id,
+                "status": "FINAL",
+                "away": {"shortName": "KT", "score": 3, "scores": [3]},
+                "home": {"shortName": "LG", "score": 2, "scores": [2]},
+            }
+        ),
+        snapshot_store=snapshot_store,
+    )
+
+    payload = service.get_relay(game_id)
+
+    assert payload["currentAtBat"] is None
+    assert payload["relayItems"][0]["event"] == "HIT"
+    assert payload["relayItems"][0]["text"] == "끝내기 안타"
+
+
+def test_same_day_final_relay_snapshot_survives_scoreboard_failure(
+    tmp_path: Path,
+) -> None:
+    today = current_kbo_date()
+    game_id = f"{today:%Y%m%d}KTLG0"
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    snapshot_store.save(
+        "relay",
+        game_id,
+        {
+            "gameId": game_id,
+            "currentAtBat": None,
+            "relayItems": [
+                {
+                    "seqNo": 3,
+                    "inning": 5,
+                    "half": "top",
+                    "event": "HIT",
+                    "isScoring": True,
+                    "text": "타자: 적시타",
+                    "pitchSequence": None,
+                }
+            ],
+        },
+    )
+
+    class FailingScoreboardService:
+        def get_game(self, game_id: str, force_refresh: bool = False):
+            raise RuntimeError("scoreboard unavailable")
+
+    service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=FailingScoreboardService(),
+        snapshot_store=snapshot_store,
+    )
+
+    payload = service.get_relay(game_id)
+
+    assert payload["relayItems"][0]["event"] == "HIT"
+
+
+def test_same_day_final_relay_without_snapshot_returns_summary_while_warming(
+    tmp_path: Path,
+) -> None:
+    today = current_kbo_date()
+    game_id = f"{today:%Y%m%d}KTLG0"
+    service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": game_id,
+                "status": "FINAL",
+                "away": {"shortName": "KT", "score": 4, "scores": [0, 0, 0, 4]},
+                "home": {"shortName": "LG", "score": 1, "scores": [0, 0, 0, 1]},
+            }
+        ),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    payload = service.get_relay(game_id)
+
+    assert payload["currentAtBat"] is None
+    assert payload["relayItems"][0]["event"] == "RUNS"
+    assert payload["relayItems"][-1]["event"] == "GAME_END"
+
+
 def test_relay_service_does_not_hide_crawler_failure_when_game_is_unknown(
     tmp_path: Path,
 ) -> None:
