@@ -70,6 +70,10 @@ class ApiClient {
           ),
         );
 
+    if (dio == null) {
+      _dio.transformer = BackgroundTransformer();
+    }
+
     if (enableRequestTiming) {
       _dio.interceptors.add(
         InterceptorsWrapper(
@@ -638,20 +642,20 @@ class _CacheEntryMetadata {
   });
 }
 
+final RegExp _canonicalCacheEntryPattern = RegExp(
+  r'^\{"cachedAt":"([^"]+)","data":\{',
+);
+
 _CacheEntryMetadata _cacheEntryMetadata(String storageKey, String encoded) {
   DateTime? cachedAt;
   var hasValidShape = false;
-  try {
-    final decoded = jsonDecode(encoded);
-    if (decoded is Map<String, dynamic>) {
-      cachedAt = DateTime.tryParse(
-        decoded['cachedAt']?.toString() ?? '',
-      )?.toUtc();
-      hasValidShape =
-          cachedAt != null && decoded['data'] is Map<String, dynamic>;
-    }
-  } catch (_) {
-    // Malformed entries are evicted before valid cache entries.
+  // Eviction only needs the timestamp and the canonical
+  // {"cachedAt":"...","data":{...}} shape we write ourselves, so skip the
+  // full payload decode for every stored entry on every write.
+  final match = _canonicalCacheEntryPattern.firstMatch(encoded);
+  if (match != null) {
+    cachedAt = DateTime.tryParse(match.group(1)!)?.toUtc();
+    hasValidShape = cachedAt != null && encoded.trimRight().endsWith('}');
   }
   final bytes = _cacheEntryBytes(storageKey, encoded);
   return _CacheEntryMetadata(

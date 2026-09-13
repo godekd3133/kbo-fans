@@ -40,6 +40,12 @@
 - 시간 경과 후 재측정(배포 ~15분 뒤): `/home` [3266, 44, 37]ms — 첫 호출은 재기동 직후 warm 사이클과의 race로 보이고 이후 웜 유지. `/records/overview` [326, 146, 235]ms(이전 콜드 5.27s→4.18s→현재 웜 0.15-0.33s), `/standings` ~300ms, `/schedule` ~40ms, `/scoreboard/compact` ~240ms. 900s TTL + 워머 조합으로 시즌 집계 경로의 사용자 노출 콜드가 사실상 제거됨.
 - 문서 동기화: `APP_SPEC.md`(적응형 scoreboard TTL, home 섹션 15분+워머, 기록/팀 스탯 15분, 엔드포인트 표의 boxscore 15초·lineup 1분·schedule/standings 15분 정정), `ENGINEERING_NOTES.md`(적응형 TTL·워머·섹션 15분 TTL 기록).
 
+### 앱 쪽 추가 개선
+
+- `ApiClient` 기본 Dio에 `BackgroundTransformer` 적용 — 50KB 이상 JSON 응답(일정·기록·박스스코어)을 `compute` isolate에서 디코드해 메인 스레드 jank 제거. 50KB 미만은 기존 동기 경로라 소형 응답 회귀 없음. 주입된 test Dio는 기존처럼 그대로.
+- `_cacheEntryMetadata`의 eviction 스캔이 쓰기마다 전체 캐시 엔트리(최대 64개)를 `jsonDecode`하던 것을 canonical `{"cachedAt":"...","data":{...}}` anchored regex + trailing-brace 검사로 교체 — 라이브 중계/박스스코어 폴링 중 발생하는 캐시 쓰기의 메인 스레드 디코드 비용 제거. malformed 엔트리는 여전히 우선 eviction 대상.
+- 검증: `flutter analyze` 클린, `flutter test` 623 passed.
+
 ## 2026-09-13: 0.1.34 배포 증거
 
 ### 빌드·업로드
