@@ -35,6 +35,8 @@
 - 후속 보정: 느리게 변하는 시즌/월 집계 캐시 TTL을 300s → 900s로 상향(`schedule` `_CACHE_TTL_SECONDS`/`_HOME_CACHE_TTL_SECONDS`, `standings` `_CACHE_TTL_SECONDS`, `records_overview` `_OVERVIEW_CACHE_TTL_SECONDS`/`_HOME_OVERVIEW_CACHE_TTL_SECONDS`, `team_stats`/`player_stats` 캐시). 워머 240s 주기 대비 4배 여유로 expiry gap 제거. 캐시 미스 시 크롤 실패 노출 정책은 그대로.
 - 운영 로그에서 발견한 부가 문제: `POST /api/push/register`·`live-activity/start-token/register`가 12:28 UTC에 503 `UpstreamBusyError` — push registry 스레드/파일 락(워커 프로세스와 공유)이 sync 쓰기로 2s 이상 점유된 것이 원인. `_PUSH_REGISTRY_LOCK_WAIT_SECONDS` 2.0 → 8.0으로 상향(등록은 저빈도라 대기가 실패보다 낫다).
 - 같은 시간대 `GET /api/team/OB/stats` 5.4s, `/api/team/OB/players` 11.2s도 로그에서 확인 — 위 TTL 상향으로 함께 개선 기대.
+- 2차 배포: release `20260913124314`(커밋 `398f54e`), API·sync worker 모두 active. 공개 API 재검증: SCHEDULED `score`는 `null` 유지, gzip 유지. 재기동 직후 첫 히트는 콜드(`/home` 1.04s→336ms, `/schedule` 4.5s, `/records/overview` 4.2s) — 900s TTL 효과는 시간 경과 구간에서 확인 필요.
+- 경계: Lightsail 임시 SSH 인증서가 수분 내 만료를 반복해 서버측 설치 파일 grep 검증은 미완료. 배포 번들은 클린 커밋 트리에서 생성됐고 스크립트가 `status=ok`를 반환했으므로 코드 버전 정합성은 배포 경로로 보장된다.
 
 ## 2026-09-13: 0.1.34 배포 증거
 
