@@ -45,6 +45,8 @@
 - `ApiClient` 기본 Dio에 `BackgroundTransformer` 적용 — 50KB 이상 JSON 응답(일정·기록·박스스코어)을 `compute` isolate에서 디코드해 메인 스레드 jank 제거. 50KB 미만은 기존 동기 경로라 소형 응답 회귀 없음. 주입된 test Dio는 기존처럼 그대로.
 - `_cacheEntryMetadata`의 eviction 스캔이 쓰기마다 전체 캐시 엔트리(최대 64개)를 `jsonDecode`하던 것을 canonical `{"cachedAt":"...","data":{...}}` anchored regex + trailing-brace 검사로 교체 — 라이브 중계/박스스코어 폴링 중 발생하는 캐시 쓰기의 메인 스레드 디코드 비용 제거. malformed 엔트리는 여전히 우선 eviction 대상.
 - 검증: `flutter analyze` 클린, `flutter test` 623 passed.
+- `home-load-performance` 스킬에 검증된 운영 지식 반영: backend 로그가 journal이 아니라 `/var/log/kbo-fans/backend.log`에 쌓이는 점, `home_upstream_timing`/`records_overview_timing`/`warm failed` 로그 키, 적응형 TTL·워머·15분 섹션 캐시·gzip·registry 락 레버, 섹션 TTL은 warm 주기보다 충분히 크게 잡는 규칙.
+- health gate 재실행 중 발견: 종료 경기 `20260913NCOB0`의 첫 relay 조회가 upstream 지연으로 15초 데드라인을 넘겨 504 한 번 — 재시도는 12초에 성공하고 이후 300ms대 웜. immutable snapshot이 아직 채워지지 않은 FINAL 경기의 최초 relay 읽기 비용으로, 지속 장애가 아니라 cold-read 특성.
 
 ## 2026-09-13: 0.1.34 배포 증거
 
