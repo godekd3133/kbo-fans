@@ -59,6 +59,19 @@
 - 검증: `test_home_warmer.py` 신규 — 실패 사이클이 interval(30s 하한) 이전에 재시도됨, 비활성 시 스레드 미기동. backend pytest 733 passed, ruff·compileall 통과.
 - `infra/aws/lightsail/env.example`에 `HOME_SECTIONS_WARM_RETRY_SECONDS=60` 문서화.
 
+### scoreboard/game 경로 당일 종료 스냅샷 재사용(마커 방식)
+
+- 배경: 같은 구조가 scoreboard 서비스에도 있었다. `_get_scoreboard_serialized`·`_get_game_serialized`가 immutable `scoreboard`/`games` 스냅샷을 `_is_historical_date`일 때만 읽어, 당일 종료 경기도 캐시 만료(비라이브 오늘 최대 120s)마다 schedule+main 크롤과 경기별 `get_game_scoreboard` 상세 크롤(최대 5 병렬)을 반복했다. 특히 전 경기 종료 후 저녁 시간대가 비용 집중 구간.
+- 제약: `test_current_scoreboard_surfaces_skip_historical_snapshot_reads`가 current/future 날짜의 `scoreboard`·`games` 네임스페이스 `load` 자체를 금지하고, `test_current_scoreboard_rejects_fresh_terminal_snapshot_on_failure`가 이 프로세스가 검증하지 않은 당일 terminal 스냅샷의 실패 폴백을 거부 — 무조건 읽기는 불가.
+- 변경(`scoreboard.py`):
+  - `_same_day_final_game_ids`·`_same_day_final_scoreboard_dates` 인메모리 마커. `get_game`/`get_scoreboard` 크롤 결과가 terminal이면 마킹 — `_should_persist_snapshot`으로 스냅샷이 실제 기록된 시점과 동일 조건이라 마커-스냅샷 불일치가 없다.
+  - 마킹된 당일 경기/날짜만 스냅샷을 읽어 `_can_use_terminal_game_snapshot`/`_can_use_terminal_scoreboard_snapshot`(identity + all-terminal, historical validator와 공유)으로 검증 후 재사용. 무효면 마커 discard 후 자연 재크롤·재마킹(자가 복구).
+  - `_enrich_game`에서도 마킹+상태 일치 스냅샷이면 `get_game_scoreboard` 상세 크롤 생략 — 혼합일(일부 LIVE+일부 FINAL)에 종료 경기 상세 재크롤 제거.
+  - `get_game`/`get_scoreboard`의 UpstreamBusy 폴백 경로에도 같은 마커 게이트 적용.
+  - 불변 보존: 미검증 current 경기/날짜는 마킹되지 않아 `load` 호출 자체가 없음 — 위 두 불변 테스트 그대로 통과.
+- 검증: 신규 테스트 4개(당일 FINAL game·scoreboard 캐시 만료 후 스냅샷 재사용+크롤러 호출 고정, 미검증 당일 terminal 스냅샷 미읽기, 마커만 있고 스냅샷 없을 때 재크롤). backend pytest 전체 737 passed, ruff clean.
+- 배포 대기: boxscore/lineup·워머 재시도와 함께 미배포 — `aws login` 후 `lightsail-deploy.sh --preserve-env --skip-caddy`.
+
 ## 2026-09-13: 폰 환경 속도 개선(백엔드)
 
 ### 배경 측정

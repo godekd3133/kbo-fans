@@ -83,6 +83,8 @@ class ScoreboardService:
             self._SCOREBOARD_CACHE_TTL_SECONDS
         )
         self._singleflight: SingleFlight[str] = SingleFlight()
+        self._same_day_final_game_ids: set[str] = set()
+        self._same_day_final_scoreboard_dates: set[str] = set()
         self._date_refresh_locks = tuple(
             threading.Lock() for _ in range(self._DATE_REFRESH_LOCK_STRIPES)
         )
@@ -123,9 +125,12 @@ class ScoreboardService:
             snapshot = (
                 self.snapshot_store.load_payload("scoreboard", date)
                 if self._is_historical_date(date)
+                or date in self._same_day_final_scoreboard_dates
                 else None
             )
-            if self._can_use_historical_scoreboard_snapshot(date, snapshot):
+            if self._can_use_historical_scoreboard_snapshot(
+                date, snapshot
+            ) or self._can_use_terminal_scoreboard_snapshot(date, snapshot):
                 return snapshot
             raise
 
@@ -143,6 +148,13 @@ class ScoreboardService:
         if self._can_use_historical_scoreboard_snapshot(date, snapshot):
             logger.info("scoreboard snapshot hit %s", date)
             return snapshot
+        if snapshot is None and date in self._same_day_final_scoreboard_dates:
+            snapshot = self.snapshot_store.load_payload("scoreboard", date)
+            if self._can_use_terminal_scoreboard_snapshot(date, snapshot):
+                logger.info("scoreboard same-day final snapshot hit %s", date)
+                return snapshot
+            self._same_day_final_scoreboard_dates.discard(date)
+            snapshot = None
         force_refresh = force_refresh and not self._is_historical_date(date)
 
         if not force_refresh:
@@ -253,7 +265,15 @@ class ScoreboardService:
             payload,
             ttl_seconds=self._scoreboard_cache_ttl_seconds(date, enriched_games),
         )
-        if self._should_persist_snapshot(date, enriched_games):
+        persist_snapshot = self._should_persist_snapshot(date, enriched_games)
+        if not self._is_historical_date(date):
+            for game in enriched_games:
+                game_id = game.get("gameId")
+                if game_id and game.get("status") in self._TERMINAL_STATUSES:
+                    self._same_day_final_game_ids.add(str(game_id))
+            if persist_snapshot:
+                self._same_day_final_scoreboard_dates.add(date)
+        if persist_snapshot:
             self.snapshot_store.save("scoreboard", date, payload)
             for game in enriched_games:
                 game_id = game.get("gameId")
@@ -631,15 +651,19 @@ class ScoreboardService:
             snapshot = (
                 self.snapshot_store.load_payload("games", game_id)
                 if self._is_historical_date(date)
+                or game_id in self._same_day_final_game_ids
                 else None
             )
-            if force_refresh and not self._can_use_historical_game_snapshot(game_id, snapshot):
+            can_use_snapshot = self._can_use_historical_game_snapshot(
+                game_id, snapshot
+            ) or self._can_use_terminal_game_snapshot(game_id, snapshot)
+            if force_refresh and not can_use_snapshot:
                 raise
             cached = self._game_cache.get(game_id)
             if cached is not None:
                 logger.info("game fresh cache while refresh busy %s", game_id)
                 return cached
-            if self._can_use_historical_game_snapshot(game_id, snapshot):
+            if can_use_snapshot:
                 return snapshot
             raise
 
@@ -657,6 +681,13 @@ class ScoreboardService:
         can_use_snapshot = self._can_use_historical_game_snapshot(game_id, snapshot)
         if can_use_snapshot:
             return snapshot
+        if snapshot is None and game_id in self._same_day_final_game_ids:
+            snapshot = self.snapshot_store.load_payload("games", game_id)
+            if self._can_use_terminal_game_snapshot(game_id, snapshot):
+                logger.info("game same-day final snapshot hit %s", game_id)
+                return snapshot
+            self._same_day_final_game_ids.discard(game_id)
+            snapshot = None
         force_refresh = force_refresh and not can_use_snapshot
 
         if not force_refresh:
@@ -748,6 +779,11 @@ class ScoreboardService:
             game,
             ttl_seconds=self._scoreboard_cache_ttl_seconds(date, [game]),
         )
+        if (
+            not self._is_historical_date(date)
+            and game.get("status") in self._TERMINAL_STATUSES
+        ):
+            self._same_day_final_game_ids.add(game_id)
         if self._should_persist_snapshot(date, [game]):
             self.snapshot_store.save("games", game_id, game)
         if self._should_persist_runtime_game(date, game):
@@ -845,6 +881,18 @@ class ScoreboardService:
         if main_game:
             resolved_status = self._map_status(main_game.get("GAME_STATE_SC"))
         status_label = self._status_label_for_game(resolved_status, game, main_game)
+
+        if (
+            resolved_status in self._TERMINAL_STATUSES
+            and game_id
+            and game_id in self._same_day_final_game_ids
+        ):
+            snapshot = self.snapshot_store.load_payload("games", game_id)
+            if self._can_use_terminal_game_snapshot(
+                game_id, snapshot
+            ) and snapshot.get("status") == resolved_status:
+                return snapshot
+            self._same_day_final_game_ids.discard(game_id)
 
         used_scheduled_fallback = False
         if not game_id or resolved_status in {"SCHEDULED", "CANCELLED"}:
@@ -1375,14 +1423,44 @@ class ScoreboardService:
     def _should_persist_snapshot(self, date: str, games: list[dict[str, Any]]) -> bool:
         return bool(games) and all(game.get("status") in self._TERMINAL_STATUSES for game in games)
 
+    def _can_use_terminal_game_snapshot(
+        self,
+        game_id: str,
+        snapshot: Optional[dict[str, Any]],
+    ) -> bool:
+        """Validate an immutable game snapshot for a marker-verified terminal game.
+
+        Callers must only reach this for same-day games already observed as
+        terminal by this process (_same_day_final_game_ids), so unverified
+        current games still never read immutable snapshots.
+        """
+        return (
+            isinstance(snapshot, dict)
+            and snapshot.get("gameId") == game_id
+            and snapshot.get("status") in self._TERMINAL_STATUSES
+        )
+
     def _can_use_historical_scoreboard_snapshot(
         self,
         date: str,
         snapshot: Optional[dict[str, Any]],
     ) -> bool:
-        if not self._is_historical_date(date) or not isinstance(snapshot, dict):
-            return False
-        if snapshot.get("date") != date:
+        return self._is_historical_date(
+            date
+        ) and self._can_use_terminal_scoreboard_snapshot(date, snapshot)
+
+    def _can_use_terminal_scoreboard_snapshot(
+        self,
+        date: str,
+        snapshot: Optional[dict[str, Any]],
+    ) -> bool:
+        """Validate an all-terminal scoreboard snapshot for a verified date.
+
+        Used for historical dates unconditionally and for same-day dates only
+        when this process already verified every game as terminal
+        (_same_day_final_scoreboard_dates).
+        """
+        if not isinstance(snapshot, dict) or snapshot.get("date") != date:
             return False
         games = snapshot.get("games")
         if not isinstance(games, list):

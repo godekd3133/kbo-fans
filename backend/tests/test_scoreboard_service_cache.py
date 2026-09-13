@@ -1319,6 +1319,152 @@ def test_current_home_scoreboard_rejects_fresh_snapshot_on_failure(
         service.get_home_scoreboard(today)
 
 
+class _RecordingSnapshotStore(JsonSnapshotStore):
+    def __init__(self, base_dir: str):
+        super().__init__(base_dir=base_dir)
+        self.loads = []
+
+    def load(self, namespace: str, key: str):
+        self.loads.append((namespace, key))
+        return super().load(namespace, key)
+
+
+def _same_day_final_service(tmp_path: Path):
+    today = current_kbo_date().isoformat()
+    game_id = f"{today.replace('-', '')}HTLG0"
+    schedule = _MutableScheduleCrawler(game_id)
+    main = _MutableMainCrawler(game_id)
+    main.status = "3"
+    scoreboard = _TrackingScoreboardCrawler()
+    snapshot_store = _RecordingSnapshotStore(str(tmp_path / "snapshots"))
+    service = ScoreboardService(
+        main_crawler=main,
+        schedule_crawler=schedule,
+        scoreboard_crawler=scoreboard,
+        snapshot_store=snapshot_store,
+    )
+    return service, snapshot_store, schedule, main, scoreboard, today, game_id
+
+
+def test_same_day_final_game_reuses_verified_snapshot_after_expiry(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from kbo_fans_backend.utils import ttl_cache as ttl_cache_module
+
+    monotonic_now = [1000.0]
+    monkeypatch.setattr(
+        ttl_cache_module.time, "monotonic", lambda: monotonic_now[0]
+    )
+    service, store, schedule, _, scoreboard, _, game_id = _same_day_final_service(
+        tmp_path
+    )
+
+    first = service.get_game(game_id)
+    assert first is not None
+    assert first["status"] == "FINAL"
+    assert store.load_payload("games", game_id)["status"] == "FINAL"
+    assert schedule.calls == 1
+    assert scoreboard.calls == 1
+
+    monotonic_now[0] += 200.0
+    store.loads.clear()
+    second = service.get_game(game_id)
+    assert second is not None
+    assert second["status"] == "FINAL"
+    assert ("games", game_id) in store.loads
+    assert schedule.calls == 1
+    assert scoreboard.calls == 1
+
+
+def test_same_day_final_scoreboard_reuses_verified_snapshot_after_expiry(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from kbo_fans_backend.utils import ttl_cache as ttl_cache_module
+
+    monotonic_now = [1000.0]
+    monkeypatch.setattr(
+        ttl_cache_module.time, "monotonic", lambda: monotonic_now[0]
+    )
+    service, _, schedule, _, scoreboard, today, _ = _same_day_final_service(
+        tmp_path
+    )
+
+    first = service.get_scoreboard(today)
+    assert first["games"][0]["status"] == "FINAL"
+    assert schedule.calls == 1
+    assert scoreboard.calls == 1
+
+    monotonic_now[0] += 200.0
+    second = service.get_scoreboard(today)
+    assert second == first
+    assert schedule.calls == 1
+    assert scoreboard.calls == 1
+
+
+def test_unverified_same_day_terminal_snapshots_are_never_read(
+    tmp_path: Path,
+) -> None:
+    today = current_kbo_date().isoformat()
+    game_id = f"{today.replace('-', '')}HTLG0"
+    snapshot_store = _NoHistoricalSnapshotLoadStore(str(tmp_path / "snapshots"))
+    # Snapshots written by a previous process run: this process never verified
+    # the game as terminal, so the immutable records must stay unread.
+    snapshot_store.save(
+        "games",
+        game_id,
+        {
+            "gameId": game_id,
+            "status": "FINAL",
+            "away": {"score": 4},
+            "home": {"score": 2},
+        },
+    )
+    snapshot_store.save(
+        "scoreboard",
+        today,
+        {
+            "date": today,
+            "games": [
+                {
+                    "gameId": game_id,
+                    "status": "FINAL",
+                    "away": {"score": 4},
+                    "home": {"score": 2},
+                }
+            ],
+        },
+    )
+    main = _MutableMainCrawler(game_id)
+    main.status = "2"
+    service = ScoreboardService(
+        main_crawler=main,
+        schedule_crawler=_MutableScheduleCrawler(game_id),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=snapshot_store,
+    )
+
+    game = service.get_game(game_id)
+    assert game is not None
+    assert game["status"] == "LIVE"
+    day = service.get_scoreboard(today)
+    assert day["games"][0]["status"] == "LIVE"
+
+
+def test_same_day_final_marker_without_snapshot_recrawls(tmp_path: Path) -> None:
+    service, _, schedule, _, scoreboard, _, game_id = _same_day_final_service(
+        tmp_path
+    )
+    service._same_day_final_game_ids.add(game_id)
+
+    payload = service.get_game(game_id)
+    assert payload is not None
+    assert payload["status"] == "FINAL"
+    assert schedule.calls == 1
+    assert scoreboard.calls == 1
+
+
 def test_get_scoreboard_coalesces_concurrent_same_date_requests(
     tmp_path: Path,
 ) -> None:
