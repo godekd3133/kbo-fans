@@ -37,6 +37,8 @@
 - 같은 시간대 `GET /api/team/OB/stats` 5.4s, `/api/team/OB/players` 11.2s도 로그에서 확인 — 위 TTL 상향으로 함께 개선 기대.
 - 2차 배포: release `20260913124314`(커밋 `398f54e`), API·sync worker 모두 active. 공개 API 재검증: SCHEDULED `score`는 `null` 유지, gzip 유지. 재기동 직후 첫 히트는 콜드(`/home` 1.04s→336ms, `/schedule` 4.5s, `/records/overview` 4.2s) — 900s TTL 효과는 시간 경과 구간에서 확인 필요.
 - 경계: Lightsail 임시 SSH 인증서가 수분 내 만료를 반복해 서버측 설치 파일 grep 검증은 미완료. 배포 번들은 클린 커밋 트리에서 생성됐고 스크립트가 `status=ok`를 반환했으므로 코드 버전 정합성은 배포 경로로 보장된다.
+- 시간 경과 후 재측정(배포 ~15분 뒤): `/home` [3266, 44, 37]ms — 첫 호출은 재기동 직후 warm 사이클과의 race로 보이고 이후 웜 유지. `/records/overview` [326, 146, 235]ms(이전 콜드 5.27s→4.18s→현재 웜 0.15-0.33s), `/standings` ~300ms, `/schedule` ~40ms, `/scoreboard/compact` ~240ms. 900s TTL + 워머 조합으로 시즌 집계 경로의 사용자 노출 콜드가 사실상 제거됨.
+- 문서 동기화: `APP_SPEC.md`(적응형 scoreboard TTL, home 섹션 15분+워머, 기록/팀 스탯 15분, 엔드포인트 표의 boxscore 15초·lineup 1분·schedule/standings 15분 정정), `ENGINEERING_NOTES.md`(적응형 TTL·워머·섹션 15분 TTL 기록).
 
 ## 2026-09-13: 0.1.34 배포 증거
 

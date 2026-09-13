@@ -378,8 +378,8 @@ GET /api/scoreboard?date=2026-03-28
 ```
 
 **운영 메모**:
-- 서버는 날짜별 live scoreboard 응답을 `8초 TTL` 캐시로 보관한다.
-- `/api/home` aggregate의 backend in-memory cache는 응답에 LIVE 경기가 있으면 8초, KBO 오늘이면서 LIVE가 없으면 예정 경기·빈 일정도 30초, 오늘이 아닌 날짜는 300초를 사용한다. 오늘 응답은 300초 stable cache에 넣지 않으며 current 실패를 stale cache로 숨기지 않는다.
+- 서버는 날짜별 scoreboard 응답을 적응형 TTL로 보관한다. LIVE/SUSPENDED가 포함되면 8초, 비라이브 오늘은 다음 예정 경기 시작 시각 기준으로 8~120초 안에서 만료를 클램프해 LIVE 전환 지연을 막고, 오늘이 아니거나 잔여 예정이 없으면 300초를 사용한다.
+- `/api/home` aggregate의 backend in-memory cache는 응답에 LIVE 경기가 있으면 8초, KBO 오늘이면서 LIVE가 없으면 예정 경기·빈 일정도 30초, 오늘이 아닌 날짜는 300초를 사용한다. 오늘 응답은 300초 stable cache에 넣지 않으며 current 실패를 stale cache로 숨기지 않는다. aggregate 안의 schedule/standings/records 원천 섹션 캐시는 15분 TTL이고, API 프로세스의 home-section warmer가 240초 주기로 `get_home(오늘)`을 호출해 상시로 데워 둔다.
 - 운영 sync worker는 `SCOREBOARD_WARM_INTERVAL_SECONDS` 기본 5초 cadence로 live scoreboard 요약을 갱신하고, `/scoreboard/home`은 이 값이 현재 `LIVE_SCOREBOARD_MAX_AGE_SECONDS=20` window 안에서 fresh일 때 원천 KBO 수집 없이 즉시 반환할 수 있다. relay/push delivery의 `PUSH_SYNC_INTERVAL_SECONDS`를 30/60초로 늘려도 warm cadence는 유지하며, worker는 `warm interval + 5초 jitter <= live max age`를 시작 전에 검증한다. 이 runtime state는 snapshot fallback이 아니며 stale이면 무시하고 기존 fresh-first 원천 조회/오류 정책으로 돌아간다.
 - 예정 경기일 때 KBO scoreboard 세부 테이블이 비어도 홈 화면은 fallback payload 로 렌더링한다.
 - 예정 경기는 YouTube 검색을 생략하고 KBO 공식 하이라이트 링크만 유지한다.
@@ -439,7 +439,7 @@ GET /api/team/{teamId}/players?season=2026
 ```
 
 **운영 메모**:
-- 기록실 팀 데이터와 팀 스탯은 팀/시즌 기준 `5분 TTL` 캐시를 사용한다.
+- 기록실 팀 데이터와 팀 스탯은 팀/시즌 기준 `15분 TTL` 캐시를 사용한다.
 - 앱은 기록실 로딩 완료 시간을 Dev Console 과 `/api/metrics/client` 로 함께 기록한다.
 - 기록실 요약/리더보드 번들 스냅샷은 요청한 시즌과 정확히 일치할 때만 사용한다.
 - 현재 시즌 기록실 요약 번들은 `generatedAt` 기준 6시간 이내일 때만 fallback 으로 사용한다.
@@ -1963,14 +1963,14 @@ GET /api/game/{gameId}
 
 | Method | Path | 설명 | 캐시 |
 |--------|------|------|------|
-| GET | `/api/scoreboard` | 오늘의 스코어보드 | 오늘 live 8초 / 지난 날짜 snapshot 우선 |
-| GET | `/api/scoreboard/compact` | Widget / Live 표면용 최대 1경기 compact 스코어보드 | today 8초 / snapshot compact |
-| GET | `/api/game/{gameId}` | 경기 단건 상세 / 예매 정보 | today 8초 / final snapshot 영속 저장 |
+| GET | `/api/scoreboard` | 오늘의 스코어보드 | live 8초 · 비라이브 오늘 다음 예정 시작 기준 8~120초 · 비당일 300초 / 지난 날짜 snapshot 우선 |
+| GET | `/api/scoreboard/compact` | Widget / Live 표면용 최대 1경기 compact 스코어보드 | live 8초 · 비라이브 적응형 최대 120초 / snapshot compact |
+| GET | `/api/game/{gameId}` | 경기 단건 상세 / 예매 정보 | live 8초 · 비라이브 적응형 최대 120초 / final snapshot 영속 저장 |
 | GET | `/api/game/{gameId}/relay` | 문자중계 | 없음 (실시간) / 종료 후 summary snapshot 저장 |
-| GET | `/api/game/{gameId}/boxscore` | 박스스코어 | live 1분 / 종료 후 snapshot 우선 |
-| GET | `/api/game/{gameId}/lineup` | 라인업 | 예정/당일 5분 / 종료 후 snapshot 우선 |
-| GET | `/api/schedule` | 경기 일정 | 월 단위 1시간 / 지난 날짜 snapshot 우선 |
-| GET | `/api/standings` | 팀 순위 | latest 5분 / 과거 기준 standings snapshot |
+| GET | `/api/game/{gameId}/boxscore` | 박스스코어 | live 15초 / 종료 후 snapshot 우선 |
+| GET | `/api/game/{gameId}/lineup` | 라인업 | 예정/당일 1분 / 종료 후 snapshot 우선 |
+| GET | `/api/schedule` | 경기 일정 | 월 단위 15분 / 지난 날짜 snapshot 우선 |
+| GET | `/api/standings` | 팀 순위 | latest 15분 / 과거 기준 standings snapshot |
 | POST | `/api/push/register` | 설치 owner 기반 Push 등록 / Moment Subscription 저장 | 없음 |
 | POST | `/api/push/test` | 운영 테스트 FCM 알림 발송 (`PUSH_SYNC_SECRET` 필요) | 없음 |
 | POST | `/api/push/test-device` | exact 설치 owner + 영속 cooldown 기반 자기 기기 원격 테스트 FCM 발송 | 없음 |
