@@ -29,7 +29,8 @@
 - 순위는 KBO 연도별 페이지에서 요청 시즌, 원천 선택 시즌, 원천 기준일 연도가 모두 일치할 때만 저장·반환한다. 현재/LIVE 박스스코어는 검증된 공식 양 팀 기록이 없으면 `official_unavailable` 또는 명시적 `live_context`로 응답하며, 인접 경기나 과거 snapshot을 빌리지 않는다. 라인업 GET은 snapshot 보강·저장은 할 수 있지만 push 발송이나 registry mutation은 하지 않는다.
 - `/push/live-activity/update`는 설정된 `PUSH_SYNC_SECRET`을 필수로 하고, unregister는 `gameId + activityPushToken + activityId + installationId`가 모두 nonblank이며 등록 owner와 일치해야 한다. 기존 앱의 `installationId`가 누락/null이거나 token/activity id 일부가 누락/null/blank이면 422 대신 `removed=0` 안전 무동작으로 호환한다. 실패한 현재 앱 unregister는 이 네 필드의 불변 세대별로 보존한다. sync worker는 한 경기의 relay를 한 tick에 한 번만 읽고, token별 content signature가 그대로인 Live Activity update는 재발송하지 않는다.
 - backend snapshot은 image에 포함된 read-only seed와 runtime write 경로를 분리한다. 앱은 오늘/현재 시즌의 일반 응답과 current/LIVE payload를 `SharedPreferences` API cache에 저장하지 않지만, 문자중계는 game identity·payload shape를 검증한 마지막 성공 응답을 60초 bounded local cache로 보존한다. 문자중계도 정상 경로는 network-first이며, 일시적인 connection/timeout/gateway failure 때만 마지막 저장 데이터를 사용하고 화면에 갱신 지연을 표시한다. historical cache는 최대 2 MiB와 항목별/개수 제한 안에서 오래된 항목부터 제거한다. 완성된 historical payload는 시간 만료로 재검증하지 않고 force/schema·key 변경/사용자 초기화/capacity eviction 때만 다시 받는다.
-- backend 문자중계는 process-local L1 TTL과 worker/API가 공유하는 `runtime_relay` JSON L2를 사용한다. 정상 relay 원문은 두 cache에 저장하고, L1 만료 또는 API process 재시작 뒤에도 60초 runtime snapshot이 유효하면 KBO relay 원문 재크롤링 없이 응답한다. 강제 갱신으로 새 원문을 얻으면 이전 L1 payload를 새 payload가 가리지 않도록 교체한다.
+- backend 문자중계는 process-local L1 TTL과 worker/API가 공유하는 `runtime_relay` JSON L2를 사용한다. 정상 relay 원문은 두 cache에 저장하고, L1 만료 또는 API process 재시작 뒤에도 60초 runtime snapshot이 유효하면 KBO relay 원문 재크롤링 없이 응답한다. `FINAL` 상태가 확인되면 날짜와 무관하게 검증된 immutable relay snapshot을 재사용하고, scoreboard 조회 실패 시에도 상세 snapshot이 존재하면 그것으로 응답한다. LIVE/현재 경기는 immutable snapshot을 읽지 않는다. 강제 갱신으로 새 원문을 얻으면 이전 L1 payload를 새 payload가 가리지 않도록 교체한다.
+- backend boxscore/lineup은 같은 이유로 당일 종료 경기의 immutable snapshot을 재사용한다. 다만 LIVE 경기의 snapshot 미읽기·status/크롤 병렬 시작 불변을 지키기 위해, 크롤로 FINAL(boxscore는 verified official, lineup은 `GAME_STATE_SC == "3"`)이 검증된 당일 경기만 `_same_day_final_game_ids` 인메모리 마커에 등록하고 마킹된 경기만 snapshot을 읽는다. 스냅샷이 없거나 무효하면 크롤로 복구하고 다시 마킹한다.
 
 ### 0.2 2026-08-10 2차 감사 보강 계약
 
@@ -379,7 +380,7 @@ GET /api/scoreboard?date=2026-03-28
 
 **운영 메모**:
 - 서버는 날짜별 scoreboard 응답을 적응형 TTL로 보관한다. LIVE/SUSPENDED가 포함되면 8초, 비라이브 오늘은 다음 예정 경기 시작 시각 기준으로 8~120초 안에서 만료를 클램프해 LIVE 전환 지연을 막고, 오늘이 아니거나 잔여 예정이 없으면 300초를 사용한다.
-- `/api/home` aggregate의 backend in-memory cache는 응답에 LIVE 경기가 있으면 8초, KBO 오늘이면서 LIVE가 없으면 예정 경기·빈 일정도 30초, 오늘이 아닌 날짜는 300초를 사용한다. 오늘 응답은 300초 stable cache에 넣지 않으며 current 실패를 stale cache로 숨기지 않는다. aggregate 안의 schedule/standings/records 원천 섹션 캐시는 15분 TTL이고, API 프로세스의 home-section warmer가 240초 주기로 `get_home(오늘)`을 호출해 상시로 데워 둔다.
+- `/api/home` aggregate의 backend in-memory cache는 응답에 LIVE 경기가 있으면 8초, KBO 오늘이면서 LIVE가 없으면 예정 경기·빈 일정도 30초, 오늘이 아닌 날짜는 300초를 사용한다. 오늘 응답은 300초 stable cache에 넣지 않으며 current 실패를 stale cache로 숨기지 않는다. aggregate 안의 schedule/standings/records 원천 섹션 캐시는 15분 TTL이고, API 프로세스의 home-section warmer가 240초 주기로 `get_home(오늘)`을 호출해 상시로 데워 둔다. warm이 실패하면 `HOME_SECTIONS_WARM_RETRY_SECONDS`(기본 60초) 뒤 재시도해 실패 섹션이 다음 주기까지 콜드로 남지 않게 한다.
 - 운영 sync worker는 `SCOREBOARD_WARM_INTERVAL_SECONDS` 기본 5초 cadence로 live scoreboard 요약을 갱신하고, `/scoreboard/home`은 이 값이 현재 `LIVE_SCOREBOARD_MAX_AGE_SECONDS=20` window 안에서 fresh일 때 원천 KBO 수집 없이 즉시 반환할 수 있다. relay/push delivery의 `PUSH_SYNC_INTERVAL_SECONDS`를 30/60초로 늘려도 warm cadence는 유지하며, worker는 `warm interval + 5초 jitter <= live max age`를 시작 전에 검증한다. 이 runtime state는 snapshot fallback이 아니며 stale이면 무시하고 기존 fresh-first 원천 조회/오류 정책으로 돌아간다.
 - 예정 경기일 때 KBO scoreboard 세부 테이블이 비어도 홈 화면은 fallback payload 로 렌더링한다.
 - 예정 경기는 YouTube 검색을 생략하고 KBO 공식 하이라이트 링크만 유지한다.

@@ -34,9 +34,10 @@ description: 홈 첫 진입 속도와 초기 로딩 체감을 개선할 때 사�
 
 - scoreboard 계열(`/scoreboard`, `/compact`, `/game/{id}`): 적응형 TTL — LIVE/SUSPENDED 포함 8s, 비라이브 오늘은 다음 예정 시작−10s로 8~120s 클램프, 비당일/종료일 300s. 워커 공유 `_home_scoreboard_cache`·`KboSourceCache`는 푸시/Live Activity 신선도 때문에 8s 유지.
 - 시즌/월 집계 캐시(schedule, standings, records overview·leaderboard, team/player stats): 900s TTL. TTL 만료~다음 warm 사이클 gap에 사용자 요청이 업스트림 크롤(수 초)을 지불하지 않도록 warm 주기보다 충분히 크게 잡는다.
-- home-section warmer: API 프로세스 lifespan 스레드(`kbo-home-sections-warmer`)가 `get_home(오늘)`을 240s 주기로 호출해 섹션 캐시를 상시 유지. `HOME_SECTIONS_WARM_ENABLED`(release 기본 on), `HOME_SECTIONS_WARM_INTERVAL_SECONDS`.
+- home-section warmer: API 프로세스 lifespan 스레드(`kbo-home-sections-warmer`)가 `get_home(오늘)`을 240s 주기로 호출해 섹션 캐시를 상시 유지. `HOME_SECTIONS_WARM_ENABLED`(release 기본 on), `HOME_SECTIONS_WARM_INTERVAL_SECONDS`, 실패 시 `HOME_SECTIONS_WARM_RETRY_SECONDS`(기본 60s)로 빠르게 재시도 — 실패 섹션을 다음 주기까지 콜드로 두지 않는다.
 - `GZipMiddleware`(1KB+) — 36KB 스케줄이 wire ~2KB 수준으로 축소.
 - push registry 락 대기 8s — 워커 sync 쓰기와 경합해도 register/start-token이 503으로 떨어지지 않게.
+- 당일 종료 경기 상세: relay는 `game_status == "FINAL"`이면 날짜 무관하게 immutable 스냅샷 재사용. boxscore/lineup은 크롤로 FINAL이 검증된 경기만 `_same_day_final_game_ids`에 마킹해 스냅샷 재사용 — LIVE 경기는 절대 마킹되지 않아 current-game 스냅샷 미읽기·병렬 크롤 불변을 지킨다.
 
 ## Files to check
 
