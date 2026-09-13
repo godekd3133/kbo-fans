@@ -47,6 +47,7 @@
 - 검증: `flutter analyze` 클린, `flutter test` 623 passed.
 - `home-load-performance` 스킬에 검증된 운영 지식 반영: backend 로그가 journal이 아니라 `/var/log/kbo-fans/backend.log`에 쌓이는 점, `home_upstream_timing`/`records_overview_timing`/`warm failed` 로그 키, 적응형 TTL·워머·15분 섹션 캐시·gzip·registry 락 레버, 섹션 TTL은 warm 주기보다 충분히 크게 잡는 규칙.
 - health gate 재실행 중 발견: 종료 경기 `20260913NCOB0`의 첫 relay 조회가 upstream 지연으로 15초 데드라인을 넘겨 504 한 번 — 재시도는 12초에 성공하고 이후 300ms대 웜. immutable snapshot이 아직 채워지지 않은 FINAL 경기의 최초 relay 읽기 비용으로, 지속 장애가 아니라 cold-read 특성.
+- 서버측 설치 검증 완료(AWS 세션 복구 후): site-packages의 schedule/standings/records_overview/team_stats/player_stats TTL 전부 900 확인, `_PUSH_REGISTRY_LOCK_WAIT_SECONDS = 8.0` 확인, 2차 배포 후 `home sections warmer started interval=240s` 재기록 확인. 12:51 재기동 이후 `warm failed` 0건, 12:58~14:32 사이 Slow request 없음(재기동 직후 프라임 구간의 schedule 4.1s·records 4.0s·compact 1.9s는 예상 콜드), push register 503 재발 없음.
 
 ## 2026-09-13: 0.1.34 배포 증거
 
