@@ -52,6 +52,13 @@
 - backend pytest 전체 731 passed, ruff clean.
 - 배포 대기: AWS 세션 만료로 Lightsail 배포 보류 — `aws login` 후 `lightsail-deploy.sh --preserve-env --skip-caddy`로 배포 예정(릴레이 수정과 동일 경로).
 
+### 홈 섹션 워머 실패 재시도 추가
+
+- 배경: `backend.log`에서 `home sections warm failed [UpstreamDeadlineExceeded]`가 8시간에 4건 관측. 실패 시 기존 구현은 다음 주기(240s)까지 재시도하지 않아 실패 섹션이 최대 수 분간 콜드로 남았다.
+- 변경: warm 실패 시 `HOME_SECTIONS_WARM_RETRY_SECONDS`(기본 60s, 하한 5s) 뒤 재시도. 성공한 섹션은 캐시 히트라 재시도 비용은 실패 섹션 크롤뿐이고, singleflight·executor가 업스트림 부하를 그대로 제한한다.
+- 검증: `test_home_warmer.py` 신규 — 실패 사이클이 interval(30s 하한) 이전에 재시도됨, 비활성 시 스레드 미기동. backend pytest 733 passed, ruff·compileall 통과.
+- `infra/aws/lightsail/env.example`에 `HOME_SECTIONS_WARM_RETRY_SECONDS=60` 문서화.
+
 ## 2026-09-13: 폰 환경 속도 개선(백엔드)
 
 ### 배경 측정

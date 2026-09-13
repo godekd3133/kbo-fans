@@ -240,6 +240,7 @@ def _start_home_sections_warmer(settings) -> Optional[threading.Event]:
     from kbo_fans_backend.utils.kbo_time import current_kbo_date_string
 
     interval = max(30.0, float(settings.home_sections_warm_interval_seconds))
+    retry_delay = max(5.0, float(settings.home_sections_warm_retry_seconds))
     stop_event = threading.Event()
 
     def _run() -> None:
@@ -252,7 +253,12 @@ def _start_home_sections_warmer(settings) -> Optional[threading.Event]:
                     type(error).__name__,
                     error,
                 )
-            stop_event.wait(interval)
+                # A failed cycle leaves the failed section cold; retrying soon
+                # is cheap because already-warm sections resolve from cache.
+                delay = retry_delay
+            else:
+                delay = interval
+            stop_event.wait(delay)
 
     thread = threading.Thread(
         target=_run,
