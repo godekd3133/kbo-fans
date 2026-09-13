@@ -30,6 +30,27 @@
 - 설치 검증: site-packages `relay.py`에 `game_status == "FINAL" and self._has_detailed_snapshot` 게이트 확인.
 - 실측: `GET /api/game/20260913NCOB0/relay` 재기동 직후 첫 호출 10.6s(scoreboard 콜드 포함), 이후 77ms·98ms 웜 — 이전 반복 504/12~34s 크롤 대비 해소. relayItems 529개 정상.
 
+## 2026-09-14: 당일 종료 경기 boxscore/lineup 스냅샷 재사용(마커 방식)
+
+### 배경
+
+- relay 수정과 같은 구조적 문제가 boxscore/lineup에도 존재: 당일 FINAL 경기가 immutable 스냅샷을 읽지 않고 캐시 만료(15s/60s + runtime 60s)마다 크롤 — boxscore는 status+boxscore 병렬 크롤, lineup은 lineup+boxscore+main 3-way 크롤.
+- 제약: `test_current_live_boxscore_starts_status_and_crawler_together`(current 경기는 status 완료를 기다리지 않고 크롤 병렬 시작)와 `*_skips_immutable_snapshot_read`(current 경기는 immutable 스냅샷 `load` 자체 금지) 불변 — 직렬 status 조회와 무조건 스냅샷 읽기 모두 불가.
+
+### 변경
+
+- `BoxscoreService._same_day_final_game_ids` / `LineupService._same_day_final_game_ids` 인메모리 마커 세트 추가.
+- 마킹 조건: boxscore는 `game_status == "FINAL"` + verified official 크롤 성공 시(기존 immutable 스냅샷 저장 지점과 동일), lineup은 `main_status == "3"`(종료 상태 코드)로 당일 스냅샷 저장 지점에서 마킹.
+- 마커된 당일 경기는 스냅샷을 읽어 재사용(boxscore는 `_is_valid_historical_snapshot` + enrichment 경로, lineup은 `_has_ready_lineup` + enrichment 경로). 스냅샷이 없거나 무효면 크롤로 자연 복구 후 재마킹.
+- lineup 크롤 실패 시에도 마커+ready 스냅샷이면 폴백 반환.
+- 불변 보존: LIVE 경기는 마킹되지 않아 스냅샷 `load`가 절대 호출되지 않음. 병렬 시작 불변도 그대로 — 마커 경로는 인메모리 set 조회라 status/크롤 직렬화 없음.
+- 경계: 마커는 프로세스 메모리라 재시작 후 첫 당일-FINAL 읽기는 크롤 1회로 재마킹됨(재시작은 배포 시뿐).
+
+### 검증
+
+- 신규 테스트 3개: boxscore 마커 재사용(force_refresh 시 재크롤 없음)·마커+스냅샷 없음 시 재크롤, lineup 마커 재사용.
+- backend pytest 전체 731 passed, ruff clean.
+
 ## 2026-09-13: 폰 환경 속도 개선(백엔드)
 
 ### 배경 측정

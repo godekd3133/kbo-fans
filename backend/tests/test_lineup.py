@@ -166,6 +166,41 @@ def test_current_lineup_skips_immutable_snapshot_read(tmp_path) -> None:
     assert payload["gameId"] == game_id
 
 
+def test_same_day_final_lineup_reuses_snapshot_once_marked(tmp_path) -> None:
+    today = current_kbo_date()
+    game_id = f"{today:%Y%m%d}LGOB0"
+
+    class FinalMainCrawler:
+        def get_kbo_game_list(self, date: str):
+            return [{"G_ID": game_id, "GAME_STATE_SC": "3"}]
+
+    class CountingLineupCrawler(_StubLineupCrawler):
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def get_lineup(self, requested_game_id: str):
+            self.calls += 1
+            return super().get_lineup(requested_game_id)
+
+    lineup_crawler = CountingLineupCrawler()
+    service = LineupService(
+        lineup_crawler=lineup_crawler,
+        boxscore_crawler=_StubBoxscoreCrawler(),
+        main_crawler=FinalMainCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+        player_stats_service=_EmptyPlayerStatsService(),
+        today_provider=lambda: today,
+    )
+
+    service.get_lineup(game_id)
+    assert lineup_crawler.calls == 1
+
+    payload = service.get_lineup(game_id, force_refresh=True)
+
+    assert payload["gameId"] == game_id
+    assert lineup_crawler.calls == 1
+
+
 def test_lineup_forwards_force_refresh_to_shared_boxscore_service(tmp_path) -> None:
     game_id = "29990101LGOB0"
 

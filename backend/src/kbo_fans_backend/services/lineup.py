@@ -80,6 +80,11 @@ class LineupService:
         self._singleflight: SingleFlight[str] = SingleFlight()
         self._enrichment_lock = threading.Lock()
         self._enrichment_in_flight: set[str] = set()
+        # Same-day games whose source already reported the finished state
+        # (GAME_STATE_SC == "3") on a previous read. Marked games may reuse
+        # their immutable snapshot instead of fanning out lineup/boxscore/main
+        # crawls on every cache expiry; live games are never marked.
+        self._same_day_final_game_ids: set[str] = set()
 
     def get_lineup(
         self,
@@ -117,14 +122,15 @@ class LineupService:
         force_refresh: bool = False,
     ) -> dict[str, Any]:
         is_past_game = self._is_past_game_id(game_id)
+        marked_final = not is_past_game and game_id in self._same_day_final_game_ids
         snapshot = (
             self.snapshot_store.load_payload("lineup", game_id)
-            if is_past_game
+            if is_past_game or marked_final
             else None
         )
         if (
             snapshot is not None
-            and is_past_game
+            and (is_past_game or marked_final)
             and self._has_ready_lineup(game_id, snapshot)
         ):
             return self._enrich_snapshot_if_missing_player_images(snapshot, game_id)
@@ -163,7 +169,7 @@ class LineupService:
                 main_future.cancel()
             if (
                 snapshot is not None
-                and is_past_game
+                and (is_past_game or marked_final)
                 and self._has_ready_lineup(game_id, snapshot)
             ):
                 return snapshot
@@ -195,6 +201,8 @@ class LineupService:
             "5",
         }
         if is_past_game or main_status == "3":
+            if not is_past_game:
+                self._same_day_final_game_ids.add(game_id)
             self.snapshot_store.save("lineup", game_id, lineup)
         if not is_past_game:
             self.snapshot_store.save(self._RUNTIME_CACHE_NAMESPACE, game_id, lineup)

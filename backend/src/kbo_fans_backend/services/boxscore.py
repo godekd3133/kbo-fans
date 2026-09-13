@@ -74,6 +74,11 @@ class BoxscoreService:
         self._singleflight: SingleFlight[str] = SingleFlight()
         self._enrichment_lock = threading.Lock()
         self._enrichment_in_flight: set[str] = set()
+        # Same-day games already proven FINAL by a verified crawl. Marked games
+        # may reuse their immutable snapshot without paying another upstream
+        # crawl; live games are never marked, so the current-game snapshot
+        # boundary is preserved.
+        self._same_day_final_game_ids: set[str] = set()
 
     def get_boxscore(
         self,
@@ -126,6 +131,17 @@ class BoxscoreService:
 
         if is_past_game:
             payload = self.crawler.get_boxscore(game_id)
+        elif game_id in self._same_day_final_game_ids:
+            # The marker is only set after a verified FINAL crawl, so the game
+            # is already over; reuse the immutable snapshot instead of
+            # re-crawling an unchanged boxscore on every cache expiry.
+            game_status = "FINAL"
+            snapshot = self.snapshot_store.load_payload("boxscore", game_id)
+            if self._is_valid_historical_snapshot(snapshot, game_id):
+                if self._has_player_metadata(snapshot):
+                    return snapshot
+                return self._enrich_with_budget(snapshot, game_id)
+            payload = self.crawler.get_boxscore(game_id)
         else:
             game_status, payload = self._fetch_current_status_and_boxscore(game_id)
 
@@ -140,6 +156,7 @@ class BoxscoreService:
             # official rows before attempting any historical enrichment so a
             # slow player crawl cannot block the data response.
             if game_status == "FINAL":
+                self._same_day_final_game_ids.add(game_id)
                 self.snapshot_store.save("boxscore", game_id, payload)
             if not is_past_game:
                 self.snapshot_store.save(self._RUNTIME_CACHE_NAMESPACE, game_id, payload)

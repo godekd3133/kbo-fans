@@ -180,6 +180,44 @@ def test_current_live_boxscore_skips_immutable_snapshot_read(tmp_path) -> None:
     assert payload["availability"] == "official"
 
 
+def test_same_day_final_boxscore_reuses_snapshot_once_marked(tmp_path) -> None:
+    today = current_kbo_date()
+    game_id = f"{today:%Y%m%d}KTLG0"
+    crawler = _StubBoxscoreCrawler({game_id: _official_payload(game_id)})
+    service = BoxscoreService(
+        crawler=crawler,
+        schedule_service=_StubScheduleService({game_id: "FINAL"}),
+        player_stats_service=_EmptyPlayerStatsService(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    service.get_boxscore(game_id)
+    assert crawler.calls == [game_id]
+
+    payload = service.get_boxscore(game_id, force_refresh=True)
+
+    assert payload["availability"] == "official"
+    assert crawler.calls == [game_id]
+
+
+def test_same_day_final_marker_recrawls_when_snapshot_missing(tmp_path) -> None:
+    today = current_kbo_date()
+    game_id = f"{today:%Y%m%d}KTLG0"
+    crawler = _StubBoxscoreCrawler({game_id: _official_payload(game_id)})
+    service = BoxscoreService(
+        crawler=crawler,
+        schedule_service=_StubScheduleService({game_id: "FINAL"}),
+        player_stats_service=_EmptyPlayerStatsService(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+    service._same_day_final_game_ids.add(game_id)
+
+    payload = service.get_boxscore(game_id)
+
+    assert payload["availability"] == "official"
+    assert crawler.calls == [game_id]
+
+
 def test_current_live_boxscore_starts_status_and_crawler_together(tmp_path) -> None:
     today = current_kbo_date()
     game_id = f"{today:%Y%m%d}SKWO0"
