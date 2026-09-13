@@ -24,9 +24,17 @@
 - GZip 실측: 5011B → 55B wire, `content-encoding: gzip` 확인.
 - 적응형 TTL 테스트: 활성 경기 8s 유지, 다음 시작 시각 클램프(남은 60s→TTL 50s), 경과 예정 경기 8s, 비당일/종료일 300s, compact 비라이브 오늘 30s 후 캐시 유지·130s 후 재크롤.
 
-### 배포 경계
+### 운영 배포(2026-09-13)
 
-- 운영 Lightsail 배포는 SSH/AWS 인증 갱신 후 `lightsail-deploy.sh`로 진행 필요(직전 항목 참조). 배포 전까지는 코드 변경만 반영된 상태.
+- AWS 세션 갱신 후 Lightsail 임시 SSH 자격 발급 → `scripts/lightsail-deploy.sh`로 배포, release `20260913042019`, 기존 env·Caddy 유지.
+- 배포 후 `kbo-fans-api.service`/`kbo-fans-sync-worker.service` 모두 active, `/api/health` 200.
+- 운영 반영 확인: `/scoreboard/home?date=…`의 SCHEDULED 경기 `score`가 `null`로 내려옴(null-score 정규화 적용), `content-encoding: gzip` 확인(5011B→55B wire 수준 압축 동작).
+- 웜 지연: `/scoreboard/home` ~35ms, `/home` ~35ms, `/schedule?month` ~45ms, `/scoreboard/compact` ~65ms.
+- 워머 런타임 검증: `backend.log`에서 `home sections warmer started interval=240s`와 주기적 warm 실패 로그(07:23/10:18/11:28 UTC, `UpstreamDeadlineExceeded`)를 확인 — 워머는 정상 기동 중이며 실패 사이클은 ~3%.
+- 잔여 콜드 원인 확정: 섹션 캐시 TTL 300s 만료 직후 다음 warm 사이클(최대 ~254s 간격)까지의 gap에 사용자 요청이 들어오면 업스트림 크롤 비용(records home overview 3페이지 병렬이지만 페이지당 ~5-7.7s)을 그대로 지불. 12:32 UTC 프로브에서 `records_overview` 재크롤 7.7s → `/home` 8.0s를 로그로 확인.
+- 후속 보정: 느리게 변하는 시즌/월 집계 캐시 TTL을 300s → 900s로 상향(`schedule` `_CACHE_TTL_SECONDS`/`_HOME_CACHE_TTL_SECONDS`, `standings` `_CACHE_TTL_SECONDS`, `records_overview` `_OVERVIEW_CACHE_TTL_SECONDS`/`_HOME_OVERVIEW_CACHE_TTL_SECONDS`, `team_stats`/`player_stats` 캐시). 워머 240s 주기 대비 4배 여유로 expiry gap 제거. 캐시 미스 시 크롤 실패 노출 정책은 그대로.
+- 운영 로그에서 발견한 부가 문제: `POST /api/push/register`·`live-activity/start-token/register`가 12:28 UTC에 503 `UpstreamBusyError` — push registry 스레드/파일 락(워커 프로세스와 공유)이 sync 쓰기로 2s 이상 점유된 것이 원인. `_PUSH_REGISTRY_LOCK_WAIT_SECONDS` 2.0 → 8.0으로 상향(등록은 저빈도라 대기가 실패보다 낫다).
+- 같은 시간대 `GET /api/team/OB/stats` 5.4s, `/api/team/OB/players` 11.2s도 로그에서 확인 — 위 TTL 상향으로 함께 개선 기대.
 
 ## 2026-09-13: 0.1.34 배포 증거
 

@@ -11,8 +11,8 @@ from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
 class RecordsOverviewService:
-    _OVERVIEW_CACHE_TTL_SECONDS = 300
-    _HOME_OVERVIEW_CACHE_TTL_SECONDS = 300
+    _OVERVIEW_CACHE_TTL_SECONDS = 900
+    _HOME_OVERVIEW_CACHE_TTL_SECONDS = 900
     _RANKED_METRICS = (
         "avg",
         "hr",

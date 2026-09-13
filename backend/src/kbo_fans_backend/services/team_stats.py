@@ -10,7 +10,7 @@ from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
 class TeamStatsService:
-    _TEAM_STATS_CACHE_TTL_SECONDS = 300
+    _TEAM_STATS_CACHE_TTL_SECONDS = 900
 
     def __init__(
         self,

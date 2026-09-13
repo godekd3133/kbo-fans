@@ -12,7 +12,7 @@ from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
 class StandingsService:
-    _CACHE_TTL_SECONDS = 300
+    _CACHE_TTL_SECONDS = 900
 
     def __init__(
         self,
