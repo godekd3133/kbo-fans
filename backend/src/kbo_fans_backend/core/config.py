@@ -69,6 +69,8 @@ class Settings:
     data_request_max_concurrency: int = 8
     data_request_queue_timeout_seconds: float = 0.1
     live_game_data_cache_max_age_seconds: int = 60
+    home_sections_warm_enabled: bool = False
+    home_sections_warm_interval_seconds: float = 240.0
     live_game_data_warm_enabled: bool = False
     live_game_data_warm_interval_seconds: float = 15.0
     live_game_data_warm_max_interval_seconds: float = 60.0
@@ -141,6 +143,14 @@ def get_settings() -> Settings:
         live_game_data_cache_max_age_seconds=_get_int(
             "LIVE_GAME_DATA_CACHE_MAX_AGE_SECONDS",
             60,
+        ),
+        home_sections_warm_enabled=_get_bool(
+            "HOME_SECTIONS_WARM_ENABLED",
+            app_env == "release",
+        ),
+        home_sections_warm_interval_seconds=_get_float(
+            "HOME_SECTIONS_WARM_INTERVAL_SECONDS",
+            240.0,
         ),
         live_game_data_warm_enabled=_get_bool(
             "LIVE_GAME_DATA_WARM_ENABLED",

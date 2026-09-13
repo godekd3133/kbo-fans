@@ -2,6 +2,32 @@
 
 ---
 
+## 2026-09-13: 폰 환경 속도 개선(백엔드)
+
+### 배경 측정
+
+- 운영 API 실측 콜드 지연: `/home` 9.6s, `/schedule?month` 3.1s, `/scoreboard/compact` 2.25s, `/scoreboard/home` 1.35s. 캐시 히트 시 40~500ms.
+- 앱 쪽은 이미 정렬됨을 확인: 플랫폼 서비스 1.5s 지연 초기화, 홈 secondary 섹션 첫 scoreboard 프레임 후 지연, 스켈레톤 카드, 경기 상세 prefetch, 선수 이미지 캐시. 현재일 디스크 캐시는 정책상 금지라 유지.
+- 잔여 병목은 백엔드: 평면 8s TTL(비라이브도 동일), 섹션 캐시 300s 만료 시 `/home` 풀콜드, gzip 부재.
+
+### 변경
+
+- `TtlCache.set(..., ttl_seconds=)` 엔트리별 TTL 지원.
+- `ScoreboardService._scoreboard_cache_ttl_seconds(date, games)` 적응형 TTL: LIVE/SUSPENDED 포함 → 8s(기존), 오늘 비라이브 → 다음 예정 시작 시각−10s로 클램프(8s~120s)로 LIVE 전환 지연을 막고, 오늘 잔여 예정 없음·비당일 → 300s. 적용 범위는 `/scoreboard`(full), `/scoreboard/compact`, `/game/{id}` 캐시.
+- `_home_scoreboard_cache`·`_schedule_games_cache`·`_main_game_map_cache`는 의도적으로 8s 유지 — 워커 프로세스 `ScoreboardWarmer`가 같은 캐시를 읽으므로 TTL을 늘리면 푸시/Live Activity 신선도가 저하된다.
+- `GZipMiddleware`(minimum_size=1024) 추가 — 스케줄/기록/순위 JSON 압축.
+- API 프로세스 홈 섹션 워머: `HOME_SECTIONS_WARM_ENABLED`(release 기본 on), `HOME_SECTIONS_WARM_INTERVAL_SECONDS`(기본 240s). `home_service.get_home(오늘)`을 주기 호출해 schedule/standings/records 인프로세스 캐시를 상시 유지 — `/home` 9.6s 풀콜드 제거. `infra/aws/lightsail/env.example`에 문서화.
+
+### 검증
+
+- backend pytest 725 passed(+5), ruff clean, compileall 통과.
+- GZip 실측: 5011B → 55B wire, `content-encoding: gzip` 확인.
+- 적응형 TTL 테스트: 활성 경기 8s 유지, 다음 시작 시각 클램프(남은 60s→TTL 50s), 경과 예정 경기 8s, 비당일/종료일 300s, compact 비라이브 오늘 30s 후 캐시 유지·130s 후 재크롤.
+
+### 배포 경계
+
+- 운영 Lightsail 배포는 SSH/AWS 인증 갱신 후 `lightsail-deploy.sh`로 진행 필요(직전 항목 참조). 배포 전까지는 코드 변경만 반영된 상태.
+
 ## 2026-09-13: 0.1.34 배포 증거
 
 ### 빌드·업로드

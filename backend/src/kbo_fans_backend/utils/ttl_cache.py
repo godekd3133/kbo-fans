@@ -15,7 +15,7 @@ class TtlCache(Generic[K, V]):
             raise ValueError("max_entries must be at least 1")
         self.ttl_seconds = ttl_seconds
         self.max_entries = max_entries
-        self._store: Dict[K, Tuple[float, V]] = {}
+        self._store: Dict[K, Tuple[float, float, V]] = {}
         self._lock = threading.Lock()
 
     def get(self, key: K) -> Optional[V]:
@@ -25,14 +25,19 @@ class TtlCache(Generic[K, V]):
         if cached is None:
             return None
 
-        cached_at, value = cached
-        if now - cached_at > self.ttl_seconds:
+        cached_at, ttl_seconds, value = cached
+        if now - cached_at > ttl_seconds:
             return None
 
         return copy.deepcopy(value)
 
-    def set(self, key: K, value: V) -> None:
+    def set(self, key: K, value: V, ttl_seconds: Optional[float] = None) -> None:
         cached_at = time.monotonic()
+        effective_ttl = (
+            self.ttl_seconds
+            if ttl_seconds is None
+            else max(0.0, float(ttl_seconds))
+        )
         cached_value = copy.deepcopy(value)
         with self._lock:
             if key not in self._store and len(self._store) >= self.max_entries:
@@ -41,11 +46,11 @@ class TtlCache(Generic[K, V]):
                     key=lambda stored_key: self._store[stored_key][0],
                 )
                 self._store.pop(oldest_key, None)
-            self._store[key] = (cached_at, cached_value)
+            self._store[key] = (cached_at, effective_ttl, cached_value)
 
     def get_stale(self, key: K) -> Optional[V]:
         with self._lock:
             cached = self._store.get(key)
         if cached is None:
             return None
-        return copy.deepcopy(cached[1])
+        return copy.deepcopy(cached[2])

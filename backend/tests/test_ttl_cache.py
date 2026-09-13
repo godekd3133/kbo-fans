@@ -32,6 +32,24 @@ def test_cache_evicts_oldest_entry_at_capacity(monkeypatch) -> None:
     assert cache.get_stale("newest") == 3
 
 
+def test_per_entry_ttl_overrides_cache_default(monkeypatch) -> None:
+    now = [100.0]
+    monkeypatch.setattr(ttl_cache_module.time, "monotonic", lambda: now[0])
+    cache = TtlCache[str, int](ttl_seconds=10)
+    cache.set("default", 1)
+    cache.set("extended", 2, ttl_seconds=120)
+    cache.set("shortened", 3, ttl_seconds=5)
+
+    now[0] = 106.0
+    assert cache.get("shortened") is None
+    assert cache.get_stale("shortened") == 3
+
+    now[0] = 115.0
+    assert cache.get("default") is None
+    assert cache.get("extended") == 2
+    assert cache.get_stale("default") == 1
+
+
 def test_concurrent_writes_keep_cache_within_capacity(monkeypatch) -> None:
     cache = TtlCache[str, int](ttl_seconds=10, max_entries=1)
     cache.set("seed", 0)

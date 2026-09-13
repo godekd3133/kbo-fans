@@ -3,6 +3,7 @@ import logging
 import os
 import threading
 import time
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -10,6 +11,7 @@ from typing import Any, Dict, List, Optional, Set
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -222,6 +224,56 @@ def _configure_logging() -> None:
 _configure_logging()
 
 
+def _start_home_sections_warmer(settings) -> Optional[threading.Event]:
+    """Keep the /home section caches warm inside the API process.
+
+    The home aggregate is only as fast as its slowest cold section
+    (schedule/standings/records crawls). The push-side ScoreboardWarmer lives
+    in the worker process and cannot fill these in-process caches, so the API
+    process warms them itself on a slow interval. Disabled unless
+    HOME_SECTIONS_WARM_ENABLED is set (default on in release).
+    """
+    if not settings.home_sections_warm_enabled:
+        return None
+
+    from kbo_fans_backend.api.runtime_services import home_service
+    from kbo_fans_backend.utils.kbo_time import current_kbo_date_string
+
+    interval = max(30.0, float(settings.home_sections_warm_interval_seconds))
+    stop_event = threading.Event()
+
+    def _run() -> None:
+        while not stop_event.is_set():
+            try:
+                home_service.get_home(current_kbo_date_string())
+            except Exception as error:
+                logger.warning(
+                    "home sections warm failed [%s] %s",
+                    type(error).__name__,
+                    error,
+                )
+            stop_event.wait(interval)
+
+    thread = threading.Thread(
+        target=_run,
+        name="kbo-home-sections-warmer",
+        daemon=True,
+    )
+    thread.start()
+    logger.info("home sections warmer started interval=%.0fs", interval)
+    return stop_event
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    stop_event = _start_home_sections_warmer(get_settings())
+    try:
+        yield
+    finally:
+        if stop_event is not None:
+            stop_event.set()
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
 
@@ -229,6 +281,7 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         debug=settings.debug,
         version="0.1.0",
+        lifespan=_lifespan,
     )
     app.add_middleware(
         DataRequestGuardMiddleware,
@@ -244,6 +297,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.include_router(api_router, prefix=settings.api_prefix)
 
     @app.exception_handler(UpstreamBusyError)

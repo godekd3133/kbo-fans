@@ -16,7 +16,7 @@ from kbo_fans_backend.crawlers.scoreboard import ScoreboardCrawler
 from kbo_fans_backend.services.ticketing import TicketingService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.storage.live_scoreboard_store import LiveScoreboardStore
-from kbo_fans_backend.utils.kbo_time import current_kbo_date
+from kbo_fans_backend.utils.kbo_time import current_kbo_date, current_kbo_datetime
 from kbo_fans_backend.utils.resilience import UpstreamBusyError, UpstreamUnavailableError
 from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.source_cache import KboSourceCache
@@ -31,6 +31,10 @@ class GameScheduleUnavailableError(UpstreamUnavailableError):
 
 class ScoreboardService:
     _SCOREBOARD_CACHE_TTL_SECONDS = 8
+    _NON_LIVE_SCOREBOARD_CACHE_TTL_SECONDS = 120
+    _INACTIVE_SCOREBOARD_CACHE_TTL_SECONDS = 300
+    _GAME_START_REFRESH_LEAD_SECONDS = 10.0
+    _ACTIVE_GAME_STATUSES = frozenset({"LIVE", "SUSPENDED"})
     _DATE_REFRESH_LOCK_STRIPES = 32
     _TERMINAL_STATUSES = frozenset({"FINAL", "CANCELLED"})
     _RUNTIME_GAME_CACHE_NAMESPACE = "runtime_games"
@@ -244,7 +248,11 @@ class ScoreboardService:
             "date": date,
             "games": enriched_games,
         }
-        self._scoreboard_cache.set(date, payload)
+        self._scoreboard_cache.set(
+            date,
+            payload,
+            ttl_seconds=self._scoreboard_cache_ttl_seconds(date, enriched_games),
+        )
         if self._should_persist_snapshot(date, enriched_games):
             self.snapshot_store.save("scoreboard", date, payload)
             for game in enriched_games:
@@ -525,7 +533,13 @@ class ScoreboardService:
         )
         if self._can_use_historical_scoreboard_snapshot(date, snapshot):
             payload = self._compact_from_snapshot(date, snapshot, my_team)
-            self._compact_scoreboard_cache.set(cache_key, payload)
+            self._compact_scoreboard_cache.set(
+                cache_key,
+                payload,
+                ttl_seconds=self._scoreboard_cache_ttl_seconds(
+                    date, snapshot.get("games", [])
+                ),
+            )
             return payload
 
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
@@ -570,7 +584,11 @@ class ScoreboardService:
             "source": "compact",
             "scope": "widget",
         }
-        self._compact_scoreboard_cache.set(cache_key, payload)
+        self._compact_scoreboard_cache.set(
+            cache_key,
+            payload,
+            ttl_seconds=self._scoreboard_cache_ttl_seconds(date, games),
+        )
         return payload
 
     def _compact_from_snapshot(
@@ -652,7 +670,13 @@ class ScoreboardService:
                 self._runtime_cache_max_age_seconds,
             )
             if self._is_valid_runtime_game_snapshot(game_id, runtime_snapshot):
-                self._game_cache.set(game_id, runtime_snapshot)
+                self._game_cache.set(
+                    game_id,
+                    runtime_snapshot,
+                    ttl_seconds=self._scoreboard_cache_ttl_seconds(
+                        game_date, [runtime_snapshot]
+                    ),
+                )
                 logger.info("game runtime snapshot hit %s", game_id)
                 return runtime_snapshot
 
@@ -719,7 +743,11 @@ class ScoreboardService:
                 executor.shutdown(wait=True)
 
         game = self._enrich_game(schedule_game, game_list.get(game_id, {}))
-        self._game_cache.set(game_id, game)
+        self._game_cache.set(
+            game_id,
+            game,
+            ttl_seconds=self._scoreboard_cache_ttl_seconds(date, [game]),
+        )
         if self._should_persist_snapshot(date, [game]):
             self.snapshot_store.save("games", game_id, game)
         if self._should_persist_runtime_game(date, game):
@@ -1261,6 +1289,74 @@ class ScoreboardService:
             return date_type.fromisoformat(date) < current_kbo_date()
         except ValueError:
             return False
+
+    def _scoreboard_cache_ttl_seconds(
+        self,
+        date: str,
+        games: list[dict[str, Any]],
+    ) -> float:
+        """Pick a cache TTL that matches how fast the payload can change.
+
+        Live/suspended payloads keep the short live TTL. When nothing is live,
+        today's cache may live longer but expires before the next scheduled
+        start so the LIVE transition still appears promptly. Days with no
+        pending starts and non-current dates get the longest TTL.
+        """
+        statuses = {
+            str(game.get("status") or "").strip().upper()
+            for game in games
+            if isinstance(game, dict)
+        }
+        if statuses & self._ACTIVE_GAME_STATUSES:
+            return float(self._SCOREBOARD_CACHE_TTL_SECONDS)
+        if date != current_kbo_date().isoformat():
+            return float(self._INACTIVE_SCOREBOARD_CACHE_TTL_SECONDS)
+        seconds_to_next_start = self._seconds_until_next_scheduled_start(games)
+        if seconds_to_next_start is None:
+            return float(self._INACTIVE_SCOREBOARD_CACHE_TTL_SECONDS)
+        return min(
+            float(self._NON_LIVE_SCOREBOARD_CACHE_TTL_SECONDS),
+            max(
+                float(self._SCOREBOARD_CACHE_TTL_SECONDS),
+                seconds_to_next_start - self._GAME_START_REFRESH_LEAD_SECONDS,
+            ),
+        )
+
+    @staticmethod
+    def _seconds_until_next_scheduled_start(
+        games: list[dict[str, Any]],
+    ) -> Optional[float]:
+        now = current_kbo_datetime()
+        earliest_seconds: Optional[float] = None
+        for game in games:
+            if not isinstance(game, dict):
+                continue
+            status = str(game.get("status") or "").strip().upper()
+            if status != "SCHEDULED":
+                continue
+            start_text = str(
+                game.get("startTime") or game.get("time") or ""
+            ).strip()
+            parts = start_text.split(":")
+            if len(parts) != 2:
+                continue
+            try:
+                hour = int(parts[0])
+                minute = int(parts[1])
+            except ValueError:
+                continue
+            if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+                continue
+            start_at = now.replace(
+                hour=hour, minute=minute, second=0, microsecond=0
+            )
+            seconds = (start_at - now).total_seconds()
+            # A start already in the past keeps a negative delta so the
+            # caller clamps it to the short live-window TTL and rechecks the
+            # SCHEDULED status promptly instead of settling on the long TTL.
+            if earliest_seconds is None or seconds < earliest_seconds:
+                earliest_seconds = seconds
+        return earliest_seconds
 
     def _can_use_historical_game_snapshot(
         self,

@@ -1510,3 +1510,150 @@ def _write_live_scoreboard_record(
         ),
         encoding="utf-8",
     )
+
+
+def test_scoreboard_cache_ttl_keeps_live_ttl_for_active_games(tmp_path: Path) -> None:
+    service = ScoreboardService(
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+    today = current_kbo_date().isoformat()
+
+    assert (
+        service._scoreboard_cache_ttl_seconds(today, [{"status": "LIVE"}]) == 8.0
+    )
+    assert (
+        service._scoreboard_cache_ttl_seconds(today, [{"status": "SUSPENDED"}])
+        == 8.0
+    )
+
+
+def test_scoreboard_cache_ttl_uses_long_ttl_without_pending_transitions(
+    tmp_path: Path,
+) -> None:
+    service = ScoreboardService(
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+    today = current_kbo_date().isoformat()
+
+    assert (
+        service._scoreboard_cache_ttl_seconds(today, [{"status": "FINAL"}])
+        == 300.0
+    )
+    future_games = [{"status": "SCHEDULED", "startTime": "18:30"}]
+    assert (
+        service._scoreboard_cache_ttl_seconds("2999-03-31", future_games)
+        == 300.0
+    )
+    assert service._scoreboard_cache_ttl_seconds(today, []) == 300.0
+
+
+def test_scoreboard_cache_ttl_expires_before_next_scheduled_start(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from datetime import datetime
+
+    from kbo_fans_backend.services import scoreboard as scoreboard_module
+    from kbo_fans_backend.utils.kbo_time import kbo_timezone
+
+    fixed_now = datetime.now(kbo_timezone()).replace(
+        hour=10, minute=0, second=0, microsecond=0
+    )
+    monkeypatch.setattr(
+        scoreboard_module, "current_kbo_datetime", lambda: fixed_now
+    )
+    service = ScoreboardService(
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+    today = current_kbo_date().isoformat()
+
+    far_future = [{"status": "SCHEDULED", "startTime": "18:30"}]
+    assert service._scoreboard_cache_ttl_seconds(today, far_future) == 120.0
+
+    starting_soon = [{"status": "SCHEDULED", "startTime": "10:01"}]
+    assert (
+        service._scoreboard_cache_ttl_seconds(today, starting_soon) == 50.0
+    )
+
+    already_due = [{"status": "SCHEDULED", "startTime": "09:30"}]
+    assert (
+        service._scoreboard_cache_ttl_seconds(today, already_due)
+        == service._SCOREBOARD_CACHE_TTL_SECONDS
+    )
+
+    schedule_key = [{"status": "SCHEDULED", "time": "18:30"}]
+    assert service._scoreboard_cache_ttl_seconds(today, schedule_key) == 120.0
+
+
+def test_compact_scoreboard_keeps_non_live_today_cached_past_live_ttl(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from datetime import datetime
+
+    from kbo_fans_backend.services import scoreboard as scoreboard_module
+    from kbo_fans_backend.utils import ttl_cache as ttl_cache_module
+    from kbo_fans_backend.utils.kbo_time import kbo_timezone
+
+    today = current_kbo_date().isoformat()
+    game_id = f"{today.replace('-', '')}HTLG0"
+    fixed_now = datetime.now(kbo_timezone()).replace(
+        hour=10, minute=0, second=0, microsecond=0
+    )
+    monkeypatch.setattr(
+        scoreboard_module, "current_kbo_datetime", lambda: fixed_now
+    )
+    monotonic_now = [1000.0]
+    monkeypatch.setattr(
+        ttl_cache_module.time, "monotonic", lambda: monotonic_now[0]
+    )
+
+    class _TodayScheduleCrawler:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def get_games_by_date(self, date: str):
+            self.calls += 1
+            return [
+                {
+                    "date": date,
+                    "time": "18:30",
+                    "gameId": game_id,
+                    "awayId": "HT",
+                    "awayName": "KIA",
+                    "homeId": "LG",
+                    "homeName": "LG",
+                    "stadium": "잠실",
+                    "status": "SCHEDULED",
+                }
+            ]
+
+    class _TodayMainCrawler:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def get_kbo_game_list(self, date: str):
+            self.calls += 1
+            return [{"G_ID": game_id, "G_TM": "18:30", "GAME_STATE_SC": "1"}]
+
+    schedule = _TodayScheduleCrawler()
+    main = _TodayMainCrawler()
+    service = ScoreboardService(
+        main_crawler=main,
+        schedule_crawler=schedule,
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    first = service.get_compact_scoreboard(today, my_team="HT")
+    assert [game["gameId"] for game in first["games"]] == [game_id]
+    assert schedule.calls == 1
+
+    monotonic_now[0] += 30.0
+    second = service.get_compact_scoreboard(today, my_team="HT")
+    assert second == first
+    assert schedule.calls == 1
+
+    monotonic_now[0] += 100.0
+    service.get_compact_scoreboard(today, my_team="HT")
+    assert schedule.calls == 2
