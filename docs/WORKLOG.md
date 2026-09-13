@@ -23,6 +23,13 @@
 - `test_relay_service.py` 24 passed(+3 신규: 당일 FINAL 스냅샷 재사용, scoreboard 실패 시 스냅샷 생존, 스냅샷 없는 당일 FINAL의 summary 폴백).
 - backend pytest 전체 728 passed, ruff clean.
 
+### 배포(2026-09-13)
+
+- Lightsail `kbo-fans-api-lightsail`은 `ap-northeast-2`에 위치(이전 메모의 us-east-1 표기는 us-east-1 기본 리전 출력 혼동이었음 — 인스턴스는 서울 리전).
+- 임시 SSH cert 재발급 후 `lightsail-deploy.sh --preserve-env --skip-caddy` 배포, release `20260913145331`, API·sync worker 모두 active.
+- 설치 검증: site-packages `relay.py`에 `game_status == "FINAL" and self._has_detailed_snapshot` 게이트 확인.
+- 실측: `GET /api/game/20260913NCOB0/relay` 재기동 직후 첫 호출 10.6s(scoreboard 콜드 포함), 이후 77ms·98ms 웜 — 이전 반복 504/12~34s 크롤 대비 해소. relayItems 529개 정상.
+
 ## 2026-09-13: 폰 환경 속도 개선(백엔드)
 
 ### 배경 측정
