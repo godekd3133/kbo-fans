@@ -1329,7 +1329,10 @@ class _RecordingSnapshotStore(JsonSnapshotStore):
         return super().load(namespace, key)
 
 
-def _same_day_final_service(tmp_path: Path):
+def _same_day_final_service(
+    tmp_path: Path,
+    date_lock_wait_timeout_seconds: float = 2.0,
+):
     today = current_kbo_date().isoformat()
     game_id = f"{today.replace('-', '')}HTLG0"
     schedule = _MutableScheduleCrawler(game_id)
@@ -1342,6 +1345,7 @@ def _same_day_final_service(tmp_path: Path):
         schedule_crawler=schedule,
         scoreboard_crawler=scoreboard,
         snapshot_store=snapshot_store,
+        date_lock_wait_timeout_seconds=date_lock_wait_timeout_seconds,
     )
     return service, snapshot_store, schedule, main, scoreboard, today, game_id
 
@@ -1461,6 +1465,112 @@ def test_same_day_final_marker_without_snapshot_recrawls(tmp_path: Path) -> None
     payload = service.get_game(game_id)
     assert payload is not None
     assert payload["status"] == "FINAL"
+    assert schedule.calls == 1
+    assert scoreboard.calls == 1
+
+
+def test_same_day_final_home_scoreboard_reuses_verified_snapshot(
+    tmp_path: Path,
+) -> None:
+    service, _, schedule, _, scoreboard, today, game_id = _same_day_final_service(
+        tmp_path
+    )
+    first = service.get_scoreboard(today)
+    assert first["games"][0]["status"] == "FINAL"
+    assert schedule.calls == 1
+    assert scoreboard.calls == 1
+
+    first_home = service.get_home_scoreboard(today)
+    second_home = service.get_home_scoreboard(today)
+
+    assert first_home == second_home
+    assert first_home["date"] == today
+    assert first_home["games"][0]["gameId"] == game_id
+    assert first_home["games"][0]["status"] == "FINAL"
+    assert schedule.calls == 1
+    assert scoreboard.calls == 1
+
+
+def test_same_day_final_compact_scoreboard_reuses_verified_snapshot(
+    tmp_path: Path,
+) -> None:
+    service, _, schedule, _, scoreboard, today, game_id = _same_day_final_service(
+        tmp_path
+    )
+    service.get_scoreboard(today)
+    assert schedule.calls == 1
+    assert scoreboard.calls == 1
+
+    first_compact = service.get_compact_scoreboard(today, my_team="HT")
+    second_compact = service.get_compact_scoreboard(today, my_team="HT")
+
+    assert first_compact == second_compact
+    assert first_compact["source"] == "snapshot"
+    assert first_compact["games"][0]["gameId"] == game_id
+    assert first_compact["games"][0]["status"] == "FINAL"
+    assert schedule.calls == 1
+    assert scoreboard.calls == 1
+
+
+def test_same_day_final_scoreboard_busy_force_refresh_serves_snapshot(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from kbo_fans_backend.utils import ttl_cache as ttl_cache_module
+
+    monotonic_now = [1000.0]
+    monkeypatch.setattr(
+        ttl_cache_module.time, "monotonic", lambda: monotonic_now[0]
+    )
+    service, _, schedule, _, scoreboard, today, _ = _same_day_final_service(
+        tmp_path,
+        date_lock_wait_timeout_seconds=0.03,
+    )
+    first = service.get_scoreboard(today)
+    assert first["games"][0]["status"] == "FINAL"
+    assert schedule.calls == 1
+    assert scoreboard.calls == 1
+
+    # The all-terminal in-memory cache lives 300s; expire it so the busy path
+    # must fall through to the verified immutable snapshot instead.
+    monotonic_now[0] += 400.0
+    lock = service._date_refresh_locks[
+        hash(today) % len(service._date_refresh_locks)
+    ]
+    lock.acquire()
+    try:
+        second = service.get_scoreboard(today, force_refresh=True)
+    finally:
+        lock.release()
+
+    assert second == first
+    assert schedule.calls == 1
+    assert scoreboard.calls == 1
+
+
+def test_same_day_final_prime_home_scoreboard_busy_uses_snapshot(
+    tmp_path: Path,
+) -> None:
+    service, _, schedule, _, scoreboard, today, game_id = _same_day_final_service(
+        tmp_path,
+        date_lock_wait_timeout_seconds=0.03,
+    )
+    service.get_scoreboard(today)
+    assert schedule.calls == 1
+    assert scoreboard.calls == 1
+
+    lock = service._date_refresh_locks[
+        hash(today) % len(service._date_refresh_locks)
+    ]
+    lock.acquire()
+    try:
+        primed = service.prime_home_scoreboard(today)
+    finally:
+        lock.release()
+
+    assert primed["date"] == today
+    assert primed["games"][0]["gameId"] == game_id
+    assert primed["games"][0]["status"] == "FINAL"
     assert schedule.calls == 1
     assert scoreboard.calls == 1
 

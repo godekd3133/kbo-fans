@@ -116,7 +116,11 @@ class ScoreboardService:
                     started_at=started_at,
                 )
         except UpstreamBusyError:
-            if force_refresh and not self._is_historical_date(date):
+            if (
+                force_refresh
+                and not self._is_historical_date(date)
+                and date not in self._same_day_final_scoreboard_dates
+            ):
                 raise
             cached = self._scoreboard_cache.get(date)
             if cached is not None:
@@ -391,6 +395,19 @@ class ScoreboardService:
             live_state = self._load_live_home_scoreboard(date)
             if live_state is not None:
                 return live_state
+            snapshot = (
+                self.snapshot_store.load_payload("scoreboard", date)
+                if self._is_historical_date(date)
+                or date in self._same_day_final_scoreboard_dates
+                else None
+            )
+            if self._can_use_historical_scoreboard_snapshot(
+                date, snapshot
+            ) or self._can_use_terminal_scoreboard_snapshot(date, snapshot):
+                return {
+                    "date": snapshot["date"],
+                    "games": [self._strip_home_payload(game) for game in snapshot["games"]],
+                }
             raise
 
     def _prime_home_scoreboard_serialized(self, date: str) -> dict[str, Any]:

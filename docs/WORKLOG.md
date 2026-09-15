@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-09-15: 당일 종료 스냅샷 재사용 폴백 경로 정렬 + 테스트 보강
+
+### 변경
+
+- `get_scoreboard`의 UpstreamBusy 폴백이 `force_refresh` + 마킹된 당일 종료일에서도 503을 던지던 비대칭을 제거 — `home`/`compact`와 동일하게 마킹된 날짜는 검증된 immutable 스냅샷으로 응답한다. 검증된 전 경기 종료일의 데이터는 불변이라 force 갱신이 더 새 데이터를 만들 수 없다.
+- `prime_home_scoreboard`(Live Activity sync 워머)의 busy 폴백에도 historical/마킹 날짜의 `scoreboard` 스냅샷 폴백 추가 — 락 경합 시 `prime_failed` warning 대신 검증된 스냅샷으로 응답한다.
+- `BoxscoreService` 마커 경로에서 스냅샷 무효 시 마커를 discard하고 크롤로 복구 — scoreboard의 자가 복구 시맨틱과 동일하게 정렬(재크롤 결과가 verified FINAL이면 자동 재마킹).
+
+### 검증
+
+- 신규 테스트 4개: 당일 종료일 `get_home_scoreboard`·`get_compact_scoreboard` 스냅샷 재사용(크롤러 호출 고정), 마킹 날짜 busy+force_refresh 시 스냅샷 응답, busy 중 `prime_home_scoreboard` 스냅샷 폴백.
+- `test_scoreboard_service_cache.py`·`test_boxscore_service.py`·`test_lineup.py` 96 passed, ruff·compileall 통과.
+- 배포 대기: 이전 섹션과 동일하게 미배포 — `aws login` 후 `lightsail-deploy.sh --preserve-env --skip-caddy`.
+
 ## 2026-09-13: 당일 종료 경기 relay의 immutable snapshot 미재사용 수정
 
 ### 운영 증거

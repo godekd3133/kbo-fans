@@ -141,6 +141,7 @@ class BoxscoreService:
                 if self._has_player_metadata(snapshot):
                     return snapshot
                 return self._enrich_with_budget(snapshot, game_id)
+            self._same_day_final_game_ids.discard(game_id)
             payload = self.crawler.get_boxscore(game_id)
         else:
             game_status, payload = self._fetch_current_status_and_boxscore(game_id)
