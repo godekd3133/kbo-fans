@@ -49,6 +49,15 @@
 - 신규 회귀 테스트 5건: relay/boxscore/lineup busy 시 캐시 서빙 + relay/boxscore 폴백 없을 때 busy 재전파.
 - 배포: release `20260916073229` — API·워커 active, health 200. 재시작 직후 콜드 버스트(relay/boxscore/lineup ×4, 12-way)에서 첫 웨이브 3건이 KBO 지연(~10s)만큼 걸렸지만 전부 200(이전 동일 조건은 503/504), 이후 웨이브 9건 전부 <0.21s.
 
+### 추가: 미완결 현재 경기 페이로드도 런타임 스냅샷에 기록(2026-09-16)
+
+- 배포 재시작 직후 예정 경기 상세가 매번 콜드 크롤을 지불하던 갭을 닫음 — `official_unavailable` boxscore, pending lineup, scheduled/suspended relay summary 등 "현재 진실인 미완결 상태"도 `runtime_*` 네임스페이스에 기록해 재시작·sibling 프로세스가 같은 답을 재크롤하지 않게 함.
+- relay: `_summary_payload`·`_payload_from_crawler` 모두 비과거(+LIVE 자정교차) 경기를 `runtime_relay`에 기록, 읽기는 `_is_usable_runtime_relay`(과거는 full payload 유지). lineup: `_is_usable_runtime_lineup`으로 형상만 검증(과거·same-day-final은 published 유지). boxscore: `_fetch_and_track`이 reusable-unavailable도 `runtime_boxscore`에 기록 — 백그라운드 stale refresh가 저장을 거치므로 savedAt이 갱신되어 refresh 루프가 생기지 않음.
+- 과거 경기 불변 규칙 유지: `_is_past_game_id`·same-day-final 마커 경기는 runtime 읽기에서도 여전히 완결 페이로드만 수용.
+- 신규 테스트 3건: persisted summary/pending/unavailable이 두 번째 서비스 인스턴스(공유 스냅샷 스토어, 크롤러 미호출)에서 서빙됨을 검증 + 기존 `test_current_live_failure_does_not_fall_back_to_snapshot`의 기대를 "runtime에 unavailable이 기록됨"으로 갱신.
+- 배포: release `20260916094817` — API·워커 active, health 200. 라이브 경기(2회말 LG-NC) 웜 경로 0.3~0.75s, `live_context` 정상 응답.
+- 참고: `aws login` OAuth 세션이 약 1시간 주기로 만료되어 `get-instance-access-details`가 간헐 실패 — 배포는 재발급 재시도로 완료했으나 반복 작업 시 재로그인 필요.
+
 ## 2026-09-15: 당일 종료 스냅샷 재사용 폴백 경로 정렬 + 테스트 보강
 
 ### 변경

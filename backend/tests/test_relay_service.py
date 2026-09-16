@@ -1001,3 +1001,38 @@ def test_relay_service_reraises_busy_without_fallback(tmp_path: Path) -> None:
 
     with pytest.raises(UpstreamBusyError):
         service.get_relay("20260329LTSS0")
+
+
+def test_relay_service_serves_persisted_summary_from_runtime(tmp_path: Path) -> None:
+    today = current_kbo_date()
+    game_id = f"{today:%Y%m%d}HTLG0"
+    store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    first = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": game_id,
+                "status": "SCHEDULED",
+                "away": {"shortName": "KIA", "score": None, "scores": []},
+                "home": {"shortName": "LG", "score": None, "scores": []},
+            }
+        ),
+        snapshot_store=store,
+    )
+    summary = first.get_relay(game_id)
+    assert summary["gameId"] == game_id
+
+    class _RaisingScoreboard:
+        def get_game(self, game_id, force_refresh=False):
+            raise AssertionError("scoreboard must not be called on runtime hit")
+
+    second = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=_RaisingScoreboard(),
+        snapshot_store=store,
+    )
+
+    served = second.get_relay(game_id)
+
+    assert served["gameId"] == game_id
+    assert served["relayItems"] == summary["relayItems"]

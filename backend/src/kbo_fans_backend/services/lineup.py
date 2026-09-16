@@ -134,6 +134,22 @@ class LineupService:
             daemon=True,
         ).start()
 
+    def _is_usable_runtime_lineup(self, game_id: str, payload: Any) -> bool:
+        """Runtime lineup entry usable for serving.
+
+        Current games persist well-formed pending lineups too (pregame, or
+        before publication), so any shaped current entry counts; past and
+        same-day-final-marked games keep requiring a published lineup.
+        """
+        if self._is_past_game_id(game_id) or game_id in self._same_day_final_game_ids:
+            return self._has_ready_lineup(game_id, payload)
+        return (
+            isinstance(payload, dict)
+            and payload.get("gameId") == game_id
+            and isinstance(payload.get("away"), dict)
+            and isinstance(payload.get("home"), dict)
+        )
+
     def _busy_fallback_lineup(self, game_id: str) -> Optional[dict[str, Any]]:
         """Best available lineup when the upstream path is busy."""
         cached = self._lineup_cache.get(game_id)
@@ -144,7 +160,7 @@ class LineupService:
             game_id,
             self._STALE_RUNTIME_MAX_AGE_SECONDS,
         )
-        if self._has_ready_lineup(game_id, snapshot):
+        if self._is_usable_runtime_lineup(game_id, snapshot):
             return snapshot
         return None
 
@@ -164,8 +180,9 @@ class LineupService:
                 game_id,
                 self._runtime_cache_max_age_seconds,
             )
-            if self._has_ready_lineup(game_id, runtime_snapshot):
-                self._lineup_cache.set(game_id, runtime_snapshot)
+            if self._is_usable_runtime_lineup(game_id, runtime_snapshot):
+                if self._has_ready_lineup(game_id, runtime_snapshot):
+                    self._lineup_cache.set(game_id, runtime_snapshot)
                 logger.info("lineup runtime snapshot hit %s", game_id)
                 return runtime_snapshot
             stale_snapshot = self.snapshot_store.load_recent_payload(
@@ -173,7 +190,7 @@ class LineupService:
                 game_id,
                 self._STALE_RUNTIME_MAX_AGE_SECONDS,
             )
-            if self._has_ready_lineup(game_id, stale_snapshot):
+            if self._is_usable_runtime_lineup(game_id, stale_snapshot):
                 logger.info("lineup stale runtime snapshot hit %s", game_id)
                 self._refresh_runtime_async(game_id)
                 return stale_snapshot

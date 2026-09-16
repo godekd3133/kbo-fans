@@ -538,7 +538,9 @@ def test_current_live_failure_does_not_fall_back_to_snapshot(tmp_path) -> None:
     assert payload["availability"] == "official_unavailable"
     assert payload["officialAvailable"] is False
     assert payload["unavailableReason"] == "official_fetch_failed"
-    assert snapshot_store.load_payload("runtime_boxscore", game_id) is None
+    persisted_runtime = snapshot_store.load_payload("runtime_boxscore", game_id)
+    assert persisted_runtime is not None
+    assert persisted_runtime["officialAvailable"] is False
 
 
 def test_current_live_failure_serves_live_context_when_available(tmp_path) -> None:
@@ -820,3 +822,29 @@ def test_boxscore_service_reraises_busy_without_fallback(tmp_path) -> None:
 
     with pytest.raises(UpstreamBusyError):
         service.get_boxscore(game_id)
+
+
+def test_boxscore_service_serves_persisted_unavailable_from_runtime(tmp_path) -> None:
+    game_id = f"{current_kbo_date():%Y%m%d}KTLG0"
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    first = BoxscoreService(
+        crawler=_StubBoxscoreCrawler({game_id: RuntimeError("down")}),
+        schedule_service=_StubScheduleService({game_id: "SCHEDULED"}),
+        player_stats_service=_StubPlayerStatsService(),
+        snapshot_store=store,
+    )
+    payload = first.get_boxscore(game_id)
+    assert payload["officialAvailable"] is False
+
+    second_crawler = _StubBoxscoreCrawler({game_id: RuntimeError("down")})
+    second = BoxscoreService(
+        crawler=second_crawler,
+        schedule_service=_StubScheduleService({game_id: "SCHEDULED"}),
+        player_stats_service=_StubPlayerStatsService(),
+        snapshot_store=store,
+    )
+
+    served = second.get_boxscore(game_id)
+
+    assert served["officialAvailable"] is False
+    assert second_crawler.calls == []

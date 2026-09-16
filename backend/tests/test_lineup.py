@@ -701,3 +701,47 @@ def test_lineup_service_serves_cache_when_singleflight_busy(tmp_path) -> None:
 
     assert payload["gameId"] == game_id
     assert payload["away"]["lineup"][0]["name"] == "홍창기"
+
+
+class _PendingLineupCrawler:
+    def __init__(self):
+        self.calls = 0
+
+    def get_lineup(self, game_id):
+        self.calls += 1
+        return {
+            "gameId": game_id,
+            "away": {"teamId": "LG", "lineup": []},
+            "home": {"teamId": "OB", "lineup": []},
+        }
+
+
+def test_lineup_service_serves_persisted_pending_from_runtime(tmp_path) -> None:
+    game_id = "20260827LGOB0"
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    first = LineupService(
+        lineup_crawler=_PendingLineupCrawler(),
+        boxscore_crawler=_StubBoxscoreCrawler(),
+        main_crawler=_StubMainCrawler(),
+        snapshot_store=store,
+        player_stats_service=_EmptyPlayerStatsService(),
+        today_provider=lambda: date(2026, 8, 27),
+    )
+    pending = first.get_lineup(game_id)
+    assert pending["away"]["lineup"] == []
+
+    second_crawler = _PendingLineupCrawler()
+    second = LineupService(
+        lineup_crawler=second_crawler,
+        boxscore_crawler=_StubBoxscoreCrawler(),
+        main_crawler=_StubMainCrawler(),
+        snapshot_store=store,
+        player_stats_service=_EmptyPlayerStatsService(),
+        today_provider=lambda: date(2026, 8, 27),
+    )
+
+    served = second.get_lineup(game_id)
+
+    assert served["gameId"] == game_id
+    assert served["away"]["lineup"] == []
+    assert second_crawler.calls == 0

@@ -108,7 +108,7 @@ class RelayService:
                 game_id,
                 self._runtime_cache_max_age_seconds,
             )
-            if self._has_full_relay_payload_for_game(game_id, runtime_snapshot):
+            if self._is_usable_runtime_relay(game_id, runtime_snapshot):
                 self._relay_cache.set(game_id, runtime_snapshot)
                 logger.info("relay runtime snapshot hit %s", game_id)
                 return self._after(runtime_snapshot, after)
@@ -117,7 +117,7 @@ class RelayService:
                 game_id,
                 self._STALE_RUNTIME_MAX_AGE_SECONDS,
             )
-            if self._has_full_relay_payload_for_game(game_id, stale_snapshot):
+            if self._is_usable_runtime_relay(game_id, stale_snapshot):
                 logger.info("relay stale runtime snapshot hit %s", game_id)
                 self._refresh_runtime_async(game_id)
                 return self._after(stale_snapshot, after)
@@ -156,17 +156,13 @@ class RelayService:
         cached = self._relay_cache.get(game_id)
         if self._has_full_relay_payload_for_game(game_id, cached):
             return cached
-        for max_age in (
-            self._runtime_cache_max_age_seconds,
+        snapshot = self.snapshot_store.load_recent_payload(
+            self._RUNTIME_CACHE_NAMESPACE,
+            game_id,
             self._STALE_RUNTIME_MAX_AGE_SECONDS,
-        ):
-            snapshot = self.snapshot_store.load_recent_payload(
-                self._RUNTIME_CACHE_NAMESPACE,
-                game_id,
-                max_age,
-            )
-            if self._has_full_relay_payload_for_game(game_id, snapshot):
-                return snapshot
+        )
+        if self._is_usable_runtime_relay(game_id, snapshot):
+            return snapshot
         return None
 
     def get_cached_relay(self, game_id: str) -> Optional[dict[str, Any]]:
@@ -310,11 +306,8 @@ class RelayService:
         }
         if game_status == "FINAL":
             self.snapshot_store.save("relay", game_id, payload)
-        if game_status == "LIVE" or (
-            game_status == "FINAL" and not self._is_past_game_id(game_id)
-        ):
-            if self._has_full_relay_payload_for_game(game_id, payload):
-                self.snapshot_store.save(self._RUNTIME_CACHE_NAMESPACE, game_id, payload)
+        if not self._is_past_game_id(game_id) or game_status == "LIVE":
+            self.snapshot_store.save(self._RUNTIME_CACHE_NAMESPACE, game_id, payload)
         return payload
 
     def _summary_payload(
@@ -328,11 +321,20 @@ class RelayService:
         relay_items = self._build_summary_items(game)
         if after is not None:
             relay_items = [item for item in relay_items if item["seqNo"] > after]
-        return {
+        payload = {
             "gameId": game_id,
             "currentAtBat": current_at_bat,
             "relayItems": relay_items,
         }
+        game_status = game.get("status") if isinstance(game, dict) else None
+        if after is None and (
+            not self._is_past_game_id(game_id) or game_status == "LIVE"
+        ):
+            # Scheduled/suspended summaries and pre-play live relays are the
+            # current truth for the game; persisting them keeps restarts and
+            # slow-upstream windows from re-crawling the same empty answer.
+            self.snapshot_store.save(self._RUNTIME_CACHE_NAMESPACE, game_id, payload)
+        return payload
 
     @staticmethod
     def _after(payload: dict[str, Any], after: Optional[int]) -> dict[str, Any]:
@@ -491,6 +493,21 @@ class RelayService:
             isinstance(payload, dict)
             and payload.get("gameId") == game_id
             and cls._has_full_relay_payload(payload)
+        )
+
+    def _is_usable_runtime_relay(self, game_id: str, payload: Any) -> bool:
+        """Runtime relay entry usable for serving.
+
+        Current games persist summary and pre-play payloads too, so any
+        well-formed current entry counts; past games keep requiring a full
+        play-by-play payload.
+        """
+        if self._is_past_game_id(game_id):
+            return self._has_full_relay_payload_for_game(game_id, payload)
+        return (
+            isinstance(payload, dict)
+            and payload.get("gameId") == game_id
+            and isinstance(payload.get("relayItems"), list)
         )
 
     @classmethod

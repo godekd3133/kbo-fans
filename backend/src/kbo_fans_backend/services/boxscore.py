@@ -100,7 +100,7 @@ class BoxscoreService:
             try:
                 self._singleflight.call(
                     f"boxscore:{game_id}:cached",
-                    lambda: self._get_boxscore_uncached(game_id),
+                    lambda: self._fetch_and_track(game_id),
                 )
             except Exception as error:
                 logger.info(
@@ -134,7 +134,9 @@ class BoxscoreService:
             game_id,
             self._STALE_RUNTIME_MAX_AGE_SECONDS,
         )
-        if self._is_cacheable_payload(snapshot, game_id):
+        if self._is_cacheable_payload(
+            snapshot, game_id
+        ) or self._is_reusable_unavailable_payload(snapshot, game_id):
             return snapshot
         return None
 
@@ -161,12 +163,17 @@ class BoxscoreService:
                 self._boxscore_cache.set(game_id, runtime_snapshot)
                 logger.info("boxscore runtime snapshot hit %s", game_id)
                 return runtime_snapshot
+            if self._is_reusable_unavailable_payload(runtime_snapshot, game_id):
+                logger.info("boxscore runtime unavailable snapshot hit %s", game_id)
+                return runtime_snapshot
             stale_snapshot = self.snapshot_store.load_recent_payload(
                 self._RUNTIME_CACHE_NAMESPACE,
                 game_id,
                 self._STALE_RUNTIME_MAX_AGE_SECONDS,
             )
-            if self._is_cacheable_payload(stale_snapshot, game_id):
+            if self._is_cacheable_payload(
+                stale_snapshot, game_id
+            ) or self._is_reusable_unavailable_payload(stale_snapshot, game_id):
                 logger.info("boxscore stale runtime snapshot hit %s", game_id)
                 self._refresh_runtime_async(game_id)
                 return stale_snapshot
@@ -174,7 +181,7 @@ class BoxscoreService:
         try:
             payload = self._singleflight.call(
                 f"boxscore:{game_id}:{'force' if force_refresh else 'cached'}",
-                lambda: self._get_boxscore_uncached(game_id),
+                lambda: self._fetch_and_track(game_id),
             )
         except UpstreamBusyError:
             fallback = self._busy_fallback_boxscore(game_id)
@@ -194,6 +201,18 @@ class BoxscoreService:
                 payload,
                 ttl_seconds=self._UNAVAILABLE_CACHE_TTL_SECONDS,
             )
+        return payload
+
+    def _fetch_and_track(self, game_id: str) -> dict[str, Any]:
+        """Fetch through the uncached path and persist reusable answers.
+
+        Unavailable answers for current games persist to the runtime
+        namespace too, so restarts and sibling processes do not re-crawl a
+        known-empty answer and stale serves converge after one refresh.
+        """
+        payload = self._get_boxscore_uncached(game_id)
+        if self._is_reusable_unavailable_payload(payload, game_id):
+            self.snapshot_store.save(self._RUNTIME_CACHE_NAMESPACE, game_id, payload)
         return payload
 
     def _get_boxscore_uncached(self, game_id: str) -> dict[str, Any]:
