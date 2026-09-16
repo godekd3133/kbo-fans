@@ -10,6 +10,7 @@ import pytest
 from kbo_fans_backend.schemas.boxscore import official_unavailable_boxscore
 from kbo_fans_backend.services.boxscore import BoxscoreService
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.utils.resilience import UpstreamBusyError
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
 
 
@@ -780,3 +781,42 @@ def _live_context_payload(game_id: str):
 
 def _date_from_game_id(game_id: str) -> str:
     return f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
+
+
+def test_boxscore_service_serves_cache_when_singleflight_busy(tmp_path) -> None:
+    game_id = "20260330KTLG0"
+    service = BoxscoreService(
+        crawler=_StubBoxscoreCrawler({game_id: _official_payload(game_id)}),
+        schedule_service=_StubScheduleService({game_id: "FINAL"}),
+        player_stats_service=_StubPlayerStatsService(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+    service._boxscore_cache.set(game_id, _official_payload(game_id))
+
+    def _busy(*args, **kwargs):
+        raise UpstreamBusyError("busy")
+
+    service._singleflight.call = _busy
+
+    payload = service.get_boxscore(game_id)
+
+    assert payload["availability"] == "official"
+    assert payload["gameId"] == game_id
+
+
+def test_boxscore_service_reraises_busy_without_fallback(tmp_path) -> None:
+    game_id = "20260330KTLG0"
+    service = BoxscoreService(
+        crawler=_StubBoxscoreCrawler({game_id: _official_payload(game_id)}),
+        schedule_service=_StubScheduleService({game_id: "FINAL"}),
+        player_stats_service=_StubPlayerStatsService(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    def _busy(*args, **kwargs):
+        raise UpstreamBusyError("busy")
+
+    service._singleflight.call = _busy
+
+    with pytest.raises(UpstreamBusyError):
+        service.get_boxscore(game_id)

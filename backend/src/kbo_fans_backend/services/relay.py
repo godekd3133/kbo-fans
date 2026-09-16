@@ -11,6 +11,7 @@ from kbo_fans_backend.services.push import KBO_TEAM_NAMES, KBO_TEAM_SHORT_NAMES
 from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
+from kbo_fans_backend.utils.resilience import UpstreamBusyError
 from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
@@ -121,15 +122,22 @@ class RelayService:
                 self._refresh_runtime_async(game_id)
                 return self._after(stale_snapshot, after)
 
-        payload = self._singleflight.call(
-            f"{game_id}:{'force' if force_refresh else 'cached'}",
-            lambda: self._get_relay_uncached(
-                game_id,
-                after=None,
-                force_refresh=force_refresh,
-                game=game,
-            ),
-        )
+        try:
+            payload = self._singleflight.call(
+                f"{game_id}:{'force' if force_refresh else 'cached'}",
+                lambda: self._get_relay_uncached(
+                    game_id,
+                    after=None,
+                    force_refresh=force_refresh,
+                    game=game,
+                ),
+            )
+        except UpstreamBusyError:
+            fallback = self._busy_fallback_relay(game_id)
+            if fallback is not None:
+                logger.info("relay busy fallback %s", game_id)
+                return self._after(fallback, after)
+            raise
         cached_after_fetch = self._relay_cache.get(game_id)
         if (
             cached_after_fetch is None
@@ -138,6 +146,28 @@ class RelayService:
         ):
             self._relay_cache.set(game_id, payload)
         return self._after(payload, after)
+
+    def _busy_fallback_relay(self, game_id: str) -> Optional[dict[str, Any]]:
+        """Best available relay when the upstream path is busy.
+
+        Serving last-known data beats a 503 during a live crawl; the caller
+        still 503s when nothing usable exists.
+        """
+        cached = self._relay_cache.get(game_id)
+        if self._has_full_relay_payload_for_game(game_id, cached):
+            return cached
+        for max_age in (
+            self._runtime_cache_max_age_seconds,
+            self._STALE_RUNTIME_MAX_AGE_SECONDS,
+        ):
+            snapshot = self.snapshot_store.load_recent_payload(
+                self._RUNTIME_CACHE_NAMESPACE,
+                game_id,
+                max_age,
+            )
+            if self._has_full_relay_payload_for_game(game_id, snapshot):
+                return snapshot
+        return None
 
     def get_cached_relay(self, game_id: str) -> Optional[dict[str, Any]]:
         """Return a complete relay already present in process/runtime cache.

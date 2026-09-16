@@ -7,6 +7,7 @@ import pytest
 from kbo_fans_backend.services.lineup import LineupService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
+from kbo_fans_backend.utils.resilience import UpstreamBusyError
 from kbo_fans_backend.utils.source_cache import KboSourceCache
 
 
@@ -670,3 +671,33 @@ def test_lineup_query_does_not_emit_lineup_opened_push(tmp_path) -> None:
 
     assert payload["gameId"] == "20260425LGOB0"
     assert not (tmp_path / "push_registry.json").exists()
+
+
+def test_lineup_service_serves_cache_when_singleflight_busy(tmp_path) -> None:
+    game_id = "20260827LGOB0"
+    service = LineupService(
+        lineup_crawler=_StubLineupCrawler(),
+        boxscore_crawler=_StubBoxscoreCrawler(),
+        main_crawler=_StubMainCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+        player_stats_service=_EmptyPlayerStatsService(),
+        today_provider=lambda: date(2026, 8, 27),
+    )
+    service._lineup_cache.set(
+        game_id,
+        {
+            "gameId": game_id,
+            "away": {"lineup": [{"order": 1, "position": "CF", "name": "홍창기"}]},
+            "home": {"lineup": [{"order": 1, "position": "SS", "name": "박준영"}]},
+        },
+    )
+
+    def _busy(*args, **kwargs):
+        raise UpstreamBusyError("busy")
+
+    service._singleflight.call = _busy
+
+    payload = service.get_lineup(game_id)
+
+    assert payload["gameId"] == game_id
+    assert payload["away"]["lineup"][0]["name"] == "홍창기"

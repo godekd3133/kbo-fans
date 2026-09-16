@@ -8,6 +8,7 @@ import pytest
 from kbo_fans_backend.services.relay import RelayService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
+from kbo_fans_backend.utils.resilience import UpstreamBusyError
 
 
 class _StubScoreboardService:
@@ -945,3 +946,58 @@ def test_relay_service_skips_crawler_for_scheduled_game() -> None:
 
     assert relay["currentAtBat"] is None
     assert relay["relayItems"] == []
+
+
+def test_relay_service_serves_cache_when_singleflight_busy(tmp_path: Path) -> None:
+    service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": "20260329LTSS0",
+                "status": "FINAL",
+                "away": {"shortName": "롯데", "score": 6, "scores": [1] * 9},
+                "home": {"shortName": "삼성", "score": 2, "scores": [1] * 9},
+            }
+        ),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+    service._relay_cache.set(
+        "20260329LTSS0",
+        {
+            "gameId": "20260329LTSS0",
+            "relayItems": [{"inning": 1, "event": "HIT", "text": "안타"}],
+        },
+    )
+
+    def _busy(*args, **kwargs):
+        raise UpstreamBusyError("busy")
+
+    service._singleflight.call = _busy
+
+    relay = service.get_relay("20260329LTSS0")
+
+    assert relay["gameId"] == "20260329LTSS0"
+    assert relay["relayItems"][0]["event"] == "HIT"
+
+
+def test_relay_service_reraises_busy_without_fallback(tmp_path: Path) -> None:
+    service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": "20260329LTSS0",
+                "status": "FINAL",
+                "away": {"shortName": "롯데", "score": 6, "scores": [1] * 9},
+                "home": {"shortName": "삼성", "score": 2, "scores": [1] * 9},
+            }
+        ),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    def _busy(*args, **kwargs):
+        raise UpstreamBusyError("busy")
+
+    service._singleflight.call = _busy
+
+    with pytest.raises(UpstreamBusyError):
+        service.get_relay("20260329LTSS0")

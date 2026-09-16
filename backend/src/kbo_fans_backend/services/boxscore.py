@@ -18,6 +18,7 @@ from kbo_fans_backend.services.player_stats import PlayerStatsService
 from kbo_fans_backend.services.schedule import ScheduleService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
+from kbo_fans_backend.utils.resilience import UpstreamBusyError
 from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.source_cache import KboSourceCache
 from kbo_fans_backend.utils.ttl_cache import TtlCache
@@ -117,6 +118,26 @@ class BoxscoreService:
             daemon=True,
         ).start()
 
+    def _busy_fallback_boxscore(self, game_id: str) -> Optional[dict[str, Any]]:
+        """Best available boxscore when the upstream path is busy.
+
+        Serving last-known official/live-context data beats a 503 during a
+        slow refresh; the caller still 503s when nothing usable exists.
+        """
+        cached = self._boxscore_cache.get(game_id)
+        if self._is_cacheable_payload(
+            cached, game_id
+        ) or self._is_reusable_unavailable_payload(cached, game_id):
+            return cached
+        snapshot = self.snapshot_store.load_recent_payload(
+            self._RUNTIME_CACHE_NAMESPACE,
+            game_id,
+            self._STALE_RUNTIME_MAX_AGE_SECONDS,
+        )
+        if self._is_cacheable_payload(snapshot, game_id):
+            return snapshot
+        return None
+
     def get_boxscore(
         self,
         game_id: str,
@@ -150,10 +171,17 @@ class BoxscoreService:
                 self._refresh_runtime_async(game_id)
                 return stale_snapshot
 
-        payload = self._singleflight.call(
-            f"boxscore:{game_id}:{'force' if force_refresh else 'cached'}",
-            lambda: self._get_boxscore_uncached(game_id),
-        )
+        try:
+            payload = self._singleflight.call(
+                f"boxscore:{game_id}:{'force' if force_refresh else 'cached'}",
+                lambda: self._get_boxscore_uncached(game_id),
+            )
+        except UpstreamBusyError:
+            fallback = self._busy_fallback_boxscore(game_id)
+            if fallback is not None:
+                logger.info("boxscore busy fallback %s", game_id)
+                return fallback
+            raise
         if self._is_cacheable_payload(payload, game_id):
             self._boxscore_cache.set(game_id, payload)
         elif self._is_reusable_unavailable_payload(payload, game_id):

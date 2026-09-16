@@ -16,6 +16,7 @@ from kbo_fans_backend.services.player_stats import PlayerStatsService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
+from kbo_fans_backend.utils.resilience import UpstreamBusyError
 from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.source_cache import KboSourceCache
 from kbo_fans_backend.utils.ttl_cache import TtlCache
@@ -133,6 +134,20 @@ class LineupService:
             daemon=True,
         ).start()
 
+    def _busy_fallback_lineup(self, game_id: str) -> Optional[dict[str, Any]]:
+        """Best available lineup when the upstream path is busy."""
+        cached = self._lineup_cache.get(game_id)
+        if self._has_ready_lineup(game_id, cached):
+            return cached
+        snapshot = self.snapshot_store.load_recent_payload(
+            self._RUNTIME_CACHE_NAMESPACE,
+            game_id,
+            self._STALE_RUNTIME_MAX_AGE_SECONDS,
+        )
+        if self._has_ready_lineup(game_id, snapshot):
+            return snapshot
+        return None
+
     def get_lineup(
         self,
         game_id: str,
@@ -163,10 +178,20 @@ class LineupService:
                 self._refresh_runtime_async(game_id)
                 return stale_snapshot
 
-        payload = self._singleflight.call(
-            f"lineup:{game_id}:{'force' if force_refresh else 'cached'}",
-            lambda: self._get_lineup_uncached(game_id, force_refresh=force_refresh),
-        )
+        try:
+            payload = self._singleflight.call(
+                f"lineup:{game_id}:{'force' if force_refresh else 'cached'}",
+                lambda: self._get_lineup_uncached(
+                    game_id,
+                    force_refresh=force_refresh,
+                ),
+            )
+        except UpstreamBusyError:
+            fallback = self._busy_fallback_lineup(game_id)
+            if fallback is not None:
+                logger.info("lineup busy fallback %s", game_id)
+                return fallback
+            raise
         if self._has_ready_lineup(game_id, payload):
             self._lineup_cache.set(game_id, payload)
         return payload

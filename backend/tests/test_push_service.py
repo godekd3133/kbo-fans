@@ -1910,7 +1910,12 @@ def test_resubscribe_registered_topics_rebuilds_followed_game_topics(tmp_path) -
         ),
         encoding="utf-8",
     )
-    registry = PushRegistry(str(registry_path))
+    registry = PushRegistry(
+        str(registry_path),
+        registration_now_provider=lambda: datetime(
+            2026, 6, 19, tzinfo=timezone.utc
+        ),
+    )
     service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
     messaging = FakeTopicMessaging()
     service._get_messaging = lambda: messaging

@@ -111,6 +111,7 @@
   - Boxscore adjacent game-id fallback is historical-only. Current/live boxscore must not borrow a previous game's player rows; return the empty official-unavailable state instead.
   - Current/live boxscore degrades on transient upstream failure to explicit `live_context`/`official_unavailable` payloads (not HTTP 5xx); past games keep failing loudly. Short negative caching of unavailable answers is allowed for current games only.
   - Cache and validated snapshot hits must not wait behind a date refresh lock; keep the serialized path for actual upstream refresh work only.
+  - On `UpstreamBusyError` (singleflight follower timeout/capacity), detail endpoints serve the last usable L1/runtime-snapshot payload instead of 503; only propagate 503 when nothing usable exists.
   - Home secondary aggregate providers should not be watched until after the first scoreboard data frame.
   - Home refresh timers should not be cancelled/restarted on unrelated rebuilds; reschedule only when interval or scoreboard signature changes.
   - Backend `/scoreboard/home` and `/scoreboard/compact` are lightweight summary paths. Do not call per-game scoreboard detail crawlers there; reserve detail crawling for full scoreboard and game detail.

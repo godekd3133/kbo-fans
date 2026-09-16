@@ -41,6 +41,14 @@
 - 원격 `/etc/kbo-fans/backend.env`의 `DATA_REQUEST_QUEUE_TIMEOUT_SECONDS`도 0.1→0.5로 수정 후 API 재시작(env pin이 코드 기본값을 덮는 것을 확인해 직접 반영).
 - 배포 후 프로덕션 로그에서 `on-demand live game warm finished`·`home scoreboard live state while refresh busy` 폴백 발화 확인.
 
+### 추가: singleflight busy 시 마지막 데이터 서빙 + push 회귀 테스트 수정(2026-09-16)
+
+- relay/boxscore/lineup의 `get_*`가 singleflight `UpstreamBusyError`(follower 대기 초과·용량 부족)일 때도 L1 캐시 → 런타임 스냅샷(≤10분 stale) 순으로 사용 가능한 마지막 데이터를 반환하도록 `_busy_fallback_*`를 추가 — 라이브 크롤 진행 중 읽기가 503 대신 마지막 데이터를 보고, 다음 폴링에서 갱신 데이터로 수렴한다. 사용 가능한 데이터가 전혀 없을 때만 503.
+- `get_game`(scoreboard)은 기존에 busy→스냅샷 폴백을 갖고 있어 대칭이 맞춰졌다.
+- 사전 실패 테스트 수정: `test_resubscribe_registered_topics_rebuilds_followed_game_topics`가 fixture `updatedAt`(2026-06-18)의 등록 TTL 만료로 날짜에 따라 실패하던 것을 `PushRegistry(registration_now_provider=...)` 고정 시계 주입으로 결정적으로 변경 — backend 전체 스위트 첫 완전 통과(754 passed, deselect 없음).
+- 신규 회귀 테스트 5건: relay/boxscore/lineup busy 시 캐시 서빙 + relay/boxscore 폴백 없을 때 busy 재전파.
+- 배포: release `20260916073229` — API·워커 active, health 200. 재시작 직후 콜드 버스트(relay/boxscore/lineup ×4, 12-way)에서 첫 웨이브 3건이 KBO 지연(~10s)만큼 걸렸지만 전부 200(이전 동일 조건은 503/504), 이후 웨이브 9건 전부 <0.21s.
+
 ## 2026-09-15: 당일 종료 스냅샷 재사용 폴백 경로 정렬 + 테스트 보강
 
 ### 변경
