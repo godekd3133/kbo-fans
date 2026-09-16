@@ -47,6 +47,15 @@ class LineupService:
     _OPTIONAL_ENRICHMENT_INLINE_BUDGET_SECONDS = 0.75
     _LINEUP_CACHE_TTL_SECONDS = 60
     _RUNTIME_CACHE_NAMESPACE = "runtime_lineup"
+    _STALE_RUNTIME_MAX_AGE_SECONDS = 600.0
+    # The boxscore companion only supplies an optional starter-name fallback;
+    # starter metadata already arrives on the shared main game list. Keep a
+    # short grace wait so a slow/failed boxscore cannot stall the lineup.
+    _BOXSCORE_COMPANION_WAIT_SECONDS = 1.0
+    _boxscore_companion_executor = concurrent.futures.ThreadPoolExecutor(
+        max_workers=4,
+        thread_name_prefix="lineup-boxscore-companion",
+    )
 
     def __init__(
         self,
@@ -85,6 +94,44 @@ class LineupService:
         # their immutable snapshot instead of fanning out lineup/boxscore/main
         # crawls on every cache expiry; live games are never marked.
         self._same_day_final_game_ids: set[str] = set()
+        self._stale_refresh_in_flight: set[str] = set()
+        self._stale_refresh_lock = threading.Lock()
+
+    def _refresh_runtime_async(self, game_id: str) -> None:
+        """Refresh a stale runtime snapshot through the shared singleflight.
+
+        Coalesces with any in-flight lineup refresh; failures are logged and
+        never affect the stale-served response.
+        """
+        with self._stale_refresh_lock:
+            if game_id in self._stale_refresh_in_flight:
+                return
+            self._stale_refresh_in_flight.add(game_id)
+
+        def run() -> None:
+            try:
+                self._singleflight.call(
+                    f"lineup:{game_id}:cached",
+                    lambda: self._get_lineup_uncached(
+                        game_id,
+                        force_refresh=False,
+                    ),
+                )
+            except Exception as error:
+                logger.info(
+                    "lineup stale runtime refresh failed %s (%s)",
+                    game_id,
+                    type(error).__name__,
+                )
+            finally:
+                with self._stale_refresh_lock:
+                    self._stale_refresh_in_flight.discard(game_id)
+
+        threading.Thread(
+            target=run,
+            name=f"stale-lineup-refresh-{game_id}",
+            daemon=True,
+        ).start()
 
     def get_lineup(
         self,
@@ -106,6 +153,15 @@ class LineupService:
                 self._lineup_cache.set(game_id, runtime_snapshot)
                 logger.info("lineup runtime snapshot hit %s", game_id)
                 return runtime_snapshot
+            stale_snapshot = self.snapshot_store.load_recent_payload(
+                self._RUNTIME_CACHE_NAMESPACE,
+                game_id,
+                self._STALE_RUNTIME_MAX_AGE_SECONDS,
+            )
+            if self._has_ready_lineup(game_id, stale_snapshot):
+                logger.info("lineup stale runtime snapshot hit %s", game_id)
+                self._refresh_runtime_async(game_id)
+                return stale_snapshot
 
         payload = self._singleflight.call(
             f"lineup:{game_id}:{'force' if force_refresh else 'cached'}",
@@ -135,30 +191,28 @@ class LineupService:
         ):
             return self._enrich_snapshot_if_missing_player_images(snapshot, game_id)
 
+        if self.boxscore_service is not None:
+            boxscore_loader = lambda: self.boxscore_service.get_boxscore(
+                game_id,
+                force_refresh=force_refresh,
+            )
+        else:
+            boxscore_loader = lambda: self.boxscore_crawler.get_boxscore(game_id)
+
         lineup_future = None
         boxscore_future = None
         main_future = None
         try:
-            with _lineup_executor(max_workers=3) as executor:
+            with _lineup_executor(max_workers=2) as executor:
                 lineup_future = executor.submit(self.lineup_crawler.get_lineup, game_id)
-                if self.boxscore_service is not None:
-                    boxscore_future = executor.submit(
-                        self.boxscore_service.get_boxscore,
-                        game_id,
-                        force_refresh=force_refresh,
-                    )
-                else:
-                    boxscore_future = executor.submit(
-                        self.boxscore_crawler.get_boxscore,
-                        game_id,
-                    )
                 main_future = executor.submit(self._get_main_game, game_id)
-                for future in concurrent.futures.as_completed(
-                    (lineup_future, boxscore_future)
-                ):
-                    future.result()
+                # Runs on a shared detached pool: a hung boxscore request must
+                # neither fail nor stall the lineup response. Its caches still
+                # warm when the companion call finishes in the background.
+                boxscore_future = self._boxscore_companion_executor.submit(
+                    boxscore_loader
+                )
                 lineup = lineup_future.result()
-                boxscore = boxscore_future.result()
                 main_game = main_future.result()
         except Exception:
             if lineup_future is not None:
@@ -175,8 +229,25 @@ class LineupService:
                 return snapshot
             raise
 
+        boxscore: Optional[dict[str, Any]]
+        try:
+            boxscore = boxscore_future.result(
+                timeout=self._BOXSCORE_COMPANION_WAIT_SECONDS
+            )
+        except Exception as error:
+            logger.warning(
+                "lineup boxscore companion degraded for %s: %s",
+                game_id,
+                error,
+            )
+            boxscore_future.cancel()
+            boxscore = None
+
         for side in ("away", "home"):
-            pitchers = boxscore[side]["pitchers"]
+            team_boxscore = boxscore.get(side) if isinstance(boxscore, dict) else None
+            pitchers = (
+                team_boxscore.get("pitchers") if isinstance(team_boxscore, dict) else None
+            ) or []
             starter = pitchers[0] if pitchers else None
             starter_id = self._starter_id(main_game, side)
             starter_name = self._starter_name(main_game, side) or (

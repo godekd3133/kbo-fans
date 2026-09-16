@@ -21,6 +21,7 @@ class RelayService:
     _RELAY_CACHE_TTL_SECONDS = 5
     _HISTORICAL_RELAY_INLINE_BUDGET_SECONDS = 0.75
     _RUNTIME_CACHE_NAMESPACE = "runtime_relay"
+    _STALE_RUNTIME_MAX_AGE_SECONDS = 600.0
 
     def __init__(
         self,
@@ -40,6 +41,46 @@ class RelayService:
         self._runtime_cache_max_age_seconds = max(0.0, float(configured_runtime_cache_age))
         self._relay_cache: TtlCache[str, dict[str, Any]] = TtlCache(self._RELAY_CACHE_TTL_SECONDS)
         self._singleflight: SingleFlight[str] = SingleFlight()
+        self._stale_refresh_in_flight: set[str] = set()
+        self._stale_refresh_lock = threading.Lock()
+
+    def _refresh_runtime_async(self, game_id: str) -> None:
+        """Refresh a stale runtime snapshot through the shared singleflight.
+
+        Coalesces with any in-flight relay refresh; failures are logged and
+        never affect the stale-served response.
+        """
+        with self._stale_refresh_lock:
+            if game_id in self._stale_refresh_in_flight:
+                return
+            self._stale_refresh_in_flight.add(game_id)
+
+        def run() -> None:
+            try:
+                self._singleflight.call(
+                    f"{game_id}:cached",
+                    lambda: self._get_relay_uncached(
+                        game_id,
+                        after=None,
+                        force_refresh=False,
+                        game=None,
+                    ),
+                )
+            except Exception as error:
+                logger.info(
+                    "relay stale runtime refresh failed %s (%s)",
+                    game_id,
+                    type(error).__name__,
+                )
+            finally:
+                with self._stale_refresh_lock:
+                    self._stale_refresh_in_flight.discard(game_id)
+
+        threading.Thread(
+            target=run,
+            name=f"stale-relay-refresh-{game_id}",
+            daemon=True,
+        ).start()
 
     def get_relay(
         self,
@@ -70,6 +111,15 @@ class RelayService:
                 self._relay_cache.set(game_id, runtime_snapshot)
                 logger.info("relay runtime snapshot hit %s", game_id)
                 return self._after(runtime_snapshot, after)
+            stale_snapshot = self.snapshot_store.load_recent_payload(
+                self._RUNTIME_CACHE_NAMESPACE,
+                game_id,
+                self._STALE_RUNTIME_MAX_AGE_SECONDS,
+            )
+            if self._has_full_relay_payload_for_game(game_id, stale_snapshot):
+                logger.info("relay stale runtime snapshot hit %s", game_id)
+                self._refresh_runtime_async(game_id)
+                return self._after(stale_snapshot, after)
 
         payload = self._singleflight.call(
             f"{game_id}:{'force' if force_refresh else 'cached'}",

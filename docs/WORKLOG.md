@@ -2,6 +2,45 @@
 
 ---
 
+## 2026-09-16: 라이브 경기 상세 로딩 신뢰성 개선(디그레이드·프리락·온디맨드 웜·prefetch)
+
+### 배경 / 측정
+
+- iOS에서 실시간 경기 상세 — 특히 문자중계→박스스코어 탭 전환 — 에서 빈 화면/스피너 장기화가 반복된다는 제보.
+- 프로덕션 실측 cold 경로: `game` 최대 ~5.0s, `boxscore` ~5.4s, `lineup` ~4.0s, `relay` ~1.7s. 웜 경로는 대부분 <0.5s — 캐시가 채워지기 전의 첫 진입이 문제였다.
+
+### 변경
+
+**백엔드**
+- `BoxscoreService`: 공식 크롤(`GetBoxScoreScroll`) 예외가 곧바로 500이 되던 경로를 degrade로 전환 — 비과거 경기는 shared live context(main list+relay 캐시)를 먼저 시도하고 실패 시 명시적 `official_unavailable`(reason `official_fetch_failed`)을 반환. 과거 경기는 여전히 실패를 올려 보낸다(정직한 5xx).
+- `BoxscoreService`: current 경기의 `official_unavailable` 응답을 8초간 재사용(`_UNAVAILABLE_CACHE_TTL_SECONDS`) — 공식 기록 공개 전 빠른 탭 전환·리프레시가 매번 전체 크롤을 반복하던 것을 차단. 과거 경기와 same-day-final 마커 경기는 제외.
+- `BoxscoreCrawler._relay_current_at_bat`: 공유 인증 relay 세션 락 대기를 0.3s로 제한 — relay 폴링이 세션을 잡고 있는 동안 박스스코어 응답이 2s+ 세션 대기로 늘어지는 경합 제거. `RelayCrawler.get_relay`에 `wait_timeout_seconds` 옵션 추가.
+- `LineupService`: boxscore companion fetch를 전용 공유 executor로 분리하고 1.0s grace wait — boxscore 실패/지연이 라인업 응답을 함께 죽이던 결합 제거. 선발 투수명은 shared main list(`T/B_PIT_P_NM`)가 이미 제공.
+- `ScoreboardService`: `get_game`/`get_scoreboard`/`get_home_scoreboard`/`get_compact_scoreboard`의 캐시·immutable 스냅샷 히트를 `_date_refresh_lock` 밖으로 이동 — 같은 날짜의 진행 중 리프레시 뒤에 읽기가 줄 서서 경기 상세 첫 진입이 지연/503 되던 경합 해소. same-day-final 마커는 프리락에서도 터미널 스냅샷 우선 순위를 유지.
+- `OnDemandLiveGameWarmer`(services/live_game_data.py): API 프로세스 내 사용자 트래픽 기반 워머. `GET /game/{id}`(status LIVE), `/relay`, `/boxscore`, `/lineup` 진입 시 경기당 15초 쿨다운으로 백그라운드 웜 1회 — cache-first(`force_refresh=False`)라 누락분만 채우고 워커 갱신 주기와 충돌하지 않는다. `LIVE_GAME_DATA_WARM_ENABLED` 게이트 공유.
+- `DATA_REQUEST_QUEUE_TIMEOUT_SECONDS` 기본값 0.1 → 0.5(및 env.example + 원격 `/etc/kbo-fans/backend.env` 동일 적용): 짧은 탭 전환 버스트가 슬롯 대기 100ms만에 503 되던 것을 완화.
+- stale-while-revalidate: game/relay/boxscore/lineup의 런타임 스냅샷이 fresh(60s) 윈도우를 지났지만 10분 이내면 즉시 서빙하고 백그라운드 단일 스레드가 기존 singleflight/락 경로로 갱신 — KBO 원천이 느릴 때(운영 실측 schedule/Main ~9s) 콜드 요청이 15s 데드라인까지 쌓여 503/504 되던 경로를 커버. stale 응답은 history로 저장되지 않고 L1에도 심지 않아 갱신 직후 fresh로 전환된다.
+- `_RUNTIME_GAME_STATUSES`에 `SCHEDULED` 추가 — 예정 경기 상세도 런타임 스냅샷으로 서빙(소스 캐시가 비어도 get_game이 schedule+main 크롤을 기다리지 않음). status 전환 지연은 요청 시 발화하는 백그라운드 갱신으로 상쇄.
+- 예정/취소/서스펜디드 경기: status가 먼저 확정되면 진행 중 공식 크롤을 detached로 두고 즉시 `official_unavailable` 반환 — 예정 경기 박스스코어 요청이 의미 없는 KBO POST 완료를 기다리지 않는다. status 조회 실패도 크롤 성공을 죽이지 않게 unknown 처리(둘 다 실패 시에만 에러 전파).
+
+**앱**
+- `game_detail_screen.dart`: LIVE/FINAL 상세 진입 시 `gameBoxscoreProvider`·`gameLineupProvider`를 `listenManual` 구독으로 미리 시작 — 탭 전환 시 콜드 fetch 대신 준비된 데이터로 즉시 렌더.
+- 상세 데이터 provider의 재시도 가능 HTTP 오류에 500 추가 — 백엔드 일시 5xx가 수동 재시도까지 오류 카드로 남지 않도록.
+
+### 검증
+
+- backend pytest 748 passed(기존 사전 실패 1건: `test_resubscribe_registered_topics_rebuilds_followed_game_topics` — clean tree에서도 동일하게 실패하는 날짜 의존 fixture, 이번 변경과 무관). stale-serve 회귀 테스트 2건 추가(boxscore·game).
+- `flutter analyze` 전체 clean.
+- 로컬 스모크(uvicorn, LIVE_GAME_DATA_WARM_ENABLED=true): 당일 예정 경기 12-way 동시 버스트( relay×4 + boxscore×4 + lineup×4 ) 전부 200 ~0.4s — 이전 코드에서는 같은 버스트가 100ms대 503을 4건 생성.
+- 종료 경기 웜 경로: relay 10ms·boxscore·lineup 3ms·`/scoreboard/home` 9ms.
+- 프로덕션 진단: KBO 원천이 인스턴스에서 schedule/Main ~9s로 느린 구간 관측 — 콜드 요청이 singleflight 10s 대기·15s 데드라인에 걸려 503/504 되는 것을 확인해 stale-while-revalidate 도입 근거로 사용.
+
+### 배포(2026-09-16)
+
+- `lightsail-deploy.sh --preserve-env --skip-caddy`로 release `20260916070838` 배포 — `kbo-fans-api`·`kbo-fans-sync-worker` 모두 active, `live_game_data_warmer` 사이클 정상 발화.
+- 원격 `/etc/kbo-fans/backend.env`의 `DATA_REQUEST_QUEUE_TIMEOUT_SECONDS`도 0.1→0.5로 수정 후 API 재시작(env pin이 코드 기본값을 덮는 것을 확인해 직접 반영).
+- 배포 후 프로덕션 로그에서 `on-demand live game warm finished`·`home scoreboard live state while refresh busy` 폴백 발화 확인.
+
 ## 2026-09-15: 당일 종료 스냅샷 재사용 폴백 경로 정렬 + 테스트 보강
 
 ### 변경

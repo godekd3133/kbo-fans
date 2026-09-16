@@ -347,11 +347,11 @@ def test_lineup_failure_does_not_wait_for_boxscore_future(tmp_path) -> None:
     assert str(errors[0]) == "lineup unavailable"
 
 
-def test_boxscore_failure_does_not_wait_for_lineup_future(tmp_path) -> None:
+def test_boxscore_failure_degrades_lineup_to_main_game_starters(tmp_path) -> None:
     barrier = threading.Barrier(2)
     lineup_started = threading.Event()
     lineup_release = threading.Event()
-    errors = []
+    result = {}
 
     class BlockingLineupCrawler:
         def get_lineup(self, game_id: str):
@@ -376,22 +376,27 @@ def test_boxscore_failure_does_not_wait_for_lineup_future(tmp_path) -> None:
 
     def request() -> None:
         try:
-            service.get_lineup("20260827LGOB0")
+            result["payload"] = service.get_lineup("20260827LGOB0")
         except BaseException as error:
-            errors.append(error)
+            result["error"] = error
 
     thread = threading.Thread(target=request)
     thread.start()
     assert lineup_started.wait(timeout=1)
     try:
         thread.join(timeout=0.2)
-        assert not thread.is_alive()
+        assert thread.is_alive()
     finally:
         lineup_release.set()
         thread.join(timeout=2)
 
-    assert len(errors) == 1
-    assert str(errors[0]) == "boxscore unavailable"
+    assert not thread.is_alive()
+    assert "error" not in result
+    payload = result["payload"]
+    assert payload["away"]["lineup"][0]["name"] == "홍창기"
+    # Starter metadata survives without the boxscore companion via the shared
+    # main game list.
+    assert payload["away"]["starter"]["name"] == "톨허스트"
 
 
 def test_historical_lineup_does_not_block_on_optional_player_enrichment(tmp_path) -> None:

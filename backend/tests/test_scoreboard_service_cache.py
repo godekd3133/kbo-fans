@@ -1913,3 +1913,55 @@ def test_compact_scoreboard_keeps_non_live_today_cached_past_live_ttl(
     monotonic_now[0] += 100.0
     service.get_compact_scoreboard(today, my_team="HT")
     assert schedule.calls == 2
+
+
+def test_stale_runtime_game_snapshot_served_and_background_refresh_updates(
+    tmp_path: Path,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+
+    today = current_kbo_date().isoformat()
+    game_id = f"{today.replace('-', '')}HTLG0"
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    snapshot_store.save(
+        "runtime_games",
+        game_id,
+        {"gameId": game_id, "status": "LIVE", "marker": "stale"},
+    )
+    path = snapshot_store._path_for("runtime_games", game_id)
+    record = json.loads(path.read_text())
+    record["savedAt"] = (
+        datetime.now(timezone.utc) - timedelta(seconds=120)
+    ).isoformat()
+    path.write_text(json.dumps(record))
+
+    refreshed = threading.Event()
+
+    class RefreshingMainCrawler(_MutableMainCrawler):
+        def get_kbo_game_list(self, date: str):
+            refreshed.set()
+            return super().get_kbo_game_list(date)
+
+    main = RefreshingMainCrawler(game_id)
+    main.status = "2"
+    service = ScoreboardService(
+        main_crawler=main,
+        schedule_crawler=_MutableScheduleCrawler(game_id),
+        scoreboard_crawler=_TrackingScoreboardCrawler(),
+        snapshot_store=snapshot_store,
+    )
+
+    payload = service.get_game(game_id)
+
+    assert payload["marker"] == "stale"
+    assert refreshed.wait(timeout=5)
+    deadline = time.monotonic() + 5
+    fresh = None
+    while time.monotonic() < deadline:
+        fresh = snapshot_store.load_recent_payload("runtime_games", game_id, 60)
+        if isinstance(fresh, dict) and fresh.get("marker") is None:
+            break
+        time.sleep(0.05)
+    assert isinstance(fresh, dict)
+    assert fresh.get("status") == "LIVE"
+    assert "marker" not in fresh

@@ -139,7 +139,7 @@ def get_settings() -> Settings:
         data_request_max_concurrency=_get_int("DATA_REQUEST_MAX_CONCURRENCY", 8),
         data_request_queue_timeout_seconds=_get_float(
             "DATA_REQUEST_QUEUE_TIMEOUT_SECONDS",
-            0.1,
+            0.5,
         ),
         live_game_data_cache_max_age_seconds=_get_int(
             "LIVE_GAME_DATA_CACHE_MAX_AGE_SECONDS",

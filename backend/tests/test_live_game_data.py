@@ -382,3 +382,74 @@ def test_live_game_data_warmer_adapts_interval_without_overlap() -> None:
     assert warmer.interval_for_cycle(0.5) == 15
     assert warmer.interval_for_cycle(20) == 30
     assert warmer.interval_for_cycle(100) == 60
+
+
+def test_on_demand_live_game_warmer_rate_limits_and_dedupes() -> None:
+    import time as _time
+
+    from kbo_fans_backend.services.live_game_data import OnDemandLiveGameWarmer
+
+    calls = []
+    started = threading.Event()
+    release = threading.Event()
+
+    class _RecordingWarmService:
+        def warm_games(self, games, *, force_refresh=True):
+            calls.append((list(games), force_refresh))
+            started.set()
+            release.wait(timeout=2)
+            return {}
+
+    warmer = OnDemandLiveGameWarmer(
+        _RecordingWarmService(),
+        cooldown_seconds=60.0,
+    )
+
+    assert warmer.maybe_warm("20260916KTHH0") is True
+    assert started.wait(timeout=1)
+    # In-flight dedupe
+    assert warmer.maybe_warm("20260916KTHH0") is False
+    release.set()
+    _time.sleep(0.05)
+    # Cooldown gate after completion
+    assert warmer.maybe_warm("20260916KTHH0") is False
+    assert calls == [([{"gameId": "20260916KTHH0", "status": "LIVE"}], False)]
+
+
+def test_on_demand_live_game_warmer_disabled_gate() -> None:
+    from kbo_fans_backend.services.live_game_data import OnDemandLiveGameWarmer
+
+    class _NoopWarmService:
+        def warm_games(self, games, *, force_refresh=True):
+            raise AssertionError("warm_games should not run while disabled")
+
+    warmer = OnDemandLiveGameWarmer(
+        _NoopWarmService(),
+        enabled=lambda: False,
+    )
+
+    assert warmer.maybe_warm("20260916KTHH0") is False
+
+
+def test_on_demand_live_game_warmer_recovers_from_warm_errors() -> None:
+    import time as _time
+
+    from kbo_fans_backend.services.live_game_data import OnDemandLiveGameWarmer
+
+    calls = []
+
+    class _FailingWarmService:
+        def warm_games(self, games, *, force_refresh=True):
+            calls.append(list(games))
+            raise RuntimeError("upstream busy")
+
+    warmer = OnDemandLiveGameWarmer(_FailingWarmService(), cooldown_seconds=0.01)
+
+    assert warmer.maybe_warm("20260916KTHH0") is True
+    for _ in range(50):
+        if calls:
+            break
+        _time.sleep(0.02)
+    _time.sleep(0.05)
+    # The in-flight slot must be released so a later warm can retry.
+    assert warmer.maybe_warm("20260916KTHH0") is True

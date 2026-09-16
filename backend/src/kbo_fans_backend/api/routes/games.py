@@ -10,6 +10,7 @@ from kbo_fans_backend.api.routes.scoreboard import trusted_force_refresh
 from kbo_fans_backend.api.runtime_services import (
     boxscore_service,
     lineup_service,
+    live_game_detail_warmer,
     relay_service,
     schedule_service,
     scoreboard_service,
@@ -130,6 +131,12 @@ def get_game(
             "youtubeVideos": [],
         }
 
+    if str(game.get("status") or "").upper() == "LIVE":
+        # Opening a live game strongly predicts relay/boxscore/lineup tab
+        # views; start one bounded background warm so the next tab switch
+        # reads the shared runtime snapshots instead of cold-crawling.
+        live_game_detail_warmer.maybe_warm(game_id)
+
     return ApiEnvelope.success_response({"game": game})
 
 
@@ -180,16 +187,18 @@ def get_relay(
     x_kbo_push_sync_secret: Optional[str] = Header(default=None),
 ) -> ApiEnvelope[dict]:
     _validate_game_id(game_id)
-    return ApiEnvelope.success_response(
-        relay_service.get_relay(
-            game_id,
-            after=after,
-            force_refresh=trusted_force_refresh(
-                forceRefresh,
-                x_kbo_push_sync_secret,
-            ),
-        )
+    payload = relay_service.get_relay(
+        game_id,
+        after=after,
+        force_refresh=trusted_force_refresh(
+            forceRefresh,
+            x_kbo_push_sync_secret,
+        ),
     )
+    # Active relay polling means a user is watching this game; keep sibling
+    # detail payloads warm so boxscore/lineup tab switches are instant.
+    live_game_detail_warmer.maybe_warm(game_id)
+    return ApiEnvelope.success_response(payload)
 
 
 @router.get("/boxscore", response_model=ApiEnvelope[BoxscorePayload])
@@ -197,7 +206,9 @@ def get_boxscore(
     game_id: str = Path(..., min_length=8, max_length=32, pattern=r"^[A-Za-z0-9_-]+$"),
 ) -> ApiEnvelope[BoxscorePayload]:
     _validate_game_id(game_id)
-    return ApiEnvelope.success_response(boxscore_service.get_boxscore(game_id))
+    payload = boxscore_service.get_boxscore(game_id)
+    live_game_detail_warmer.maybe_warm(game_id)
+    return ApiEnvelope.success_response(payload)
 
 
 @router.get("/lineup", response_model=ApiEnvelope[dict])
@@ -205,4 +216,6 @@ def get_lineup(
     game_id: str = Path(..., min_length=8, max_length=32, pattern=r"^[A-Za-z0-9_-]+$"),
 ) -> ApiEnvelope[dict]:
     _validate_game_id(game_id)
-    return ApiEnvelope.success_response(lineup_service.get_lineup(game_id))
+    payload = lineup_service.get_lineup(game_id)
+    live_game_detail_warmer.maybe_warm(game_id)
+    return ApiEnvelope.success_response(payload)

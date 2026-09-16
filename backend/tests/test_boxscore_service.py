@@ -1,7 +1,9 @@
 import concurrent.futures
+import json
 import threading
+import time
 from copy import deepcopy
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -15,6 +17,7 @@ class _StubBoxscoreCrawler:
     def __init__(self, payloads):
         self.payloads = payloads
         self.calls = []
+        self.live_context_calls = 0
 
     def get_boxscore(self, game_id: str):
         self.calls.append(game_id)
@@ -22,6 +25,10 @@ class _StubBoxscoreCrawler:
         if isinstance(payload, Exception):
             raise payload
         return deepcopy(payload)
+
+    def get_live_context_boxscore(self, game_id: str):
+        self.live_context_calls += 1
+        return None
 
 
 class _StubScheduleService:
@@ -525,8 +532,129 @@ def test_current_live_failure_does_not_fall_back_to_snapshot(tmp_path) -> None:
         snapshot_store=snapshot_store,
     )
 
-    with pytest.raises(RuntimeError, match="boxscore unavailable"):
-        service.get_boxscore(game_id)
+    payload = service.get_boxscore(game_id)
+
+    assert payload["availability"] == "official_unavailable"
+    assert payload["officialAvailable"] is False
+    assert payload["unavailableReason"] == "official_fetch_failed"
+    assert snapshot_store.load_payload("runtime_boxscore", game_id) is None
+
+
+def test_current_live_failure_serves_live_context_when_available(tmp_path) -> None:
+    today = current_kbo_date()
+    game_id = f"{today:%Y%m%d}SKWO0"
+    crawler = _StubBoxscoreCrawler({game_id: RuntimeError("boxscore unavailable")})
+
+    class LiveContextStub(_StubBoxscoreCrawler):
+        def get_live_context_boxscore(self, requested_game_id: str):
+            self.live_context_calls += 1
+            return _live_context_payload(requested_game_id)
+
+    crawler = LiveContextStub({game_id: RuntimeError("boxscore unavailable")})
+    service = BoxscoreService(
+        crawler=crawler,
+        schedule_service=_StubScheduleService({game_id: "LIVE"}),
+        player_stats_service=_EmptyPlayerStatsService(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    payload = service.get_boxscore(game_id)
+
+    assert payload["availability"] == "live_context"
+    assert payload["liveContextAvailable"] is True
+
+
+def test_current_unavailable_boxscore_is_reused_briefly(tmp_path) -> None:
+    today = current_kbo_date()
+    game_id = f"{today:%Y%m%d}SKWO0"
+    crawler = _StubBoxscoreCrawler({game_id: _unavailable_payload(game_id)})
+    service = BoxscoreService(
+        crawler=crawler,
+        schedule_service=_StubScheduleService({game_id: "LIVE"}),
+        player_stats_service=_EmptyPlayerStatsService(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    first = service.get_boxscore(game_id)
+    second = service.get_boxscore(game_id)
+
+    assert first["availability"] == "official_unavailable"
+    assert second["availability"] == "official_unavailable"
+    assert crawler.calls == [game_id]
+
+
+def test_stale_runtime_snapshot_served_and_background_refresh_updates(
+    tmp_path,
+) -> None:
+    today = current_kbo_date()
+    game_id = f"{today:%Y%m%d}KTLG0"
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path))
+    snapshot_store.save(
+        "runtime_boxscore",
+        game_id,
+        _official_payload(game_id, batter="stale"),
+    )
+    # Age the runtime entry past the fresh window but within the stale bound.
+    path = snapshot_store._path_for("runtime_boxscore", game_id)
+    record = json.loads(path.read_text())
+    record["savedAt"] = (
+        datetime.now(timezone.utc) - timedelta(seconds=120)
+    ).isoformat()
+    path.write_text(json.dumps(record))
+
+    refreshed = threading.Event()
+
+    class RefreshingCrawler(_StubBoxscoreCrawler):
+        def get_boxscore(self, requested_game_id: str):
+            refreshed.set()
+            return super().get_boxscore(requested_game_id)
+
+    crawler = RefreshingCrawler(
+        {game_id: _official_payload(game_id, batter="fresh")}
+    )
+    service = BoxscoreService(
+        crawler=crawler,
+        schedule_service=_StubScheduleService({game_id: "LIVE"}),
+        player_stats_service=_EmptyPlayerStatsService(),
+        snapshot_store=snapshot_store,
+    )
+
+    payload = service.get_boxscore(game_id)
+
+    assert payload["away"]["batters"][0]["name"] == "stale"
+    assert refreshed.wait(timeout=5)
+    deadline = time.monotonic() + 5
+    fresh = None
+    while time.monotonic() < deadline:
+        fresh = snapshot_store.load_recent_payload(
+            "runtime_boxscore", game_id, 60
+        )
+        if (
+            isinstance(fresh, dict)
+            and fresh["away"]["batters"][0]["name"] == "fresh"
+        ):
+            break
+        time.sleep(0.05)
+    assert isinstance(fresh, dict)
+    assert fresh["away"]["batters"][0]["name"] == "fresh"
+
+
+def test_unavailable_boxscore_is_not_reused_for_past_game(tmp_path) -> None:
+    game_id = "20260330KTLG0"
+    crawler = _StubBoxscoreCrawler({game_id: _unavailable_payload(game_id)})
+    service = BoxscoreService(
+        crawler=crawler,
+        schedule_service=_StubScheduleService({game_id: "FINAL"}),
+        player_stats_service=_EmptyPlayerStatsService(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    first = service.get_boxscore(game_id)
+    second = service.get_boxscore(game_id)
+
+    assert first["availability"] == "official_unavailable"
+    assert second["availability"] == "official_unavailable"
+    assert crawler.calls == [game_id, game_id]
 
 
 def test_live_context_stays_explicit_and_is_not_snapshotted(tmp_path) -> None:

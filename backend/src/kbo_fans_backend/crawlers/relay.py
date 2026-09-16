@@ -33,8 +33,18 @@ class RelayCrawler(BaseCrawler):
             else max(0.1, min(float(self.timeout), 2.0))
         )
 
-    def get_relay(self, game_id: str) -> dict[str, Any]:
-        acquired = self._session_lock.acquire(timeout=self._lock_wait_timeout_seconds)
+    def get_relay(
+        self,
+        game_id: str,
+        *,
+        wait_timeout_seconds: Optional[float] = None,
+    ) -> dict[str, Any]:
+        wait_timeout = (
+            self._lock_wait_timeout_seconds
+            if wait_timeout_seconds is None
+            else max(0.0, wait_timeout_seconds)
+        )
+        acquired = self._session_lock.acquire(timeout=wait_timeout)
         if not acquired:
             raise UpstreamBusyError("relay session is busy")
         try:

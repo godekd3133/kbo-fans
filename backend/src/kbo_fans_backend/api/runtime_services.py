@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.crawlers.main import MainCrawler
 from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
 from kbo_fans_backend.services.boxscore import BoxscoreService
 from kbo_fans_backend.services.home import HomeService
 from kbo_fans_backend.services.lineup import LineupService
+from kbo_fans_backend.services.live_game_data import (
+    LiveGameDataWarmService,
+    OnDemandLiveGameWarmer,
+)
 from kbo_fans_backend.services.player_stats import PlayerStatsService
 from kbo_fans_backend.services.records_overview import RecordsOverviewService
 from kbo_fans_backend.services.relay import RelayService
@@ -65,4 +70,19 @@ lineup_service = LineupService(
     main_source=_shared_main_source,
     player_stats_service=player_stats_service,
     boxscore_service=boxscore_service,
+)
+
+# API-process on-demand warmer: user traffic on a live game primes the shared
+# runtime snapshots for relay/boxscore/lineup so a following tab switch does
+# not pay a cold upstream crawl. The worker's LiveGameDataWarmer keeps its
+# own force-refresh cadence; this only fills cold gaps on demand.
+_live_game_warm_service = LiveGameDataWarmService(
+    scoreboard_service=scoreboard_service,
+    relay_service=relay_service,
+    boxscore_service=boxscore_service,
+    lineup_service=lineup_service,
+)
+live_game_detail_warmer = OnDemandLiveGameWarmer(
+    _live_game_warm_service,
+    enabled=lambda: get_settings().live_game_data_warm_enabled,
 )

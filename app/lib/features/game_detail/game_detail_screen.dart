@@ -379,6 +379,8 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
   String? _relayProviderStartedForGameId;
   String? _detailDataProviderStartedKey;
   String? _detailDataRetryKey;
+  final List<ProviderSubscription<AsyncValue<Object?>>>
+  _detailDataPrefetchSubs = <ProviderSubscription<AsyncValue<Object?>>>[];
   late final TabController _tabController;
   final ScrollController _outerScrollController = ScrollController();
 
@@ -399,6 +401,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     _startRefreshTimer();
     _scheduleRelayProviderStart();
     _scheduleVisibleDetailProviderStart();
+    _scheduleDetailDataPrefetch();
   }
 
   @override
@@ -424,11 +427,13 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
         _relayProviderStartedForGameId = null;
         _relayRetryTimer?.cancel();
         _relayRetryTimer = null;
+        _clearDetailDataPrefetchSubs();
       }
       _refreshTimer?.cancel();
       _startRefreshTimer();
       unawaited(_loadFollowState());
       _scheduleRelayProviderStart();
+      _scheduleDetailDataPrefetch();
     }
     _warmHighlightInfoForFinalGame();
   }
@@ -497,6 +502,42 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     if (widget.game.status == GameStatus.live) {
       unawaited(_refreshGameDetail(queueIfBusy: true));
     }
+  }
+
+  void _scheduleDetailDataPrefetch() {
+    final status = widget.game.status;
+    if (status != GameStatus.live && status != GameStatus.final_) {
+      return;
+    }
+
+    final gameId = widget.gameId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.gameId != gameId) {
+        return;
+      }
+      _prefetchDetailData(gameId);
+    });
+  }
+
+  void _prefetchDetailData(String gameId) {
+    // Keep boxscore/lineup providers alive while the detail screen is open:
+    // a later tab switch then renders prefetched data instead of a cold
+    // spinner, and the subscriptions also act as a background warm trigger
+    // for the backend runtime caches.
+    _clearDetailDataPrefetchSubs();
+    _detailDataPrefetchSubs.add(
+      ref.listenManual(gameBoxscoreProvider(gameId), (_, _) {}),
+    );
+    _detailDataPrefetchSubs.add(
+      ref.listenManual(gameLineupProvider(gameId), (_, _) {}),
+    );
+  }
+
+  void _clearDetailDataPrefetchSubs() {
+    for (final sub in _detailDataPrefetchSubs) {
+      sub.close();
+    }
+    _detailDataPrefetchSubs.clear();
   }
 
   void _scheduleRelayProviderStart() {
@@ -625,7 +666,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
         return true;
       case DioExceptionType.badResponse:
         return switch (error.response?.statusCode) {
-          408 || 429 || 502 || 503 || 504 => true,
+          408 || 429 || 500 || 502 || 503 || 504 => true,
           _ => false,
         };
       case DioExceptionType.badCertificate:
@@ -1093,6 +1134,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     _refreshTimer?.cancel();
     _relayRetryTimer?.cancel();
     _cancelDetailDataRetry();
+    _clearDetailDataPrefetchSubs();
     _outerScrollController.dispose();
     _tabController.removeListener(_handleTabChanged);
     _tabController.dispose();

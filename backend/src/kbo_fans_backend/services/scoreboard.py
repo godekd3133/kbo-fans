@@ -38,7 +38,13 @@ class ScoreboardService:
     _DATE_REFRESH_LOCK_STRIPES = 32
     _TERMINAL_STATUSES = frozenset({"FINAL", "CANCELLED"})
     _RUNTIME_GAME_CACHE_NAMESPACE = "runtime_games"
-    _RUNTIME_GAME_STATUSES = frozenset({"LIVE", "FINAL", "CANCELLED", "SUSPENDED"})
+    _RUNTIME_GAME_STATUSES = frozenset(
+        {"LIVE", "FINAL", "CANCELLED", "SUSPENDED", "SCHEDULED"}
+    )
+    # Beyond the fresh window, a still-parseable runtime snapshot is better
+    # than making the user wait behind a slow upstream refresh. Stale hits
+    # trigger a background refresh and are never persisted as history.
+    _STALE_RUNTIME_MAX_AGE_SECONDS = 600.0
 
     def __init__(
         self,
@@ -85,6 +91,8 @@ class ScoreboardService:
         self._singleflight: SingleFlight[str] = SingleFlight()
         self._same_day_final_game_ids: set[str] = set()
         self._same_day_final_scoreboard_dates: set[str] = set()
+        self._stale_refresh_in_flight: set[str] = set()
+        self._stale_refresh_lock = threading.Lock()
         self._date_refresh_locks = tuple(
             threading.Lock() for _ in range(self._DATE_REFRESH_LOCK_STRIPES)
         )
@@ -108,6 +116,30 @@ class ScoreboardService:
     ) -> dict[str, Any]:
         started_at = time.perf_counter()
         date = self._normalize_date(date)
+        if not force_refresh:
+            # Cache and immutable snapshot hits do not need the date refresh
+            # lock; taking it here would make the hot read path queue behind
+            # an in-flight upstream refresh for the same date.
+            if self._is_historical_date(date):
+                snapshot = self.snapshot_store.load_payload("scoreboard", date)
+                if self._can_use_historical_scoreboard_snapshot(date, snapshot):
+                    logger.info("scoreboard snapshot hit %s", date)
+                    return snapshot
+            else:
+                if date in self._same_day_final_scoreboard_dates:
+                    # Verified all-final dates prefer the immutable snapshot
+                    # over a possibly older live-state cache entry, mirroring
+                    # the serialized path.
+                    snapshot = self.snapshot_store.load_payload("scoreboard", date)
+                    if self._can_use_terminal_scoreboard_snapshot(date, snapshot):
+                        logger.info(
+                            "scoreboard same-day final snapshot hit %s", date
+                        )
+                        return snapshot
+                cached = self._scoreboard_cache.get(date)
+                if cached is not None:
+                    logger.info("scoreboard cache hit %s", date)
+                    return cached
         try:
             with self._date_refresh_lock(date):
                 return self._get_scoreboard_serialized(
@@ -296,6 +328,41 @@ class ScoreboardService:
         force_refresh: bool = False,
     ) -> dict[str, Any]:
         date = self._normalize_date(date)
+        if not force_refresh:
+            if self._is_historical_date(date):
+                snapshot = self.snapshot_store.load_payload("scoreboard", date)
+                if self._can_use_historical_scoreboard_snapshot(date, snapshot):
+                    return {
+                        "date": snapshot["date"],
+                        "games": [
+                            self._strip_home_payload(game)
+                            for game in snapshot["games"]
+                        ],
+                    }
+            else:
+                if date in self._same_day_final_scoreboard_dates:
+                    snapshot = self.snapshot_store.load_payload("scoreboard", date)
+                    if self._can_use_terminal_scoreboard_snapshot(date, snapshot):
+                        logger.info(
+                            "home scoreboard same-day final snapshot hit %s",
+                            date,
+                        )
+                        return {
+                            "date": snapshot["date"],
+                            "games": [
+                                self._strip_home_payload(game)
+                                for game in snapshot["games"]
+                            ],
+                        }
+                cached = self._home_scoreboard_cache.get(date)
+                if cached is not None:
+                    logger.info("home scoreboard cache hit %s", date)
+                    return cached
+                live_state = self._load_live_home_scoreboard(date)
+                if live_state is not None:
+                    logger.info("home scoreboard live state hit %s", date)
+                    self._home_scoreboard_cache.set(date, live_state)
+                    return live_state
         try:
             with self._date_refresh_lock(date):
                 return self._get_home_scoreboard_serialized(
@@ -538,11 +605,17 @@ class ScoreboardService:
     ) -> dict[str, Any]:
         date = self._normalize_date(date)
         my_team = (my_team or "").strip() or None
+        cache_key = f"{date}:{my_team or '-'}"
+        # The compact cache is the widget/live-activity hot path; a hit should
+        # not queue behind an in-flight full scoreboard refresh for the date.
+        cached = self._compact_scoreboard_cache.get(cache_key)
+        if cached is not None:
+            logger.info("compact scoreboard cache hit %s", cache_key)
+            return cached
         try:
             with self._date_refresh_lock(date):
                 return self._get_compact_scoreboard_serialized(date, my_team)
         except UpstreamBusyError:
-            cache_key = f"{date}:{my_team or '-'}"
             cached = self._compact_scoreboard_cache.get(cache_key)
             if cached is not None:
                 logger.info("compact scoreboard fresh cache while refresh busy %s", cache_key)
@@ -698,6 +771,49 @@ class ScoreboardService:
         if len(game_id) < 8:
             return None
         date = f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
+        if not force_refresh:
+            # Serve hits without the date refresh lock so a game detail open
+            # is not queued behind an in-flight scoreboard refresh for the
+            # same date (the dominant iOS "blank detail" wait during games).
+            if self._is_historical_date(date):
+                snapshot = self.snapshot_store.load_payload("games", game_id)
+                if self._can_use_historical_game_snapshot(game_id, snapshot):
+                    return snapshot
+            else:
+                if game_id in self._same_day_final_game_ids:
+                    # Verified-final games prefer the immutable snapshot over
+                    # the process cache, mirroring the serialized path.
+                    snapshot = self.snapshot_store.load_payload("games", game_id)
+                    if self._can_use_terminal_game_snapshot(game_id, snapshot):
+                        logger.info("game same-day final snapshot hit %s", game_id)
+                        return snapshot
+                cached = self._game_cache.get(game_id)
+                if cached is not None:
+                    return cached
+                runtime_snapshot = self.snapshot_store.load_recent_payload(
+                    self._RUNTIME_GAME_CACHE_NAMESPACE,
+                    game_id,
+                    self._runtime_cache_max_age_seconds,
+                )
+                if self._is_valid_runtime_game_snapshot(game_id, runtime_snapshot):
+                    self._game_cache.set(
+                        game_id,
+                        runtime_snapshot,
+                        ttl_seconds=self._scoreboard_cache_ttl_seconds(
+                            date, [runtime_snapshot]
+                        ),
+                    )
+                    logger.info("game runtime snapshot hit %s", game_id)
+                    return runtime_snapshot
+                stale_snapshot = self.snapshot_store.load_recent_payload(
+                    self._RUNTIME_GAME_CACHE_NAMESPACE,
+                    game_id,
+                    self._STALE_RUNTIME_MAX_AGE_SECONDS,
+                )
+                if self._is_valid_runtime_game_snapshot(game_id, stale_snapshot):
+                    logger.info("game stale runtime snapshot hit %s", game_id)
+                    self._refresh_game_runtime_async(game_id)
+                    return stale_snapshot
         try:
             with self._date_refresh_lock(date):
                 return self._get_game_serialized(
@@ -856,6 +972,41 @@ class ScoreboardService:
             not self._is_historical_date(date)
             and game.get("status") in self._RUNTIME_GAME_STATUSES
         )
+
+    def _refresh_game_runtime_async(self, game_id: str) -> None:
+        """Refresh a stale runtime snapshot in the background.
+
+        Runs through the normal serialized path so it coalesces with any
+        in-flight refresh; failures are logged and never affect the request
+        that served the stale payload.
+        """
+        with self._stale_refresh_lock:
+            if game_id in self._stale_refresh_in_flight:
+                return
+            self._stale_refresh_in_flight.add(game_id)
+
+        def run() -> None:
+            date = f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
+            try:
+                with self._date_refresh_lock(date):
+                    self._get_game_serialized(game_id, force_refresh=False)
+            except UpstreamBusyError:
+                pass
+            except Exception as error:
+                logger.info(
+                    "game stale runtime refresh failed %s (%s)",
+                    game_id,
+                    type(error).__name__,
+                )
+            finally:
+                with self._stale_refresh_lock:
+                    self._stale_refresh_in_flight.discard(game_id)
+
+        threading.Thread(
+            target=run,
+            name=f"stale-game-refresh-{game_id}",
+            daemon=True,
+        ).start()
 
     @classmethod
     def _is_valid_runtime_game_snapshot(

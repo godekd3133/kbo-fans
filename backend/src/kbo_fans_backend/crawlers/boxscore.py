@@ -118,6 +118,17 @@ class BoxscoreCrawler(BaseCrawler):
             reason=reason,
         )
 
+    def get_live_context_boxscore(self, game_id: str) -> Optional[dict[str, Any]]:
+        """Best-effort degraded boxscore built from shared live sources.
+
+        Returns ``None`` when the main game list does not mark the game as
+        live or no displayable context rows can be produced. Never raises.
+        """
+        try:
+            return self._live_context_boxscore(game_id)
+        except Exception:
+            return None
+
     def _live_context_boxscore(self, game_id: str) -> Optional[dict[str, Any]]:
         main_game = self._main_game_for_game(game_id)
         if not main_game or str(main_game.get("GAME_STATE_SC") or "") != "2":
@@ -226,7 +237,11 @@ class BoxscoreCrawler(BaseCrawler):
             except Exception:
                 return None
         try:
-            relay = relay_crawler.get_relay(game_id)
+            # The shared authenticated session is usually held by an active
+            # relay poll or warm cycle. The current-at-bat row is optional
+            # garnish for the live-context boxscore, so only a short wait is
+            # justified; a busy session degrades to main-list names only.
+            relay = relay_crawler.get_relay(game_id, wait_timeout_seconds=0.3)
         except Exception:
             return None
         current_at_bat = relay.get("currentAtBat") if isinstance(relay, dict) else None

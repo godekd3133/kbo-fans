@@ -4,7 +4,7 @@ import concurrent.futures
 import logging
 import threading
 import time
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Optional
 
 from kbo_fans_backend.services.boxscore import BoxscoreService
 from kbo_fans_backend.services.lineup import LineupService
@@ -40,7 +40,12 @@ class LiveGameDataWarmService:
         self._finalized_game_ids: set[str] = set()
         self._state_lock = threading.Lock()
 
-    def warm_games(self, games: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    def warm_games(
+        self,
+        games: Iterable[dict[str, Any]],
+        *,
+        force_refresh: bool = True,
+    ) -> dict[str, Any]:
         unique_games: list[dict[str, Any]] = []
         seen: set[str] = set()
         for game in games:
@@ -61,7 +66,9 @@ class LiveGameDataWarmService:
             status = str(game.get("status") or "").strip().upper()
             if status == self._LIVE_STATUS:
                 live_count += 1
-                results.append(self._warm_one(game_id, status, force_refresh=True))
+                results.append(
+                    self._warm_one(game_id, status, force_refresh=force_refresh)
+                )
                 continue
 
             if status != self._FINAL_STATUS:
@@ -72,7 +79,7 @@ class LiveGameDataWarmService:
             if already_finalized:
                 continue
 
-            result = self._warm_one(game_id, status, force_refresh=True)
+            result = self._warm_one(game_id, status, force_refresh=force_refresh)
             if self._is_complete_finalization(result):
                 with self._state_lock:
                     self._finalized_game_ids.add(game_id)
@@ -266,3 +273,86 @@ class LiveGameDataWarmService:
                 "errorType": type(error).__name__,
             }
         )
+
+
+class OnDemandLiveGameWarmer:
+    """Rate-limits API-triggered live game detail warming.
+
+    User traffic (game detail open, relay polling, tab switches) is the
+    warm trigger: the first request for a game that looks live fires one
+    background warm that fills the shared runtime snapshots, so a following
+    boxscore/lineup tab switch does not pay a cold upstream crawl. Warm calls
+    are cache-first — the worker's force refresh cadence stays responsible
+    for freshness; this only covers cold gaps and worker downtime.
+    """
+
+    def __init__(
+        self,
+        warm_service: LiveGameDataWarmService,
+        *,
+        cooldown_seconds: float = 15.0,
+        enabled: Optional[Callable[[], bool]] = None,
+    ) -> None:
+        if cooldown_seconds <= 0:
+            raise ValueError("on-demand warm cooldown must be positive")
+        self._warm_service = warm_service
+        self._cooldown_seconds = float(cooldown_seconds)
+        self._enabled = enabled
+        self._lock = threading.Lock()
+        self._in_flight: set[str] = set()
+        self._last_started: dict[str, float] = {}
+
+    def maybe_warm(self, game_id: str) -> bool:
+        """Start a background warm for ``game_id`` when due. Returns True if one started."""
+        if self._enabled is not None and not self._enabled():
+            return False
+        now = time.monotonic()
+        with self._lock:
+            if game_id in self._in_flight:
+                return False
+            if now - self._last_started.get(game_id, 0.0) < self._cooldown_seconds:
+                return False
+            self._in_flight.add(game_id)
+            self._last_started[game_id] = now
+            # Bound bookkeeping: drop the oldest tracked starts.
+            if len(self._last_started) > 128:
+                oldest = sorted(self._last_started, key=self._last_started.get)[:64]
+                for key in oldest:
+                    if key not in self._in_flight:
+                        self._last_started.pop(key, None)
+
+        thread = threading.Thread(
+            target=self._run,
+            args=(game_id,),
+            name=f"live-detail-warm-{game_id}",
+            daemon=True,
+        )
+        try:
+            thread.start()
+        except RuntimeError:
+            with self._lock:
+                self._in_flight.discard(game_id)
+            return False
+        return True
+
+    def _run(self, game_id: str) -> None:
+        try:
+            result = self._warm_service.warm_games(
+                [{"gameId": game_id, "status": "LIVE"}],
+                force_refresh=False,
+            )
+            warmed = (result.get("results") or [{}])[0]
+            logger.info(
+                "on-demand live game warm finished for %s (outcome=%s)",
+                game_id,
+                warmed.get("outcome"),
+            )
+        except Exception as error:
+            logger.info(
+                "on-demand live game warm skipped for %s (%s)",
+                game_id,
+                type(error).__name__,
+            )
+        finally:
+            with self._lock:
+                self._in_flight.discard(game_id)

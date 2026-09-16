@@ -109,6 +109,8 @@
   - Once a historical `FINAL`/`CANCELLED` game, complete historical schedule/standings, or exact past-season records payload passes identity and completeness checks, reuse the local cache without time-based background revalidation. Refresh it only through an explicit force path, cache-key/schema migration, user data reset, or capacity eviction. Do not persist summary-only relay, unofficial/empty boxscore, incomplete lineup, cross-identity, or malformed rank data as immutable history.
   - Home first paint must not render a separate today-scoreboard local cache while current scoreboard API is still loading. Show latest API data or an explicit loading/error state.
   - Boxscore adjacent game-id fallback is historical-only. Current/live boxscore must not borrow a previous game's player rows; return the empty official-unavailable state instead.
+  - Current/live boxscore degrades on transient upstream failure to explicit `live_context`/`official_unavailable` payloads (not HTTP 5xx); past games keep failing loudly. Short negative caching of unavailable answers is allowed for current games only.
+  - Cache and validated snapshot hits must not wait behind a date refresh lock; keep the serialized path for actual upstream refresh work only.
   - Home secondary aggregate providers should not be watched until after the first scoreboard data frame.
   - Home refresh timers should not be cancelled/restarted on unrelated rebuilds; reschedule only when interval or scoreboard signature changes.
   - Backend `/scoreboard/home` and `/scoreboard/compact` are lightweight summary paths. Do not call per-game scoreboard detail crawlers there; reserve detail crawling for full scoreboard and game detail.

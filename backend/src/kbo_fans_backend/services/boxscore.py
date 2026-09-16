@@ -45,7 +45,9 @@ class BoxscoreService:
     _UNAVAILABLE_STATUSES = {"SCHEDULED", "CANCELLED", "SUSPENDED"}
     _OPTIONAL_ENRICHMENT_INLINE_BUDGET_SECONDS = 0.75
     _BOXSCORE_CACHE_TTL_SECONDS = 15
+    _UNAVAILABLE_CACHE_TTL_SECONDS = 8
     _RUNTIME_CACHE_NAMESPACE = "runtime_boxscore"
+    _STALE_RUNTIME_MAX_AGE_SECONDS = 600.0
 
     def __init__(
         self,
@@ -79,6 +81,41 @@ class BoxscoreService:
         # crawl; live games are never marked, so the current-game snapshot
         # boundary is preserved.
         self._same_day_final_game_ids: set[str] = set()
+        self._stale_refresh_in_flight: set[str] = set()
+        self._stale_refresh_lock = threading.Lock()
+
+    def _refresh_runtime_async(self, game_id: str) -> None:
+        """Refresh a stale runtime snapshot through the shared singleflight.
+
+        Coalesces with any in-flight boxscore refresh for the game; failures
+        are logged and never affect the stale-served response.
+        """
+        with self._stale_refresh_lock:
+            if game_id in self._stale_refresh_in_flight:
+                return
+            self._stale_refresh_in_flight.add(game_id)
+
+        def run() -> None:
+            try:
+                self._singleflight.call(
+                    f"boxscore:{game_id}:cached",
+                    lambda: self._get_boxscore_uncached(game_id),
+                )
+            except Exception as error:
+                logger.info(
+                    "boxscore stale runtime refresh failed %s (%s)",
+                    game_id,
+                    type(error).__name__,
+                )
+            finally:
+                with self._stale_refresh_lock:
+                    self._stale_refresh_in_flight.discard(game_id)
+
+        threading.Thread(
+            target=run,
+            name=f"stale-boxscore-refresh-{game_id}",
+            daemon=True,
+        ).start()
 
     def get_boxscore(
         self,
@@ -90,6 +127,9 @@ class BoxscoreService:
             if self._is_cacheable_payload(cached, game_id):
                 logger.info("boxscore cache hit %s", game_id)
                 return cached
+            if self._is_reusable_unavailable_payload(cached, game_id):
+                logger.info("boxscore unavailable cache hit %s", game_id)
+                return cached
 
             runtime_snapshot = self.snapshot_store.load_recent_payload(
                 self._RUNTIME_CACHE_NAMESPACE,
@@ -100,6 +140,15 @@ class BoxscoreService:
                 self._boxscore_cache.set(game_id, runtime_snapshot)
                 logger.info("boxscore runtime snapshot hit %s", game_id)
                 return runtime_snapshot
+            stale_snapshot = self.snapshot_store.load_recent_payload(
+                self._RUNTIME_CACHE_NAMESPACE,
+                game_id,
+                self._STALE_RUNTIME_MAX_AGE_SECONDS,
+            )
+            if self._is_cacheable_payload(stale_snapshot, game_id):
+                logger.info("boxscore stale runtime snapshot hit %s", game_id)
+                self._refresh_runtime_async(game_id)
+                return stale_snapshot
 
         payload = self._singleflight.call(
             f"boxscore:{game_id}:{'force' if force_refresh else 'cached'}",
@@ -107,6 +156,16 @@ class BoxscoreService:
         )
         if self._is_cacheable_payload(payload, game_id):
             self._boxscore_cache.set(game_id, payload)
+        elif self._is_reusable_unavailable_payload(payload, game_id):
+            # A live/scheduled game whose official records are not yet
+            # published resolves to the same unavailable answer on every
+            # call. Coalescing it for a few seconds keeps rapid tab switches
+            # from re-crawling upstream while recovery stays prompt.
+            self._boxscore_cache.set(
+                game_id,
+                payload,
+                ttl_seconds=self._UNAVAILABLE_CACHE_TTL_SECONDS,
+            )
         return payload
 
     def _get_boxscore_uncached(self, game_id: str) -> dict[str, Any]:
@@ -144,7 +203,17 @@ class BoxscoreService:
             self._same_day_final_game_ids.discard(game_id)
             payload = self.crawler.get_boxscore(game_id)
         else:
-            game_status, payload = self._fetch_current_status_and_boxscore(game_id)
+            game_status, payload, crawl_error = (
+                self._fetch_current_status_and_boxscore(game_id)
+            )
+            if payload is None:
+                if crawl_error is not None:
+                    logger.warning(
+                        "official boxscore fetch failed for %s: %s",
+                        game_id,
+                        crawl_error,
+                    )
+                payload = self._degraded_current_boxscore(game_id)
 
         payload = self._normalize_crawler_payload(payload, game_id)
         if self._is_verified_official_payload(payload, game_id):
@@ -214,16 +283,82 @@ class BoxscoreService:
 
         return payload
 
+    def _degraded_current_boxscore(self, game_id: str) -> dict[str, Any]:
+        """Degraded boxscore for a current game whose official fetch failed.
+
+        Prefer the shared live context (cached main list + cached relay); fall
+        back to an explicit unavailable payload so the app renders the neutral
+        "not yet published" card instead of an HTTP 500 for a transient
+        upstream failure. Historical games keep failing loudly in the caller.
+        """
+        get_live_context = getattr(self.crawler, "get_live_context_boxscore", None)
+        if callable(get_live_context):
+            try:
+                live_context = get_live_context(game_id)
+            except Exception:
+                live_context = None
+            if isinstance(live_context, dict):
+                return live_context
+        return self._official_unavailable_payload(
+            game_id,
+            reason="official_fetch_failed",
+        )
+
     def _fetch_current_status_and_boxscore(
         self,
         game_id: str,
-    ) -> tuple[Optional[str], dict[str, Any]]:
-        with _boxscore_executor(max_workers=2) as executor:
+    ) -> tuple[Optional[str], Optional[dict[str, Any]], Optional[BaseException]]:
+        # Both the status lookup and the official crawl start in parallel: a
+        # live game must not serialize a slow status fetch before crawling.
+        # Once the status resolves to a value where no official boxscore can
+        # exist, the in-flight crawl cannot change the answer — return
+        # immediately and let it finish detached instead of stalling the
+        # response behind a pointless upstream POST.
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+        executor_closed = False
+        try:
             status_future = executor.submit(self._game_status, game_id)
             payload_future = executor.submit(self.crawler.get_boxscore, game_id)
-            for future in concurrent.futures.as_completed((status_future, payload_future)):
-                future.result()
-            return status_future.result(), payload_future.result()
+            status_error: Optional[BaseException] = None
+            try:
+                game_status = status_future.result()
+            except BaseException as error:
+                # A failed status lookup must not kill a request whose crawl
+                # may still succeed; treat the status as unknown.
+                game_status = None
+                status_error = error
+            if game_status in self._UNAVAILABLE_STATUSES:
+                executor.shutdown(wait=False)
+                executor_closed = True
+                return (
+                    game_status,
+                    self._official_unavailable_payload(
+                        game_id,
+                        reason=f"game_status_{game_status.lower()}",
+                    ),
+                    None,
+                )
+            crawl_error: Optional[BaseException] = None
+            try:
+                payload = payload_future.result()
+            except BaseException as error:
+                payload = None
+                crawl_error = error
+            if payload is None and status_error is not None:
+                # Both lookups failed — surface the error instead of
+                # degrading on zero information.
+                raise status_error
+            return game_status, payload, crawl_error
+        except BaseException:
+            if not executor_closed:
+                # Mirror _boxscore_executor: on failure, do not wait for a
+                # sibling request that is still in flight.
+                executor.shutdown(wait=False, cancel_futures=True)
+                executor_closed = True
+            raise
+        finally:
+            if not executor_closed:
+                executor.shutdown(wait=True)
 
     @classmethod
     def _is_cacheable_payload(cls, payload: Any, game_id: str) -> bool:
@@ -232,6 +367,25 @@ class BoxscoreService:
         return cls._is_verified_official_payload(payload, game_id) or cls._is_live_context_payload(
             payload,
             game_id,
+        )
+
+    def _is_reusable_unavailable_payload(
+        self,
+        payload: Any,
+        game_id: str,
+    ) -> bool:
+        """Explicit unavailable answers may be reused briefly for live games.
+
+        Past and already-finalized games must keep re-crawling (or failing)
+        instead of serving a transient unavailable response repeatedly.
+        """
+        if not isinstance(payload, dict) or payload.get("gameId") != game_id:
+            return False
+        if self._is_past_game_id(game_id) or game_id in self._same_day_final_game_ids:
+            return False
+        return (
+            payload.get("officialAvailable") is False
+            and payload.get("liveContextAvailable") is not True
         )
 
     @classmethod

@@ -29,8 +29,10 @@ class _RoutePayloadBoxscoreCrawler(BoxscoreCrawler):
 class _StubRelayCrawler:
     def __init__(self, relay_payload):
         self.relay_payload = relay_payload
+        self.wait_timeouts = []
 
-    def get_relay(self, game_id: str):
+    def get_relay(self, game_id: str, wait_timeout_seconds=None):
+        self.wait_timeouts.append(wait_timeout_seconds)
         if self.relay_payload is None:
             raise RuntimeError("relay unavailable")
         return self.relay_payload
