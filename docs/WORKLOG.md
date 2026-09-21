@@ -72,6 +72,15 @@
 - 검증: backend pytest 758 passed.
 - 차단: `aws login` 세션 만료로 워커 로그·레지스트리 확인 불가 — 어제(9/20) 실제 `sync_once` 결과(pushedMoments/sent/error) 확인이 다음 진단 단계.
 
+### 운영 로그/레지스트리 실측 (2026-09-21 확인)
+
+- **푸시 발송 자체는 정상**: 9/20 라이브 구간 워커 로그에 `sent:true` + 실제 FCM messageId 41건+(at_bat/scoring/hit), outbox target 상태 전부 sent(1116건), 디바이스 수신 `pushReceipts` 4건(OBKT·HTNC) — 서버→FCM→디바이스 경로 생존.
+- **Live Activity**: `live-activity/register` 200이 2건 있었고 APNs update `statusCode:200`(apnsId 발급) 확인 — APNs 채널도 생존. 경기 종료 후 unregister로 registry는 0건(정상).
+- **발견된 실제 병목**:
+  - `push registry file lock is busy` 오류 — registry 1.9MB(7월~ 누적 scoreboardStates 313건·relayStates 263건·outbox 512건)를 매 mutation마다 flock-exclusive 로드+deepcopy+재작성. 8s 대기 초과 시 실패 → API의 `/push/live-activity/register` 9~36s 지연·503 실측과 정합.
+  - 워머 사이클 15~36s(LIVE 경기 1건 13~22s — KBO 크롤 지연) — 같은 프로세스의 크롤러 세션 락/싱글플라이트 경합으로 sync 루프 relay fetch 지연 → moment 감지~발송이 수십 초 지연될 수 있는 구조.
+- **수정**: `_RUNTIME_STATE_TTL_SECONDS` 90d→7d, `_PUSH_OUTBOX_COMPLETED_LIMIT` 512→192(파일 축소→잠금 홀드 단축), `sync_date` 경기별 예외 격리(한 경기 실패가 사이클 전체를 죽이지 않음), 워머 결과에 `componentMs` 추가(느린 컴포넌트 식별용).
+
 ## 2026-09-15: 당일 종료 스냅샷 재사용 폴백 경로 정렬 + 테스트 보강
 
 ### 변경
