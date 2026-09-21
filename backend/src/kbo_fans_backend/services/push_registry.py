@@ -2775,6 +2775,9 @@ def _enqueue_push_outbox_events(
             "createdAt": now,
             "updatedAt": now,
         }
+        detected_at = str(candidate.get("detectedAt") or "").strip()
+        if detected_at:
+            outbox[event_id]["detectedAt"] = detected_at
         event_ids.append(event_id)
 
     _prune_completed_push_outbox(outbox)

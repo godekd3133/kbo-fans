@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import concurrent.futures
 import hashlib
 import json
 import logging
 import re
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional
@@ -57,6 +59,7 @@ class LiveActivityScoreboardSyncService:
             close()
 
     def sync_date(self, date: str) -> dict[str, Any]:
+        cycle_started = time.perf_counter()
         self._prune_transient_update_backoff(self._sync_now())
         registration_summary_loader = getattr(
             self.push_service.registry,
@@ -100,12 +103,22 @@ class LiveActivityScoreboardSyncService:
                     "error": f"retry_failed:{type(error).__name__}",
                 }
             ]
+        scoreboard_started = time.perf_counter()
         scoreboard = self._warm_scoreboard(date)
+        scoreboard_ms = round((time.perf_counter() - scoreboard_started) * 1000, 1)
 
         started_games = []
         updated_games = []
         pushed_moments = list(retried_moments)
         relay_fetches: dict[str, _RelayFetch] = {}
+        prefetch_started = time.perf_counter()
+        self._prefetch_live_relay_fetches(
+            scoreboard.get("games", []),
+            relay_fetches=relay_fetches,
+        )
+        relay_prefetch_ms = round(
+            (time.perf_counter() - prefetch_started) * 1000, 1
+        )
         for game in scoreboard.get("games", []):
             game_id = str(game.get("gameId") or "")
             try:
@@ -173,8 +186,56 @@ class LiveActivityScoreboardSyncService:
                 "startedGames": started_games,
                 "updatedGames": updated_games,
                 "pushedMoments": pushed_moments,
+                "cycleDurationMs": round(
+                    (time.perf_counter() - cycle_started) * 1000, 1
+                ),
+                "scoreboardMs": scoreboard_ms,
+                "relayPrefetchMs": relay_prefetch_ms,
             }
         )
+
+    def _prefetch_live_relay_fetches(
+        self,
+        games: list[dict[str, Any]],
+        *,
+        relay_fetches: dict[str, _RelayFetch],
+    ) -> None:
+        if self.relay_service is None:
+            return
+        live_game_ids = [
+            str(game.get("gameId") or "")
+            for game in games
+            if isinstance(game, dict)
+            and _status_value(game) == "LIVE"
+            and str(game.get("gameId") or "")
+        ]
+        if len(live_game_ids) < 2:
+            return
+
+        def _fetch(game_id: str) -> None:
+            previous = self.push_service.registry.relay_state(game_id)
+            last_seq = (
+                _int_value(previous.get("lastSeq"))
+                if isinstance(previous, dict)
+                else 0
+            )
+            after = last_seq if isinstance(previous, dict) else None
+            try:
+                self._relay_for_game_once(
+                    game_id,
+                    after=after,
+                    relay_fetches=relay_fetches,
+                )
+            except Exception:
+                # The fetch error stays cached in relay_fetches; the per-game
+                # loop observes it where it consumes the payload.
+                pass
+
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=min(4, len(live_game_ids))
+        ) as executor:
+            for game_id in live_game_ids:
+                executor.submit(_fetch, game_id)
 
     def _warm_scoreboard(self, date: str) -> dict[str, Any]:
         prime = getattr(self.scoreboard_service, "prime_home_scoreboard", None)
@@ -713,6 +774,9 @@ class LiveActivityScoreboardSyncService:
         return {
             "eventId": event_id,
             "kind": "game_moment",
+            "detectedAt": self.now_provider()
+            .astimezone(timezone.utc)
+            .isoformat(),
             "payload": payload,
             "targets": self.push_service.game_moment_targets(
                 moment=moment,
@@ -743,6 +807,21 @@ class LiveActivityScoreboardSyncService:
                 "eventId": event_id,
                 "error": "push outbox payload is missing",
             }
+        detection_to_send_ms: Optional[float] = None
+        detected_at_raw = persisted.get("detectedAt") or event.get("detectedAt")
+        try:
+            detected_at = datetime.fromisoformat(str(detected_at_raw or ""))
+            if detected_at.tzinfo is None:
+                detected_at = detected_at.replace(tzinfo=timezone.utc)
+            detection_to_send_ms = round(
+                (
+                    self._sync_now().astimezone(timezone.utc) - detected_at
+                ).total_seconds()
+                * 1000,
+                1,
+            )
+        except (TypeError, ValueError):
+            detection_to_send_ms = None
         try:
             response = self.push_service.send_game_moment(
                 **payload,
@@ -755,12 +834,14 @@ class LiveActivityScoreboardSyncService:
                 "gameId": payload.get("game_id"),
                 "eventId": event_id,
                 "error": str(error),
+                "detectionToSendMs": detection_to_send_ms,
             }
         if response.get("sent"):
             self.push_service.registry.mark_push_outbox_event_delivered(event_id)
         return {
             **response,
             "eventId": event_id,
+            "detectionToSendMs": detection_to_send_ms,
         }
 
     def _update_request_for_game(
