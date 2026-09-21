@@ -104,14 +104,17 @@ class LiveGameDataWarmService:
         force_refresh: bool,
     ) -> dict[str, Any]:
         started_at = time.perf_counter()
+        component_ms: dict[str, float] = {}
         result: dict[str, Any] = {
             "gameId": game_id,
             "expectedStatus": expected_status,
             "status": expected_status,
             "components": {},
+            "componentMs": component_ms,
             "errors": [],
         }
 
+        game_started = time.perf_counter()
         try:
             game = self.scoreboard_service.get_game(
                 game_id,
@@ -121,6 +124,10 @@ class LiveGameDataWarmService:
             self._record_error(result, "game", error)
             result["durationMs"] = round((time.perf_counter() - started_at) * 1000, 1)
             return result
+        finally:
+            component_ms["game"] = round(
+                (time.perf_counter() - game_started) * 1000, 1
+            )
 
         resolved_status = str((game or {}).get("status") or expected_status).strip().upper()
         result["status"] = resolved_status
@@ -131,6 +138,7 @@ class LiveGameDataWarmService:
             return result
 
         payloads: dict[str, Any] = {}
+        relay_started = time.perf_counter()
         try:
             payloads["relay"] = self.relay_service.get_relay(
                 game_id,
@@ -140,6 +148,10 @@ class LiveGameDataWarmService:
             result["components"]["relay"] = "ok"
         except Exception as error:
             self._record_error(result, "relay", error)
+        finally:
+            component_ms["relay"] = round(
+                (time.perf_counter() - relay_started) * 1000, 1
+            )
 
         # Relay uses one authenticated session that is also used by the
         # boxscore live-context fallback. Fetch it first, then run the two
@@ -161,15 +173,25 @@ class LiveGameDataWarmService:
                 ),
             ),
         ]
+
+        def _timed(name: str, loader: Callable[[], Any]) -> tuple[str, Any]:
+            component_started = time.perf_counter()
+            try:
+                return name, loader()
+            finally:
+                component_ms[name] = round(
+                    (time.perf_counter() - component_started) * 1000, 1
+                )
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             futures = {
-                name: executor.submit(loader)
+                name: executor.submit(_timed, name, loader)
                 for name, loader in components
             }
             for name, _ in components:
                 future = futures[name]
                 try:
-                    payloads[name] = future.result()
+                    _, payloads[name] = future.result()
                     result["components"][name] = "ok"
                 except Exception as error:
                     self._record_error(result, name, error)
