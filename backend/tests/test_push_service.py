@@ -6775,3 +6775,76 @@ def _settings(
         live_scoreboard_state_path=str(Path(push_registry_path).with_name("live_scoreboard.json")),
         live_scoreboard_max_age_seconds=8,
     )
+
+
+def test_live_activity_sync_continues_after_one_game_update_raises(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+
+    class _PartiallyFailingSender(FakeLiveActivitySender):
+        def send(self, **kwargs):
+            if kwargs["activity_push_token"] == "token-a":
+                raise ApnsLiveActivitySendError(
+                    operation="send",
+                    status_code=500,
+                    reason="InternalError",
+                    response_text="",
+                )
+            self.calls.append(kwargs)
+            return {"sent": True, "apnsId": "apns-id", "statusCode": 200}
+
+    sender = _PartiallyFailingSender()
+    push_service = PushService(registry=registry, live_activity_sender=sender)
+    push_service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-a",
+            activityPushToken="token-a",
+        )
+    )
+    push_service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604SSOB0",
+            activityId="activity-b",
+            activityPushToken="token-b",
+        )
+    )
+
+    class _TwoGameScoreboard:
+        def get_home_scoreboard(self, date):
+            return {
+                "date": date,
+                "games": [
+                    _scoreboard_game(
+                        game_id="20260604LGKT0",
+                        away_score=2,
+                        home_score=3,
+                        inning="7회말",
+                    ),
+                    _scoreboard_game(
+                        game_id="20260604SSOB0",
+                        away_team_id="SS",
+                        away_short_name="SS",
+                        home_team_id="OB",
+                        home_short_name="OB",
+                        away_score=1,
+                        home_score=0,
+                        inning="3회초",
+                    ),
+                ],
+            }
+
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=_TwoGameScoreboard(),
+        push_service=push_service,
+    )
+
+    response = sync_service.sync_date("2026-06-04")
+
+    assert response["checkedGames"] == 2
+    assert any(
+        call["activity_push_token"] == "token-b" for call in sender.calls
+    ), "second game's update must still be sent after the first raises"
+    assert any(
+        entry.get("sent") is False and entry.get("gameId") == "20260604LGKT0"
+        for entry in response["updatedGames"]
+    )

@@ -58,6 +58,20 @@
 - 배포: release `20260916094817` — API·워커 active, health 200. 라이브 경기(2회말 LG-NC) 웜 경로 0.3~0.75s, `live_context` 정상 응답.
 - 참고: `aws login` OAuth 세션이 약 1시간 주기로 만료되어 `get-instance-access-details`가 간헐 실패 — 배포는 재발급 재시도로 완료했으나 반복 작업 시 재로그인 필요.
 
+## 2026-09-21: 푸시/Live Activity 실시간성 진단 + sync 사이클 격리
+
+- 증상: 라이브 경기 중 푸시 알림과 Live Activity 갱신이 실시간으로 도착하지 않음(9/20 경기 관측 추정 — 9/21 월요일은 KBO 휴식일로 경기 없음).
+- 푸시/LA는 화면 로딩과 **별개 파이프라인**: `kbo-fans-sync-worker`가 5초 주기로 `sync_once` → `prime_home_scoreboard` + 경기별 moment 감지(scoreboard diff + relay) + FCM topic 발행 + APNs Live Activity update.
+- 정적 분석으로 확인된 실패 모드 후보(운영 로그 확인 필요):
+  - `replace_scoreboard_state_and_enqueue_if_current`/`_scoreboard_state_can_advance` — 점수 회귀·seen at-bat·상태 역행 시 해당 경기 사이클 통째로 드랍.
+  - `_STALE_BASELINE_WINDOW=2min` — 워커 정체가 2분을 넘으면 diff 기반 moment가 억제됨(터미널 전환만 발행).
+  - KBO 지연 시 `get_relay`/`prime_home_scoreboard`가 사이클 지연을 누적 — 사이클이 수십 초로 늘어짐.
+  - 디바이스 미등록(`hasDeviceRegistrations=False`)이면 `idle` early-return — 앱 시작 시 `convergeRegistration`이 transient 실패를 삼키면 재등록까지 등록 공백.
+- 수정(사이클 격리): `sync_date`의 경기별 본문을 try/except로 감싸 한 경기의 APNs/registry 예외가 같은 사이클의 다른 경기를 굶기지 않도록 함 — `_send_changed_live_activity_update`·`end` 이벤트의 `send_live_activity_update`가 예외를 밖으로 던지던 경로를 격리. `_retry_pending_game_moments`의 registry 예외도 사이클 전체 실패 대신 경고로 격리.
+- 회귀 테스트: 한 경기의 APNs update raise 이후에도 다음 경기 update가 발송됨을 검증.
+- 검증: backend pytest 758 passed.
+- 차단: `aws login` 세션 만료로 워커 로그·레지스트리 확인 불가 — 어제(9/20) 실제 `sync_once` 결과(pushedMoments/sent/error) 확인이 다음 진단 단계.
+
 ## 2026-09-15: 당일 종료 스냅샷 재사용 폴백 경로 정렬 + 테스트 보강
 
 ### 변경

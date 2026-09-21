@@ -89,7 +89,17 @@ class LiveActivityScoreboardSyncService:
                 }
             )
 
-        retried_moments = self._retry_pending_game_moments()
+        try:
+            retried_moments = self._retry_pending_game_moments()
+        except Exception as error:
+            # A poisoned outbox/registry read must not kill the whole cycle.
+            logger.warning("pending game moment retry failed: %s", error)
+            retried_moments = [
+                {
+                    "sent": False,
+                    "error": f"retry_failed:{type(error).__name__}",
+                }
+            ]
         scoreboard = self._warm_scoreboard(date)
 
         started_games = []
@@ -98,46 +108,63 @@ class LiveActivityScoreboardSyncService:
         relay_fetches: dict[str, _RelayFetch] = {}
         for game in scoreboard.get("games", []):
             game_id = str(game.get("gameId") or "")
-            status = _status_value(game)
-            accepted, game_moments = self._push_moments_for_game(
-                game,
-                deliver_moments=has_push_registrations,
-                relay_fetches=relay_fetches,
-            )
-            pushed_moments.extend(game_moments)
-            if not accepted:
-                continue
+            try:
+                accepted, game_moments = self._push_moments_for_game(
+                    game,
+                    deliver_moments=has_push_registrations,
+                    relay_fetches=relay_fetches,
+                )
+                pushed_moments.extend(game_moments)
+                if not accepted:
+                    continue
 
-            if has_start_tokens:
-                start_response = self._start_live_activity_for_game(
+                status = _status_value(game)
+                if has_start_tokens:
+                    start_response = self._start_live_activity_for_game(
+                        game,
+                        status,
+                        relay_fetches=relay_fetches,
+                    )
+                    if start_response is not None:
+                        started_games.append(start_response)
+
+                if game_id not in registered_game_ids:
+                    continue
+
+                if status == "SCHEDULED" and not self._should_sync_scheduled_activity(game):
+                    continue
+
+                update = self._update_request_for_game(
                     game,
                     status,
                     relay_fetches=relay_fetches,
                 )
-                if start_response is not None:
-                    started_games.append(start_response)
-
-            if game_id not in registered_game_ids:
-                continue
-
-            if status == "SCHEDULED" and not self._should_sync_scheduled_activity(game):
-                continue
-
-            update = self._update_request_for_game(
-                game,
-                status,
-                relay_fetches=relay_fetches,
-            )
-            if update is None:
-                continue
-
-            if update.event == "end":
-                response = self.push_service.send_live_activity_update(update)
-            else:
-                response = self._send_changed_live_activity_update(update)
-                if response is None:
+                if update is None:
                     continue
-            updated_games.append(response)
+
+                if update.event == "end":
+                    response = self.push_service.send_live_activity_update(update)
+                else:
+                    response = self._send_changed_live_activity_update(update)
+                    if response is None:
+                        continue
+                updated_games.append(response)
+            except Exception as error:
+                # One game's delivery failure must not starve the remaining
+                # games in this sync cycle.
+                logger.warning(
+                    "live activity sync skipped %s: %s",
+                    game_id or "?",
+                    error,
+                )
+                updated_games.append(
+                    {
+                        "sent": False,
+                        "gameId": game_id,
+                        "error": str(error),
+                    }
+                )
+                continue
 
         return self._record_heartbeat(
             {
