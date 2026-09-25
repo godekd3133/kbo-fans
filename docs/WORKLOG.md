@@ -2,6 +2,14 @@
 
 ---
 
+## 2026-09-25: 0.1.35 iOS TestFlight 배포 준비
+
+### Release decision
+
+- [x] `0.1.34` tag 이후 현재 `main`에 반영된 라이브 경기 상세 prefetch/디그레이드, Live Activity sync 계측·경기별 격리, 대형 응답 처리 경량화를 tester-facing iOS release로 묶는다.
+- [x] 앱 버전을 `0.1.35+103`으로 올리고 public changelog, in-app patch notes, version map, release-note fixture를 동기화했다.
+- [ ] 현재 push SHA의 clean worktree signed IPA, App Store Connect upload/processing, tester-group handoff, Beta App Review 및 실제 installability를 checkpoint별로 확인한다.
+
 ## 2026-09-16: 라이브 경기 상세 로딩 신뢰성 개선(디그레이드·프리락·온디맨드 웜·prefetch)
 
 ### 배경 / 측정
