@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-09-25: 최신 main backend Lightsail 운영 설치
+
+### 배포
+
+- [x] AWS 세션을 재인증한 뒤 현재 `main` SHA `bd26b1c24a2922d3d9df5fca8ac4b3d3eb59647e`를 Lightsail `kbo-fans-api-lightsail`에 `--preserve-env --skip-caddy`로 배포했다.
+- [x] 운영 release `20260925025832` 설치 후 기존 `/etc/kbo-fans/backend.env`, secret, Caddy 설정은 보존했다.
+- [x] `kbo-fans-api`와 `kbo-fans-sync-worker`가 모두 `active`이고 내부 `/api/health`가 HTTP 200으로 응답했다. worker 재기동 직후 live-game warmer와 sync cycle도 정상 완료했다.
+- [x] 원격 `relay.py`, `boxscore.py`, `lineup.py` SHA-256이 local `main`과 일치한다.
+
+### 외부 readback
+
+- [x] HTTPS health gate에서 `/api/health`, `/api/scoreboard/home`, `/api/game/20260925LTOB0/relay`, `/api/home`, `/api/schedule`, `/api/standings`, `/api/records/overview`가 모두 HTTP 200으로 확인됐다.
+- [x] 예정 경기 `20260925LTOB0`에서 boxscore는 `official_unavailable`/`game_status_scheduled`로 정상 응답하고, lineup은 양 팀 9명과 선발투수를 반환했다.
+
 ## 2026-09-25: 0.1.35 iOS TestFlight 배포 준비
 
 ### Release decision
