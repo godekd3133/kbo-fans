@@ -8,7 +8,14 @@
 
 - [x] `0.1.34` tag 이후 현재 `main`에 반영된 라이브 경기 상세 prefetch/디그레이드, Live Activity sync 계측·경기별 격리, 대형 응답 처리 경량화를 tester-facing iOS release로 묶는다.
 - [x] 앱 버전을 `0.1.35+103`으로 올리고 public changelog, in-app patch notes, version map, release-note fixture를 동기화했다.
-- [ ] 현재 push SHA의 clean worktree signed IPA, App Store Connect upload/processing, tester-group handoff, Beta App Review 및 실제 installability를 checkpoint별로 확인한다.
+- [x] `99a98ceb`를 `origin/main`에 push하고 immutable numeric tag `0.1.35`를 생성했다. GitHub Release 생성은 현재 `gh` token의 `workflow` scope 부족으로 별도 보류 상태다.
+- [x] pushed SHA `99a98ceb`의 clean worktree(`/tmp/kbo-fans-release-0.1.35`)에서 production API `https://3-39-79-1.sslip.io/api`를 주입해 `0.1.35+103` IPA를 생성했다. Runner/Widget 모두 `Apple Distribution: MIN KYU KIM (A23ZPKGMW9)`, Runner `aps-environment=production`, `get-task-allow=false`, `codesign --verify --deep --strict`를 확인했다.
+- [x] IPA SHA-256은 `b815a22d25b51062c261c7425d9b01c8817e9b19cc5180cc28ce038c58e61f0b`이며 `output/release-0.1.35/kbo_fans.ipa`에 보존했다.
+- [x] Xcode 26.6 `xcodebuild -exportArchive` upload 경로에서 `Progress 68%: Uploaded package is processing`, `Upload succeeded`, `EXPORT SUCCEEDED`를 확인했다. `objective_c.framework` dSYM warning은 symbol upload 경고로 별도 기록한다.
+- [x] App Store Connect API에서 build `103`(`a41585db-f5c8-417b-b83e-57329a8efe13`)의 `processingState=VALID`, `expired=false`, `usesNonExemptEncryption=false`를 확인했다.
+- [x] Internal `Tester`와 External `External Testers`에 build 103 연결을 확인했다. 기존 build 102/97 등은 제거하지 않았다.
+- [x] build 103 Beta App Review submission 생성(`HTTP 201`), `betaReviewState=WAITING_FOR_REVIEW`를 확인했다.
+- [ ] 실제 iPhone TestFlight 설치·업데이트·앱 실행 및 경기 상세/푸시/Live Activity 동작은 단말 acceptance 별도 checkpoint다. Apple 심사 승인 전 외부 테스터 installability는 확정하지 않는다.
 
 ## 2026-09-16: 라이브 경기 상세 로딩 신뢰성 개선(디그레이드·프리락·온디맨드 웜·prefetch)
 
