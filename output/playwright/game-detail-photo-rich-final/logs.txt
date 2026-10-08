@@ -1,0 +1,27 @@
+[request] GET http://127.0.0.1:7365/
+[request] GET http://127.0.0.1:7365/flutter_bootstrap.js
+[request] GET https://www.gstatic.com/flutter-canvaskit/425cfb54d01a9472b3e81d9e76fd63a4a44cfbcb/chromium/canvaskit.js
+[console:debug] Injecting <script> tag. Using callback.
+[request] GET http://127.0.0.1:7365/main.dart.js
+[request] GET http://127.0.0.1:7365/favicon.png
+[request] GET http://127.0.0.1:7365/favicon.png
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[response] 200 http://127.0.0.1:7365/main.dart.js
+[request] GET https://fonts.gstatic.com/s/roboto/v32/KFOmCnqEu92Fr1Me4GZLCzYlKw.woff2
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0
+
+BODY_LAST:

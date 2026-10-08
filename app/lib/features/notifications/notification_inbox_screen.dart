@@ -1,3 +1,4 @@
+import '../../core/widgets/app_metadata_text.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -687,7 +688,7 @@ class _InboxEntryRow extends StatelessWidget {
                   ),
                   if (entry.body.isNotEmpty) ...[
                     const SizedBox(height: 4),
-                    Text(
+                    AppMetadataText(
                       entry.body,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,

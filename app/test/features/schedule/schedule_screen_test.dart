@@ -764,7 +764,7 @@ void main() {
     await tester.tap(find.text('구장별'));
     await tester.pumpAndSettle();
 
-    expect(find.text('일정을 불러올 수 없습니다'), findsOneWidget);
+    expect(find.text('일정을 불러오지 못했어요'), findsOneWidget);
     expect(find.text('다시 시도'), findsOneWidget);
     expect(find.text('구장별 일정 없음'), findsNothing);
   });

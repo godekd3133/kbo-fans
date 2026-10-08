@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_metadata_text.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -121,7 +122,7 @@ class GameReadingCard extends StatelessWidget {
             style: const TextStyle(fontSize: 20, height: 1.3),
           ),
           const SizedBox(height: 8),
-          Text(
+          AppMetadataText(
             scheduled
                 ? game.isPregameLineupOpen
                       ? '라인업이 공개됐어요. 선발과 타순을 살펴보세요.'

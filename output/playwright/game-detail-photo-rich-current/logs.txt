@@ -1,0 +1,26 @@
+[request] GET http://127.0.0.1:7362/
+[request] GET http://127.0.0.1:7362/flutter_bootstrap.js
+[request] GET https://www.gstatic.com/flutter-canvaskit/425cfb54d01a9472b3e81d9e76fd63a4a44cfbcb/chromium/canvaskit.js
+[console:debug] Injecting <script> tag. Using callback.
+[request] GET http://127.0.0.1:7362/main.dart.js
+[request] GET http://127.0.0.1:7362/favicon.png
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[response] 200 http://127.0.0.1:7362/main.dart.js
+[request] GET https://fonts.gstatic.com/s/roboto/v32/KFOmCnqEu92Fr1Me4GZLCzYlKw.woff2
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[console:warning] Font family MaterialIcons not found (404) at assets/fonts/MaterialIcons-Regular.otf
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[console:warning] Font family Pretendard not found (404) at assets/assets/fonts/PretendardVariable.ttf
+[request] GET https://fonts.gstatic.com/s/notosanskr/v36/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzzuoyeLGC5nwuDo-KBTUm6CryotyJROlrnQ.118.woff2
+[request] GET https://fonts.gstatic.com/s/notosanskr/v36/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzzuoyeLGC5nwuDo-KBTUm6CryotyJROlrnQ.119.woff2
+[request] GET https://fonts.gstatic.com/s/notosanskr/v36/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzzuoyeLGC5nwuDo-KBTUm6CryotyJROlrnQ.117.woff2
+[request] GET https://fonts.gstatic.com/s/notosanskr/v36/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzzuoyeLGC5nwuDo-KBTUm6CryotyJROlrnQ.114.woff2
+[request] GET https://fonts.gstatic.com/s/notosanskr/v36/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzzuoyeLGC5nwuDo-KBTUm6CryotyJROlrnQ.115.woff2
+[request] GET https://fonts.gstatic.com/s/notosanskr/v36/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzzuoyeLGC5nwuDo-KBTUm6CryotyJROlrnQ.116.woff2
+[request] GET http://127.0.0.1:8037/api/game/20260619SSLG0
+[request] GET https://fonts.gstatic.com/s/notosanskr/v36/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzzuoyeLGC5nwuDo-KBTUm6CryotyJROlrnQ.110.woff2
+[console:warning] Could not find a set of Noto fonts to display all missing characters. Please add a font asset for the missing characters. See: https://docs.flutter.dev/cookbook/design/fonts
+[response] 404 http://127.0.0.1:8037/api/game/20260619SSLG0
+[console:error] Failed to load resource: the server responded with a status of 404 (Not Found)
+
+BODY_LAST:

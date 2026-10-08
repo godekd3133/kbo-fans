@@ -1086,6 +1086,91 @@ void main() {
     },
   );
 
+  for (final myTeam in ['LG', 'SS']) {
+    testWidgets('LIVE 점수와 접근성 안내는 $myTeam 응원팀 순서를 따른다', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      SharedPreferences.setMockInitialValues({'myTeam': myTeam});
+      _ensureAppConfigInitialized();
+      final semantics = tester.ensureSemantics();
+      try {
+        final router = _homeInteractionRouter();
+        addTearDown(router.dispose);
+        final game = _liveGame(
+          gameId: '20260611SSLG0',
+          awayTeamId: 'SS',
+          homeTeamId: 'LG',
+          awayScore: 3,
+          homeScore: 2,
+        );
+        await tester.pumpWidget(
+          _homeInteractionScope(
+            scoreboardGames: [game],
+            myTeamId: myTeam,
+            child: MaterialApp.router(routerConfig: router),
+          ),
+        );
+        await tester.pump();
+        await tester.pumpAndSettle();
+        final mine = find.byKey(const ValueKey('home-live-my-team-score'));
+        final opponent = find.byKey(const ValueKey('home-live-opponent-score'));
+        expect(tester.widget<Text>(mine).data, myTeam == 'LG' ? '2' : '3');
+        expect(tester.widget<Text>(opponent).data, myTeam == 'LG' ? '3' : '2');
+        expect(
+          tester.getTopLeft(mine).dx,
+          lessThan(tester.getTopLeft(opponent).dx),
+        );
+        final card = find.byKey(const ValueKey('home-live-my-team-game'));
+        expect(
+          tester.getSemantics(card).label,
+          myTeam == 'LG' ? 'LG 2 대 SS 3, 7회말' : 'SS 3 대 LG 2, 7회말',
+        );
+        expect(tester.takeException(), isNull);
+      } finally {
+        semantics.dispose();
+      }
+    });
+  }
+
+  testWidgets('280px 240% 글자에서도 LIVE 팀명과 점수를 잘림 없이 확인한다', (tester) async {
+    tester.view.physicalSize = const Size(280, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2.4;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+    addTearDown(router.dispose);
+    final game = _liveGame(
+      gameId: '20260611SSLG0',
+      awayTeamId: 'SS',
+      homeTeamId: 'LG',
+      awayScore: 13,
+      homeScore: 12,
+    );
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        scoreboardGames: [game],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(
+      find.byKey(const ValueKey('home-live-my-team-score')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('home-live-opponent-score')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('홈 마이팀 LIVE 카드는 미확정 점수를 0으로 단정하지 않는다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -2597,7 +2682,7 @@ void main() {
 
     final insightHeader = find.ancestor(
       of: find.text('인사이트'),
-      matching: find.byType(Row),
+      matching: find.byType(Wrap),
     );
     await tester.tap(
       find.descendant(
@@ -2616,7 +2701,7 @@ void main() {
 
     final quickHeader = find.ancestor(
       of: find.text('지금 보면 좋은 정보'),
-      matching: find.byType(Row),
+      matching: find.byType(Wrap),
     );
     await tester.tap(
       find.descendant(

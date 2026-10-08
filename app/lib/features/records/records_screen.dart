@@ -1,3 +1,4 @@
+import '../../core/widgets/app_metadata_text.dart';
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -233,9 +234,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
                     children: [
                       AppPageHeader(
-                        eyebrow: '기록으로 보는 야구',
                         title: '기록실',
-                        subtitle: '리그를 살펴보고, 내 팀 선수를 나란히 비교하세요.',
                         trailing: IconButton(
                           key: const ValueKey('records-overview-refresh'),
                           tooltip: '기록실 새로고침',
@@ -442,9 +441,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  AppMetadataText(
                     isShortcut
-                        ? '내 팀 선수 기록 · 나란히 비교'
+                        ? '선수 기록'
                         : isMyTeam
                         ? '마이팀 기록실 열기'
                         : '선수 기록 보기',
@@ -909,7 +908,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 6),
-          Text(
+          AppMetadataText(
             '$_selectedSeason 시즌 · 현재 필터의 ${players.length}명에서 두 선수를 골라보세요.',
             style: TextStyle(
               color: AppColors.textSecondary,
@@ -2024,7 +2023,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               ],
             ),
             SizedBox(height: useLargeText ? 8 : 3),
-            Text(
+            AppMetadataText(
               leader == null
                   ? snapshot.metric.isAppCalculated
                         ? '앱 계산 · 데이터 준비 중'

@@ -35,11 +35,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   String get _returnRoute =>
       sanitizeAppRoute(widget.redirectTo, fallback: '/home') ?? '/home';
 
-  Future<void> _saveAndProceed() async {
+  Future<void> _saveAndProceed({bool skipTeam = false}) async {
     if (_isSubmitting) {
       return;
     }
-    final resolvedTeamId = _selectedTeamId ?? ref.read(myTeamProvider);
+    final resolvedTeamId = skipTeam
+        ? null
+        : _selectedTeamId ?? ref.read(myTeamProvider);
     setState(() => _isSubmitting = true);
     try {
       // 마이팀을 전역 Provider에 저장
@@ -57,7 +59,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       }
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('시작 준비에 실패했습니다. 다시 시도해주세요.')),
+        const SnackBar(content: Text('응원팀을 저장하지 못했어요. 다시 시도해 주세요.')),
       );
       return;
     }
@@ -91,6 +93,66 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         : (mediaQuery.padding.top > 0 ? 8.0 : 30.0);
 
     return Scaffold(
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppTheme.colorsOf(context).background,
+          border: Border(
+            top: BorderSide(color: AppTheme.colorsOf(context).divider),
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: AppPageFrame(
+            maxWidth: contentMaxWidth,
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _OnboardingPrimaryButton(
+                  width: double.infinity,
+                  height: 52,
+                  accent: selectedTeam?.primaryColor ?? AppColors.accent,
+                  enabled: effectiveSelectedTeamId != null,
+                  isLoading: _isSubmitting,
+                  label: _isSubmitting
+                      ? (widget.isEditMode ? '저장 중입니다' : '시작 중입니다')
+                      : (widget.isEditMode ? '선택 완료' : '시작하기'),
+                  onTap: _saveAndProceed,
+                ),
+                AppPressable(
+                  onTap: _isSubmitting
+                      ? null
+                      : widget.isEditMode
+                      ? () => context.go(_returnRoute)
+                      : () => _saveAndProceed(skipTeam: true),
+                  pressedScale: 0.97,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      child: Text(
+                        widget.isEditMode ? '취소' : '나중에 선택',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
       body: SafeArea(
         child: AppPageFrame(
           maxWidth: contentMaxWidth,
@@ -120,15 +182,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         ),
                       ),
                     AppPageHeader(
-                      eyebrow: 'KBO Fans',
-                      title: widget.isEditMode
-                          ? '응원 팀을 선택하세요'
-                          : '응원팀을 고르면\n경기에서 기록까지',
-                      subtitle: '내 팀을 먼저 보고, 언제든 바꿀 수 있어요.',
+                      title: widget.isEditMode ? '응원 팀을 선택하세요' : '어느 팀을 응원하세요?',
+                      subtitle: '응원팀은 나중에 바꿀 수 있어요.',
                     ),
                     const SizedBox(height: 12),
-                    _SelectedTeamPreview(team: selectedTeam),
-                    const SizedBox(height: 10),
+
                     GridView.builder(
                       padding: EdgeInsets.zero,
                       shrinkWrap: true,
@@ -158,46 +216,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       },
                     ),
                     const SizedBox(height: 20),
-                    _OnboardingPrimaryButton(
-                      width: double.infinity,
-                      height: 52,
-                      accent: selectedTeam?.primaryColor ?? AppColors.accent,
-                      enabled: effectiveSelectedTeamId != null,
-                      isLoading: _isSubmitting,
-                      label: _isSubmitting
-                          ? (widget.isEditMode ? '저장 중입니다' : '시작 중입니다')
-                          : (widget.isEditMode ? '선택 완료' : '시작하기'),
-                      onTap: _saveAndProceed,
-                    ),
-                    const SizedBox(height: 14),
-                    AppPressable(
-                      onTap: _isSubmitting
-                          ? null
-                          : widget.isEditMode
-                          ? () => context.go(_returnRoute)
-                          : _saveAndProceed,
-                      pressedScale: 0.97,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          minWidth: 44,
-                          minHeight: 44,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Center(
-                            child: Text(
-                              widget.isEditMode ? '취소' : '나중에 선택',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
                   ],
                 ),
               ),
@@ -205,99 +223,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _SelectedTeamPreview extends StatelessWidget {
-  final KboTeam? team;
-
-  const _SelectedTeamPreview({required this.team});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppTheme.colorsOf(context);
-    final accent = colors.readableAccent(team?.primaryColor ?? colors.accent);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: accent.withValues(alpha: 0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _TeamLogoCircle(
-                teamId: team?.id,
-                fallback: team?.shortName ?? 'KBO',
-                accent: accent,
-                size: 36,
-                logoSize: 30,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  team?.name ?? '내 팀을 먼저 보여드려요',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    height: 1.3,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 14,
-            runSpacing: 8,
-            children: const [
-              _PreviewBenefit(
-                icon: Icons.sports_baseball_outlined,
-                title: '오늘 경기',
-              ),
-              _PreviewBenefit(
-                icon: Icons.calendar_today_outlined,
-                title: '다음 일정',
-              ),
-              _PreviewBenefit(icon: Icons.bar_chart_rounded, title: '팀 기록'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PreviewBenefit extends StatelessWidget {
-  final IconData icon;
-  final String title;
-
-  const _PreviewBenefit({required this.icon, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 15, color: AppColors.textSupporting),
-        const SizedBox(width: 5),
-        Flexible(
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -369,7 +294,7 @@ class _OnboardingPrimaryButton extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     color: enabled ? foreground : AppColors.textDisabled,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ),
@@ -450,7 +375,7 @@ class _OnboardingTeamCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 17,
                           color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w400,
                           height: 1.08,
                         ),
                       ),
@@ -464,7 +389,7 @@ class _OnboardingTeamCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w400,
                         ),
                       ),
                     ],

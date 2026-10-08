@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-08",
+  "baseSha": "a5935342f550cfb45adae5ed36efb5a02375fb93",
+  "flutterTests": {
+    "passed": 629,
+    "failed": 0
+  },
+  "flutterAnalysis": "No issues found",
+  "webBuild": "release succeeded; API mode; local QA reference server",
+  "backendTests": {
+    "passed": 26
+  },
+  "localFastApiHealth": {
+    "httpStatus": 200,
+    "response": {
+      "success": true,
+      "data": {
+        "status": "ok"
+      },
+      "error": null,
+      "timestamp": "2026-10-08T07:11:30.906350Z"
+    }
+  },
+  "browser": {
+    "surface": "Codex in-app browser",
+    "viewports": [
+      "390x844",
+      "320x568"
+    ],
+    "data": "Deterministic reference fixture and explicitly requested stored snapshots; not live production data"
+  },
+  "unverified": [
+    "real iOS/Android device",
+    "live production freshness",
+    "push delivery",
+    "Live Activity delivery",
+    "signed artifacts",
+    "TestFlight installability"
+  ],
+  "changedSurfaceDocs": "docs/UX_IMPROVEMENT_2026-10-08.md"
+}

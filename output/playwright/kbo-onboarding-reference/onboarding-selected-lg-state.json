@@ -1,0 +1,92 @@
+{
+  "state": {
+    "href": "http://127.0.0.1:4188/?v=onboarding1#/onboarding?redirect=/home",
+    "text": "",
+    "storage": {
+      "flutter.onboardingDone": "false",
+      "flutter.myTeam": "\"LG\""
+    }
+  },
+  "events": [
+    {
+      "console": "Injecting <script> tag. Using callback."
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/FontManifest.json",
+      "status": 200
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/assets/fonts/PretendardVariable.ttf",
+      "status": 200
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/fonts/MaterialIcons-Regular.otf",
+      "status": 200
+    },
+    {
+      "console": "WARNING: Falling back to CPU-only rendering. Reason: webGLVersion is -1"
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/AssetManifest.bin.json",
+      "status": 200
+    },
+    {
+      "console": "Injecting <script> tag. Using callback."
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/FontManifest.json",
+      "status": 200
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/assets/fonts/PretendardVariable.ttf",
+      "status": 200
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/fonts/MaterialIcons-Regular.otf",
+      "status": 200
+    },
+    {
+      "console": "WARNING: Falling back to CPU-only rendering. Reason: webGLVersion is -1"
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/AssetManifest.bin.json",
+      "status": 200
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/assets/visuals/casual_game_02.webp",
+      "status": 200
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/assets/visuals/reference_team_logos/LG.png",
+      "status": 200
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/assets/visuals/casual_onboarding_01.webp",
+      "status": 200
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/assets/visuals/reference_team_logos/KT.png",
+      "status": 200
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/assets/visuals/reference_team_logos/SK.png",
+      "status": 200
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/assets/visuals/reference_team_logos/SS.png",
+      "status": 200
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/assets/visuals/reference_team_logos/NC.png",
+      "status": 200
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/assets/visuals/reference_team_logos/HT.png",
+      "status": 200
+    },
+    {
+      "asset": "http://127.0.0.1:4188/assets/assets/visuals/reference_team_logos/OB.png",
+      "status": 200
+    }
+  ]
+}

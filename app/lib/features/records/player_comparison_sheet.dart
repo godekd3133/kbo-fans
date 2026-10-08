@@ -1,3 +1,4 @@
+import '../../core/widgets/app_metadata_text.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -102,7 +103,7 @@ class _PlayerComparisonSheetState extends State<PlayerComparisonSheet> {
             ],
           ),
           const SizedBox(height: 4),
-          Text(
+          AppMetadataText(
             '${widget.season} · ${widget.teamName} · ${hitter ? '야수' : '투수'}',
             style: TextStyle(color: colors.textSecondary, fontSize: 14),
           ),
@@ -327,7 +328,7 @@ class _PlayerComparisonSheetState extends State<PlayerComparisonSheet> {
             },
           ),
           const SizedBox(height: 12),
-          Text(
+          AppMetadataText(
             roundedGap == null
                 ? '미제공 값이 있어 차이를 계산하지 않습니다'
                 : roundedGap == 0
@@ -373,7 +374,7 @@ class _PlayerComparisonSheetState extends State<PlayerComparisonSheet> {
           ).hasMatch(stat.trim()),
         )
         .toList();
-    return Text(
+    return AppMetadataText(
       '${player.name} · ${samples.isEmpty ? '출전 표본 미제공' : samples.join(' · ')}',
       style: const TextStyle(fontSize: 13, height: 1.5),
     );

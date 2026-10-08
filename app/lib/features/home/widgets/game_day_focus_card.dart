@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_metadata_text.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/team_data.dart';
@@ -137,7 +138,7 @@ class GameDayFocusCard extends StatelessWidget {
           if (current != null) ...[
             _Matchup(game: current),
             const SizedBox(height: 10),
-            Text(
+            AppMetadataText(
               [
                 current.stadium,
                 current.startTime,
@@ -171,7 +172,7 @@ class GameDayFocusCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
+            AppMetadataText(
               myTeamId == null
                   ? '응원팀을 고르면 경기와 기록을 먼저 보여드려요.'
                   : next != null

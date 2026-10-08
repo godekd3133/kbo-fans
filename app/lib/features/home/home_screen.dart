@@ -1,3 +1,4 @@
+import '../../core/widgets/app_metadata_text.dart';
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/app_design_system.dart';
+import '../../core/widgets/app_status_card.dart';
 import '../../core/widgets/game_status_badge.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
@@ -585,43 +587,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     return KeyedSubtree(
                       key: const ValueKey('home-error'),
                       child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
-                          child: AppArtworkCard(
-                            assetName: VisualAssets.dataRetry,
-                            height: 184,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  '데이터를 불러올 수 없습니다',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  describeAsyncError(error),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                    height: 1.35,
-                                  ),
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 12),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: TextButton(
-                                    onPressed: _invalidateTodayScoreboard,
-                                    child: const Text('다시 시도'),
-                                  ),
-                                ),
-                              ],
-                            ),
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(18),
+                          child: AppStatusCard(
+                            title: '경기 정보를 불러오지 못했어요',
+                            description: describeAsyncError(error),
+                            onAction: _invalidateTodayScoreboard,
+                            secondaryLabel: '일정 보기',
+                            onSecondaryAction: () => context.go('/schedule'),
                           ),
                         ),
                       ),
@@ -2769,7 +2742,7 @@ class _MyTeamBriefTeamSummary extends StatelessWidget {
           size: 76,
         ),
         const SizedBox(height: 2),
-        Text(
+        AppMetadataText(
           standing == null
               ? fallbackSubline
               : '${standing!.rank}위 · ${standing!.wins}승 ${standing!.losses}패 ${standing!.draws}무',
@@ -2965,7 +2938,7 @@ class _TeamRecordSpotlightRow extends StatelessWidget {
     final placeholderSubtitle = recordBrief.isLoading
         ? '팀 기록 확인'
         : recordBrief.hasError
-        ? '팀 기록 API'
+        ? '잠시 후 다시 확인'
         : '선수 기록 없음';
 
     final tiles = [
@@ -3313,16 +3286,115 @@ class _LiveMyTeamGameCard extends StatelessWidget {
         : 'LIVE';
     final stadiumText = game.stadium.trim().isEmpty ? '구장 미정' : game.stadium;
     final scoreText = game.hasVerifiedScore
-        ? '${game.away.displayScore}:${game.home.displayScore}'
+        ? '${myTeam.displayScore}:${opponent.displayScore}'
         : '점수 확인 중';
+
+    final useLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.4;
+    final scoreBlock = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          inningText,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: game.hasVerifiedScore
+                ? colors.textSecondary
+                : colors.ballYellow,
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (useLargeText)
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  myTeam.displayScore,
+                  key: const ValueKey('home-live-my-team-score'),
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 36,
+                    height: 0.95,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: Text(
+                    ':',
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 27,
+                      height: 1,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ),
+                Text(
+                  opponent.displayScore,
+                  key: const ValueKey('home-live-opponent-score'),
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 36,
+                    height: 0.95,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                myTeam.displayScore,
+                key: const ValueKey('home-live-my-team-score'),
+                style: TextStyle(
+                  color: accent,
+                  fontSize: 36,
+                  height: 0.95,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                child: Text(
+                  ':',
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 27,
+                    height: 1,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+              Text(
+                opponent.displayScore,
+                key: const ValueKey('home-live-opponent-score'),
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 36,
+                  height: 0.95,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
 
     return AppPressable(
       key: const ValueKey('home-live-my-team-game'),
       onTap: onOpenRelay,
       pressedScale: 0.988,
       semanticLabel:
-          '${myTeam.teamName} ${game.away.displayScore} 대 '
-          '${game.home.displayScore}, $inningText',
+          '${myTeam.teamName} ${myTeam.displayScore} 대 '
+          '${opponent.teamName} ${opponent.displayScore}, $inningText',
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -3360,7 +3432,7 @@ class _LiveMyTeamGameCard extends StatelessWidget {
                           style: TextStyle(
                             color: colors.textSecondary,
                             fontSize: 12,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ),
@@ -3377,91 +3449,50 @@ class _LiveMyTeamGameCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 18),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: _LiveTeamScoreInline(
-                          team: myTeamInfo,
-                          fallbackLabel: myTeam.teamName,
-                          score: myTeam.displayScore,
-                          highlighted: true,
-                          logoSize: 58,
-                          showScore: false,
+                  if (useLargeText) ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _LiveTeamScoreInline(
+                            team: myTeamInfo,
+                            fallbackLabel: myTeam.shortName,
+                            highlighted: true,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        flex: 0,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              inningText,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: game.hasVerifiedScore
-                                    ? colors.textSecondary
-                                    : colors.ballYellow,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  game.away.displayScore,
-                                  style: TextStyle(
-                                    color: accent,
-                                    fontSize: 36,
-                                    height: 0.95,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 5,
-                                  ),
-                                  child: Text(
-                                    ':',
-                                    style: TextStyle(
-                                      color: colors.textSecondary,
-                                      fontSize: 27,
-                                      height: 1,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  game.home.displayScore,
-                                  style: TextStyle(
-                                    color: colors.textPrimary,
-                                    fontSize: 36,
-                                    height: 0.95,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _LiveTeamScoreInline(
+                            team: opponentInfo,
+                            fallbackLabel: opponent.shortName,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _LiveTeamScoreInline(
-                          team: opponentInfo,
-                          fallbackLabel: opponent.teamName,
-                          score: opponent.displayScore,
-                          alignEnd: true,
-                          logoSize: 58,
-                          showScore: false,
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Center(child: scoreBlock),
+                  ] else
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: _LiveTeamScoreInline(
+                            team: myTeamInfo,
+                            fallbackLabel: myTeam.shortName,
+                            highlighted: true,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(width: 8),
+                        Flexible(flex: 0, child: scoreBlock),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _LiveTeamScoreInline(
+                            team: opponentInfo,
+                            fallbackLabel: opponent.shortName,
+                          ),
+                        ),
+                      ],
+                    ),
                   if (!game.hasVerifiedScore) ...[
                     const SizedBox(height: 8),
                     Text(
@@ -3470,7 +3501,7 @@ class _LiveMyTeamGameCard extends StatelessWidget {
                       style: TextStyle(
                         color: colors.ballYellow,
                         fontSize: 11,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
                   ],
@@ -3485,43 +3516,77 @@ class _LiveMyTeamGameCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AppUi.compactRadius),
                       border: Border.all(color: colors.divider),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.sports_baseball_rounded,
-                          size: 16,
-                          color: AppColors.live,
-                        ),
-                        const SizedBox(width: 7),
-                        Expanded(
-                          child: Text(
-                            '$inningText · $stadiumText',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: colors.textSecondary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                            ),
+                    child: useLargeText
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AppMetadataText(
+                                '$inningText · $stadiumText',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  height: 1.4,
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '문자중계 보기',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        height: 1.4,
+                                        color: colors.accent,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 18,
+                                    color: colors.accent,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              Icon(
+                                Icons.sports_baseball_rounded,
+                                size: 16,
+                                color: AppColors.live,
+                              ),
+                              const SizedBox(width: 7),
+                              Expanded(
+                                child: AppMetadataText(
+                                  '$inningText · $stadiumText',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: colors.textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '문자중계 보기',
+                                style: TextStyle(
+                                  color: colors.accent,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                size: 18,
+                                color: colors.accent,
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '문자중계 보기',
-                          style: TextStyle(
-                            color: colors.accent,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          size: 18,
-                          color: colors.accent,
-                        ),
-                      ],
-                    ),
                   ),
                 ],
               ),
@@ -3536,88 +3601,43 @@ class _LiveMyTeamGameCard extends StatelessWidget {
 class _LiveTeamScoreInline extends StatelessWidget {
   final KboTeam? team;
   final String fallbackLabel;
-  final String score;
   final bool highlighted;
-  final bool alignEnd;
-  final double logoSize;
-  final bool showScore;
 
   const _LiveTeamScoreInline({
     required this.team,
     required this.fallbackLabel,
-    required this.score,
     this.highlighted = false,
-    this.alignEnd = false,
-    this.logoSize = 28,
-    this.showScore = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colorsOf(context);
     final accent = colors.readableAccent(team?.primaryColor ?? colors.accent);
-    final logo = _TeamLogo(
-      team: team,
-      fallbackLabel: fallbackLabel,
-      size: logoSize,
-      visualScale: logoSize >= 48 ? 1.08 : 1.18,
-    );
-    final label = Expanded(
-      child: Column(
-        crossAxisAlignment: alignEnd
-            ? CrossAxisAlignment.end
-            : CrossAxisAlignment.start,
-        children: [
-          Text(
-            fallbackLabel,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 14,
-              color: highlighted ? accent : AppColors.textPrimary,
-              fontWeight: FontWeight.w900,
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _TeamLogo(team: team, fallbackLabel: fallbackLabel, size: 48),
+        const SizedBox(height: 8),
+        Text(
+          team?.shortName ?? fallbackLabel,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 15,
+            height: 1.3,
+            color: highlighted ? accent : colors.textPrimary,
           ),
-          const SizedBox(height: 2),
-          Text(
-            highlighted ? '마이팀' : '상대팀',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 10,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w700,
-            ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          highlighted ? '마이팀' : '상대팀',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 11,
+            height: 1.3,
+            color: colors.textSecondary,
           ),
-        ],
-      ),
-    );
-    final scoreText = Text(
-      score,
-      maxLines: 1,
-      softWrap: false,
-      style: TextStyle(
-        fontSize: 24,
-        height: 1,
-        color: highlighted ? accent : AppColors.textPrimary,
-        fontWeight: FontWeight.w900,
-      ),
-    );
-
-    final labelWithScore = showScore
-        ? [label, const SizedBox(width: 8), scoreText]
-        : [label];
-    final scoreWithLabel = showScore
-        ? [scoreText, const SizedBox(width: 8), label]
-        : [label];
-
-    return Row(
-      mainAxisAlignment: alignEnd
-          ? MainAxisAlignment.end
-          : MainAxisAlignment.start,
-      children: alignEnd
-          ? [...scoreWithLabel, const SizedBox(width: 7), logo]
-          : [logo, const SizedBox(width: 7), ...labelWithScore],
+        ),
+      ],
     );
   }
 }
@@ -4382,7 +4402,9 @@ class _StandingsSnapshotCard extends StatelessWidget {
                   ),
                 )
               else ...[
-                const _StandingsHeaderRow(),
+                if (MediaQuery.sizeOf(context).width >= 340 &&
+                    MediaQuery.textScalerOf(context).scale(1) < 1.4)
+                  const _StandingsHeaderRow(),
                 for (final standing in visibleStandings)
                   _StandingSnapshotRow(
                     key: ValueKey('home-standings-row-${standing.teamId}'),
@@ -4461,6 +4483,77 @@ class _StandingSnapshotRow extends StatelessWidget {
     );
     final games = standing.wins + standing.losses + standing.draws;
     final compact = MediaQuery.sizeOf(context).width <= 340;
+
+    if (compact || MediaQuery.textScalerOf(context).scale(1) >= 1.4) {
+      return AppPressable(
+        semanticLabel:
+            '${team?.shortName ?? standing.teamName} ${standing.rank}위, $games경기, ${standing.wins}승 ${standing.losses}패 ${standing.draws}무, 승률 ${standing.pct}, 게임차 ${_gbLabel(standing.gb)}, 순위 전체 보기',
+        onTap: onTap,
+        child: Container(
+          key: ValueKey('home-standings-row-surface-${standing.teamId}'),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: highlighted ? teamAccent.withValues(alpha: 0.16) : null,
+            border: Border(bottom: BorderSide(color: colors.divider)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    '${standing.rank}위',
+                    style: TextStyle(fontSize: 14, color: colors.textSecondary),
+                  ),
+                  const SizedBox(width: 8),
+                  _TeamLogo(
+                    team: team,
+                    fallbackLabel: standing.teamName,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      team?.shortName ?? standing.teamName,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: highlighted ? teamAccent : colors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: colors.textSecondary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 12,
+                runSpacing: 6,
+                children: [
+                  for (final label in [
+                    '$games경기',
+                    '${standing.wins}승 ${standing.losses}패 ${standing.draws}무',
+                    '승률 ${standing.pct}',
+                    '게임차 ${_gbLabel(standing.gb)}',
+                  ])
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return AppPressable(
       semanticLabel: '${team?.shortName ?? standing.teamName} 순위 전체 보기',
@@ -4578,7 +4671,11 @@ class _ReferenceSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 12,
+      runSpacing: 8,
       children: [
         Text(
           title,
@@ -4588,7 +4685,6 @@ class _ReferenceSectionHeader extends StatelessWidget {
             letterSpacing: 0,
           ),
         ),
-        const Spacer(),
         if (showAction && actionLabel != null && onAction != null)
           TextButton(
             onPressed: onAction,
@@ -4596,12 +4692,17 @@ class _ReferenceSectionHeader extends StatelessWidget {
               foregroundColor: AppColors.textSecondary,
               padding: EdgeInsets.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              minimumSize: const Size(64, 24),
+              minimumSize: const Size(64, 44),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(actionLabel!, style: const TextStyle(fontSize: 12)),
+                Flexible(
+                  child: Text(
+                    actionLabel!,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
                 const SizedBox(width: 2),
                 const Icon(Icons.chevron_right_rounded, size: 18),
               ],
@@ -5645,7 +5746,7 @@ class _QuickContentListItem extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 7),
-                      Text(
+                      AppMetadataText(
                         item.subtitle,
                         style: TextStyle(
                           fontSize: 12,
@@ -5814,7 +5915,7 @@ class _QuickContentListItem extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              AppMetadataText(
                 item.subtitle,
                 style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
@@ -5978,7 +6079,7 @@ String _quickItemIcon(_QuickContentItemData item) {
   if (key.contains('마이팀 하이라이트')) return 'V';
   if (key.contains('오늘의 플레이어') || key.contains('오늘의 선수')) return 'P';
   if (key.contains('순위')) return 'R';
-  return '•';
+  return '';
 }
 
 String _quickItemCta(_QuickContentItemData item) {
@@ -6059,14 +6160,16 @@ Widget _quickItemAvatarFallback(
       borderRadius: BorderRadius.circular(12),
     ),
     alignment: Alignment.center,
-    child: Text(
-      initial,
-      style: TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.w800,
-        color: foreground,
-      ),
-    ),
+    child: initial.isEmpty
+        ? Icon(Icons.sports_baseball_outlined, color: foreground, size: 24)
+        : Text(
+            initial,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: foreground,
+            ),
+          ),
   );
 }
 

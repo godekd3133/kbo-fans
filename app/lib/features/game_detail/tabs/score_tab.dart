@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_metadata_text.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -150,7 +151,7 @@ class ScoreTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        AppMetadataText(
           'R 득점 · H 안타 · E 실책 · B 사사구',
           key: const ValueKey('score-stat-legend'),
           style: TextStyle(

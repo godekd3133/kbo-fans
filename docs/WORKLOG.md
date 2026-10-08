@@ -2,6 +2,17 @@
 
 ---
 
+## 2026-10-08: 사용자 흐름 개선 루프
+
+- 첫 진입·홈·상세 4탭·일정·기록/순위·브리핑·설정의 화면/동작을 현재 Flutter 코드와 새 API-mode 웹 빌드로 확인했다. 로컬 fixture 캡처를 운영 최신성 근거로 사용하지 않는다.
+- 온보딩 완료/건너뛰기 하단 고정, 선택 이후 건너뛰기의 임시 팀 저장 방지, 응원팀 홈/원정 점수 및 접근성 순서 수정, LIVE 구단명 가독성, 공통 상태 카드/문구 개선을 구현했다.
+- 280/320px·240% 검증에서 홈 순위 표와 리더보드 고정 높이 문제가 드러나 팀별 기록 행과 확대 글자 전체 스크롤로 보강했다. 숫자는 전체 점수가 보이도록 공간에 맞추되 스크린리더는 원래 값을 유지한다.
+- `MyTeamNotifier.setTeam` → push 등록 수렴, app API repository → FastAPI scoreboard/schedule/standings producer를 확인했다. backend 계약·수집·scheduler·infra·release 설정은 변경하지 않았다.
+- 작업 packet 및 검증 결과: `docs/UX_IMPROVEMENT_2026-10-08.md`. 캡처/갤러리: `artifacts/ux-improvement-2026-10-08/`.
+- 최초 검증의 하단 영역 높이 문제를 수정하고, 전체 Flutter 검사에서 발견한 확대 글자 리더보드 overflow를 수정했다. 구조 변경을 가정하던 테스트 locator와 스크롤이 필요한 기대도 실제 사용자 행동에 맞췄다.
+- backend health HTTP 200, 관련 API 테스트 26개 통과. Flutter 최종 분석 clean, 전체 629 tests passed, API mode 웹 release build 통과. 저장 캡처를 직접 열어 390×844 정상/실패 화면과 320×568 고정 동작을 확인했고 상세 첫 route의 홈 복귀도 확인했다.
+- 실기기·푸시 실수신·Live Activity·서명·배포·TestFlight·Figma canvas 변경은 실행하지 않았다.
+
 ## 2026-09-25: 최신 main backend Lightsail 운영 설치
 
 ### 배포

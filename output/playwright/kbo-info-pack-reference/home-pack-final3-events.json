@@ -1,0 +1,30 @@
+[
+  {
+    "console": "Injecting <script> tag. Using callback."
+  },
+  {
+    "console": "WARNING: Falling back to CPU-only rendering. Reason: webGLVersion is -1"
+  },
+  {
+    "console": "Injecting <script> tag. Using callback."
+  },
+  {
+    "console": "WARNING: Falling back to CPU-only rendering. Reason: webGLVersion is -1"
+  },
+  {
+    "url": "http://127.0.0.1:8011/api/scoreboard/home?date=2026-06-19",
+    "status": 200
+  },
+  {
+    "url": "http://127.0.0.1:8011/api/home?date=2026-06-19&myTeam=LG",
+    "status": 200
+  },
+  {
+    "url": "http://127.0.0.1:8011/api/scoreboard/home?date=2026-06-19",
+    "status": 200
+  },
+  {
+    "url": "http://127.0.0.1:8011/api/home?date=2026-06-19&myTeam=LG",
+    "status": 200
+  }
+]

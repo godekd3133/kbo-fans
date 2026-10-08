@@ -1,3 +1,4 @@
+import '../../core/widgets/app_metadata_text.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -6,12 +7,11 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
-import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/kbo_player_image_cache.dart';
 import '../../core/utils/kbo_time.dart';
-import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_design_system.dart';
+import '../../core/widgets/app_status_card.dart';
 import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
@@ -1921,37 +1921,12 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   Widget _buildScheduleErrorContent(Object error) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-      child: AppArtworkCard(
-        assetName: VisualAssets.dataRetry,
-        height: 184,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            const Text(
-              '일정을 불러올 수 없습니다',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              describeAsyncError(error),
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                height: 1.35,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                key: const ValueKey('schedule-error-retry'),
-                onPressed: _refreshingSchedule ? null : _refreshSchedule,
-                child: Text(_refreshingSchedule ? '확인 중' : '다시 시도'),
-              ),
-            ),
-          ],
-        ),
+      child: AppStatusCard(
+        title: '일정을 불러오지 못했어요',
+        description: describeAsyncError(error),
+        actionKey: const ValueKey('schedule-error-retry'),
+        actionLabel: _refreshingSchedule ? '확인 중' : '다시 시도',
+        onAction: _refreshingSchedule ? null : _refreshSchedule,
       ),
     );
   }
@@ -2155,7 +2130,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 4),
-          Text(
+          AppMetadataText(
             '$season 시즌 · 남은 $gameCount경기 · 오늘 기준 가까운 순 · 홈/원정 무관',
             style: TextStyle(
               fontSize: 12,

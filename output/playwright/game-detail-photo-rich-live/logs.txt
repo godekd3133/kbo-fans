@@ -1,0 +1,32 @@
+[request] GET http://127.0.0.1:7358/
+[console:debug] Injecting <script> tag. Using callback.
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[requestfailed] GET http://127.0.0.1:7358/main.dart.js net::ERR_ABORTED
+[request] GET http://127.0.0.1:7358/favicon.png
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[request] GET http://127.0.0.1:7358/favicon.png
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[probe] no 8011 request after hash URL, trying path URL
+[request] GET http://127.0.0.1:7358/game/20260619SSLG0?tab=boxscore
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[request] GET http://127.0.0.1:7358/game/20260619SSLG0?tab=score
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[request] GET http://127.0.0.1:7358/game/20260619SSLG0?tab=relay
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[request] GET http://127.0.0.1:7358/game/20260619SSLG0?tab=boxscore
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[request] GET http://127.0.0.1:7358/game/20260619SSLG0?tab=lineup
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+
+BODY_HASH_FIRST:
+
+
+BODY_LAST:
+Error response
+
+Error code: 404
+
+Message: File not found.
+
+Error code explanation: HTTPStatus.NOT_FOUND - Nothing matches the given URI.

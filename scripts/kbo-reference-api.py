@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import List, Optional
 from urllib.parse import parse_qs, urlparse
 
@@ -560,6 +562,48 @@ def _home_payload(date: str, my_team: Optional[str]) -> dict:
 
 
 class ReferenceApiHandler(BaseHTTPRequestHandler):
+    include_snapshots = False
+
+    def _snapshot_payload(self, path: str, params: dict) -> Optional[dict]:
+        """Opt-in visual QA only. Preserve snapshot identity and original dates."""
+        root = Path(__file__).resolve().parents[1] / "backend/data/snapshots"
+        season = params.get("season", ["2026"])[0]
+        if not re.fullmatch(r"\d{4}", season):
+            return None
+
+        def read(kind: str, key: str) -> Optional[dict]:
+            source = root / kind / (key + ".json")
+            if not source.is_file():
+                return None
+            value = json.loads(source.read_text(encoding="utf-8"))
+            payload = value.get("payload")
+            return payload if isinstance(payload, dict) else None
+
+        if path == "/api/schedule":
+            month = params.get("month", [""])[0]
+            if re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", month):
+                return read("schedule", month)
+        if path == "/api/standings":
+            return read("standings_latest", season)
+        if path == "/api/records/overview":
+            return read("records_overview", season)
+        leaderboard = re.fullmatch(r"/api/records/leaderboard/([a-zA-Z]+)", path)
+        if leaderboard:
+            return read("leaderboard", season + "_" + leaderboard.group(1))
+        team = re.fullmatch(r"/api/team/([A-Z]{2})/(stats|records)", path)
+        if team:
+            key = team.group(1) + "-" + season
+            stats = read("team_stats", key)
+            if team.group(2) == "stats":
+                return stats
+            players = read("team_players", key)
+            if stats is not None and players is not None:
+                return {"players": players.get("players", []), "teamStats": stats}
+        player = re.fullmatch(r"/api/player/(\d+)", path)
+        if player:
+            return read("player_detail", player.group(1) + "-" + season + "-auto")
+        return None
+
     def do_OPTIONS(self) -> None:
         self._send_headers(204)
 
@@ -584,6 +628,12 @@ class ReferenceApiHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
         date = params.get("date", [DEFAULT_DATE])[0]
+
+        if self.include_snapshots:
+            snapshot = self._snapshot_payload(parsed.path, params)
+            if snapshot is not None:
+                self._send_json({"success": True, "data": snapshot})
+                return
 
         if parsed.path in {"/api/health", "/health"}:
             self._send_json({"success": True, "data": {"status": "ok"}})
@@ -692,7 +742,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8001)
+    parser.add_argument("--include-snapshots", action="store_true",
+                        help="Use saved repository snapshots for visual QA; never live data")
     args = parser.parse_args()
+
+    ReferenceApiHandler.include_snapshots = args.include_snapshots
 
     server = ThreadingHTTPServer((args.host, args.port), ReferenceApiHandler)
     print(f"KBO reference API listening on http://{args.host}:{args.port}/api")

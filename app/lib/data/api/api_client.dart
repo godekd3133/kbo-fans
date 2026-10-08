@@ -695,7 +695,7 @@ String describeAsyncError(Object error) {
       case DioExceptionType.sendTimeout:
         return '응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.';
       case DioExceptionType.connectionError:
-        return '서버 연결에 실패했습니다. 네트워크 또는 백엔드 상태를 확인해주세요.';
+        return '연결이 원활하지 않아요. 인터넷 연결을 확인하고 다시 시도해 주세요.';
       case DioExceptionType.badResponse:
         return '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
       case DioExceptionType.cancel:

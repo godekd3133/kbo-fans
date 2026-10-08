@@ -76,7 +76,7 @@ void main() {
       textScaleFactor: 1,
     );
 
-    expect(find.text('응원팀을 고르면\n경기에서 기록까지'), findsOneWidget);
+    expect(find.text('어느 팀을 응원하세요?'), findsOneWidget);
     expect(tester.getRect(find.text('LG')).bottom, lessThan(420));
     expect(find.text('실시간 알림 받기'), findsNothing);
     await tester.tap(find.text('LG'));
@@ -175,6 +175,52 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AppArtworkCard), findsNothing);
+  });
+
+  testWidgets('작은 화면에서도 완료와 건너뛰기를 스크롤 없이 누를 수 있다', (tester) async {
+    await _pumpOnboarding(
+      tester,
+      physicalSize: const Size(320, 568),
+      textScaleFactor: 1,
+    );
+    final primary = tester.getRect(find.text('시작하기'));
+    final skip = tester.getRect(find.text('나중에 선택'));
+    expect(primary.bottom, lessThanOrEqualTo(568));
+    expect(skip.bottom, lessThanOrEqualTo(568));
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.text('시작하기')), primary);
+    expect(tester.getRect(find.text('나중에 선택')), skip);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('팀을 누른 뒤 나중에 선택하면 응원팀 없이 홈으로 진입한다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final router = GoRouter(
+      initialLocation: '/onboarding',
+      routes: [
+        GoRoute(
+          path: '/onboarding',
+          builder: (_, _) => const OnboardingScreen(),
+        ),
+        GoRoute(path: '/home', builder: (_, _) => const Text('home')),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('LG').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('나중에 선택'));
+    await tester.pumpAndSettle();
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('myTeam'), isNull);
+    expect(prefs.getBool('onboardingDone'), isTrue);
+    expect(find.text('home'), findsOneWidget);
   });
 
   testWidgets('시작하기 저장 중에는 진행 상태를 보여주고 중복 탭을 막는다', (tester) async {

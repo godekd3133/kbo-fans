@@ -220,7 +220,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-
+    await tester.scrollUntilVisible(
+      find.text('최근 최대 50개 보관 · 1개 중 1개 표시'),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('최근 최대 50개 보관 · 1개 중 1개 표시'), findsOneWidget);
     for (final label in const ['보관', '현재 표시', '안 읽음']) {
       final metric = find.byKey(ValueKey('inbox-summary-metric-$label'));

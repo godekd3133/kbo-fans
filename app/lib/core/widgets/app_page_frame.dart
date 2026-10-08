@@ -4,12 +4,14 @@ class AppPageFrame extends StatelessWidget {
   final Widget child;
   final double? maxWidth;
   final EdgeInsetsGeometry padding;
+  final bool shrinkWrap;
 
   const AppPageFrame({
     super.key,
     required this.child,
     this.maxWidth,
     this.padding = EdgeInsets.zero,
+    this.shrinkWrap = false,
   });
 
   @override
@@ -19,6 +21,7 @@ class AppPageFrame extends StatelessWidget {
         maxWidth ?? (viewportWidth >= 700 ? 720.0 : 430.0);
     return Align(
       alignment: Alignment.topCenter,
+      heightFactor: shrinkWrap ? 1 : null,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: effectiveMaxWidth),
         child: Padding(

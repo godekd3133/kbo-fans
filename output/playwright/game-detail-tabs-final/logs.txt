@@ -1,0 +1,52 @@
+[request] GET http://127.0.0.1:7365/
+[request] GET http://127.0.0.1:7365/flutter_bootstrap.js
+[request] GET https://www.gstatic.com/flutter-canvaskit/425cfb54d01a9472b3e81d9e76fd63a4a44cfbcb/chromium/canvaskit.js
+[console:debug] Injecting <script> tag. Using callback.
+[request] GET http://127.0.0.1:7365/main.dart.js
+[request] GET http://127.0.0.1:7365/favicon.png
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[request] GET http://127.0.0.1:7365/favicon.png
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[response] 200 http://127.0.0.1:7365/main.dart.js
+[request] GET https://fonts.gstatic.com/s/roboto/v32/KFOmCnqEu92Fr1Me4GZLCzYlKw.woff2
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0/relay
+[request] GET http://127.0.0.1:8013/api/team/SS/players?season=2026
+[request] GET http://127.0.0.1:8013/api/team/LG/players?season=2026
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0/lineup
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0/relay
+[response] 200 http://127.0.0.1:8013/api/team/SS/players?season=2026
+[response] 200 http://127.0.0.1:8013/api/team/LG/players?season=2026
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0/lineup
+[request] GET https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69102.jpg
+[request] GET https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69446.jpg
+[request] GET https://fonts.gstatic.com/s/notosanskr/v36/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzzuoyeLGC5nwuDo-KBTUm6CryotyJROlrnQ.118.woff2
+[request] GET https://fonts.gstatic.com/s/notosanskr/v36/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzzuoyeLGC5nwuDo-KBTUm6CryotyJROlrnQ.117.woff2
+[request] GET https://fonts.gstatic.com/s/notosanskr/v36/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzzuoyeLGC5nwuDo-KBTUm6CryotyJROlrnQ.119.woff2
+[request] GET https://fonts.gstatic.com/s/notosanskr/v36/PbyxFmXiEBPT4ITbgNA5Cgms3VYcOA-vvnIzzuoyeLGC5nwuDo-KBTUm6CryotyJROlrnQ.116.woff2
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0/relay
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0/relay
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0/boxscore
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0/boxscore
+[request] GET https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/62404.jpg
+[request] GET https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/62360.jpg
+[request] GET https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50458.jpg
+[request] GET https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54400.jpg
+[request] GET https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/74540.jpg
+[request] GET https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66409.jpg
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0
+[request] GET http://127.0.0.1:8013/api/game/20260619SSLG0/boxscore
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0
+[response] 200 http://127.0.0.1:8013/api/game/20260619SSLG0/boxscore
+[request] GET https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/61101.jpg
+[request] GET https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66108.jpg
+[request] GET https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65207.jpg
+[request] GET https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53123.jpg
+[request] GET https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/62415.jpg
+
+BODY_LAST:

@@ -169,7 +169,7 @@ class AppPageHeader extends StatelessWidget {
             style: TextStyle(
               color: colors.textSecondary,
               fontSize: 11,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w400,
               letterSpacing: 0.2,
             ),
           ),
@@ -177,26 +177,24 @@ class AppPageHeader extends StatelessWidget {
         ],
         Text(
           title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+          maxLines: null,
           style: TextStyle(
             color: colors.textPrimary,
             fontSize: 26,
-            height: 1.05,
-            fontWeight: FontWeight.w900,
+            height: 1.2,
+            fontWeight: FontWeight.w400,
           ),
         ),
         if (subtitle != null && subtitle!.isNotEmpty) ...[
           const SizedBox(height: 6),
           Text(
             subtitle!,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            maxLines: null,
             style: TextStyle(
               color: colors.textSecondary,
-              fontSize: 12,
-              height: 1.3,
-              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              height: 1.45,
+              fontWeight: FontWeight.w400,
             ),
           ),
         ],

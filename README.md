@@ -390,3 +390,7 @@ GitHub Actions 배포:
 - `CHANGELOG.md`
 - `docs/WORKLOG.md`
 - 필요 시 `AGENTS.md`, `CLAUDE.md`, `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`
+
+### 2026-10-08 사용자 흐름 개선 검증
+
+온보딩 하단 고정 동작, 마이팀 LIVE 점수 순서, 확대 글자의 홈 순위/리더보드, 오류·빈 상태 안내 개선 범위는 [사용자 흐름 개선 기록](docs/UX_IMPROVEMENT_2026-10-08.md)을 참조하세요. `scripts/kbo-reference-api.py --include-snapshots`는 화면 QA에 기존 repository snapshot을 명시적으로 사용할 수 있는 opt-in이며 운영 데이터 경로가 아닙니다. 현재 시즌의 최신성을 확인하려면 실제 FastAPI runtime을 별도로 검증해야 합니다.

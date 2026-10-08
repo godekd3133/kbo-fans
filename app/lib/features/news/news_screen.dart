@@ -1,3 +1,4 @@
+import '../../core/widgets/app_metadata_text.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -135,7 +136,6 @@ class _NewsHeader extends StatelessWidget {
     return AppPageHeader(
       eyebrow: '$displayDate 기준',
       title: '데이터 브리핑',
-      subtitle: '지금 볼 경기부터, 기록의 의미까지',
       trailing: IconButton(
         key: const ValueKey('news-refresh'),
         tooltip: '데이터 브리핑 새로고침',
@@ -363,7 +363,7 @@ class _BriefingDisclosure extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
+                child: AppMetadataText(
                   'KBO 데이터로 앱이 자동 정리 · 실제 뉴스 기사 아님\n$generatedLabel',
                   style: TextStyle(
                     fontSize: 11,
@@ -488,7 +488,7 @@ class _LeadRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  AppMetadataText(
                     item.subtitle,
                     style: TextStyle(
                       fontSize: 12,
@@ -501,7 +501,7 @@ class _LeadRow extends StatelessWidget {
                     spacing: 12,
                     runSpacing: 4,
                     children: [
-                      Text(
+                      AppMetadataText(
                         '근거 · ${item.sourceLabel}',
                         style: TextStyle(
                           fontSize: 11,
@@ -622,7 +622,7 @@ class _NewsCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 5),
-                Text(
+                AppMetadataText(
                   item.subtitle,
                   style: TextStyle(
                     fontSize: 12,
@@ -634,7 +634,7 @@ class _NewsCard extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
+                      child: AppMetadataText(
                         '근거 · ${item.sourceLabel}',
                         style: TextStyle(
                           fontSize: 11,

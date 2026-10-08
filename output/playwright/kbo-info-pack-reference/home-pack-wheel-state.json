@@ -1,0 +1,51 @@
+{
+  "state": {
+    "href": "http://127.0.0.1:4188/#/home?qa=wheel",
+    "storage": {
+      "flutter.onboardingDone": "true",
+      "flutter.myTeam": "\"LG\"",
+      "flutter.api_cache:homeAggregate:2026-06-19:LG": "\"{\\\"cachedAt\\\":\\\"2026-06-19T17:17:22.741\\\",\\\"data\\\":{\\\"date\\\":\\\"2026-06-19\\\",\\\"myTeam\\\":\\\"LG\\\",\\\"myTeamBrief\\\":{\\\"teamId\\\":\\\"LG\\\",\\\"teamLabel\\\":\\\"LG 트윈스\\\",\\\"standing\\\":{\\\"rank\\\":2,\\\"teamId\\\":\\\"LG\\\",\\\"teamName\\\":\\\"LG 트윈스\\\",\\\"wins\\\":28,\\\"losses\\\":17,\\\"draws\\\":2,\\\"pct\\\":\\\".622\\\",\\\"gb\\\":\\\"2.0\\\",\\\"streak\\\":\\\"W4\\\"},\\\"todayGameId\\\":\\\"20260619SSLG0\\\",\\\"nextGame\\\":null,\\\"recentWins\\\":4,\\\"recentLosses\\\":1,\\\"recentDraws\\\":0,\\\"recentGamesCount\\\":5,\\\"recentSummaries\\\":[{\\\"gameId\\\":\\\"20260618LGLT0\\\",\\\"result\\\":\\\"승\\\",\\\"opponentName\\\":\\\"롯데\\\",\\\"score\\\":\\\"5:2\\\"},{\\\"gameId\\\":\\\"20260617LGLT0\\\",\\\"result\\\":\\\"승\\\",\\\"opponentName\\\":\\\"롯데\\\",\\\"score\\\":\\\"6:3\\\"},{\\\"gameId\\\":\\\"20260616LGLT0\\\",\\\"result\\\":\\\"패\\\",\\\"opponentName\\\":\\\"롯데\\\",\\\"score\\\":\\\"2:4\\\"},{\\\"gameId\\\":\\\"20260615LGNC0\\\",\\\"result\\\":\\\"승\\\",\\\"opponentName\\\":\\\"NC\\\",\\\"score\\\":\\\"7:1\\\"},{\\\"gameId\\\":\\\"20260614LGNC0\\\",\\\"result\\\":\\\"승\\\",\\\"opponentName\\\":\\\"NC\\\",\\\"score\\\":\\\"4:3\\\"}]},\\\"kboBrief\\\":{\\\"title\\\":\\\"오늘의 KBO 인사이트 팩\\\",\\\"subtitle\\\":\\\"지금 볼 장면 8개\\\",\\\"items\\\":[{\\\"type\\\":\\\"game_flow\\\",\\\"eyebrow\\\":\\\"접전\\\",\\\"title\\\":\\\"삼성 3 : 2 LG\\\",\\\"subtitle\\\":\\\"7회말 · 잠실 · 한 점 승부 구간\\\",\\\"route\\\":\\\"/game/20260619SSLG0\\\",\\\"gameId\\\":\\\"20260619SSLG0\\\",\\\"teamIds\\\":[\\\"SS\\\",\\\"LG\\\"]},{\\\"type\\\":\\\"standings\\\",\\\"eyebrow\\\":\\\"순위\\\",\\\"title\\\":\\\"2~5위 0.5G 혼전\\\",\\\"subtitle\\\":\\\"LG 4연승 · 상위권 추격 구도\\\",\\\"route\\\":\\\"/standings\\\",\\\"gameId\\\":null,\\\"teamIds\\\":[\\\"HT\\\",\\\"LG\\\"]},{\\\"type\\\":\\\"record_radar\\\",\\\"eyebrow\\\":\\\"기록\\\",\\\"title\\\":\\\"홈런 레이스\\\",\\\"subtitle\\\":\\\"노시환 17개 · 상위 3명 격차 3개\\\",\\\"route\\\":\\\"/records\\\",\\\"gameId\\\":null,\\\"teamIds\\\":[\\\"HH\\\"]},{\\\"type\\\":\\\"player_performance\\\",\\\"eyebrow\\\":\\\"승부처\\\",\\\"title\\\":\\\"7회 이후 득점력\\\",\\\"subtitle\\\":\\\"삼성 .318 · LG .250\\\",\\\"route\\\":\\\"/game/20260619SSLG0\\\",\\\"gameId\\\":\\\"20260619SSLG0\\\",\\\"teamIds\\\":[\\\"SS\\\",\\\"LG\\\"]},{\\\"type\\\":\\\"team_trend\\\",\\\"eyebrow\\\":\\\"상위권\\\",\\\"title\\\":\\\"2~5위 혼전\\\",\\\"subtitle\\\":\\\"2위 한화 · 5위 KT 0.5G 차이\\\",\\\"route\\\":\\\"/standings\\\",\\\"gameId\\\":null,\\\"teamIds\\\":[\\\"HH\\\",\\\"KT\\\"]},{\\\"type\\\":\\\"pitcher_check\\\",\\\"eyebrow\\\":\\\"선발 체크\\\",\\\"title\\\":\\\"오늘 선발 평균자책\\\",\\\"subtitle\\\":\\\"2.89 · 리그 평균 4.35\\\",\\\"route\\\":\\\"/records\\\",\\\"gameId\\\":null,\\\"teamIds\\\":[\\\"LG\\\"]},{\\\"type\\\":\\\"big_match\\\",\\\"eyebrow\\\":\\\"오늘 일정\\\",\\\"title\\\":\\\"두산 vs SSG\\\",\\\"subtitle\\\":\\\"18:30 · 문학 · 오늘 2경기 예정\\\",\\\"route\\\":\\\"/game/20260619OBSK0\\\",\\\"gameId\\\":\\\"20260619OBSK0\\\",\\\"teamIds\\\":[\\\"OB\\\",\\\"SK\\\"]},{\\\"type\\\":\\\"schedule_remaining\\\",\\\"eyebrow\\\":\\\"남은 경기\\\",\\\"title\\\":\\\"SSG vs 두산 외 1경기\\\",\\\"subtitle\\\":\\\"18:30 시작 · 중계 바로가기\\\",\\\"route\\\":\\\"/schedule\\\",\\\"gameId\\\":null,\\\"teamIds\\\":[\\\"SK\\\",\\\"OB\\\"]}]},\\\"quickItems\\\":[{\\\"eyebrow\\\":\\\"마이팀 경기\\\",\\\"title\\\":\\\"LG vs 삼성\\\",\\\"subtitle\\\":\\\"잠실 · 7회말 · 승부처 진행 중\\\",\\\"route\\\":\\\"/game/20260619SSLG0\\\",\\\"teamId\\\":\\\"LG\\\",\\\"fallbackLabel\\\":\\\"LG 트윈스\\\"},{\\\"eyebrow\\\":\\\"오늘 일정\\\",\\\"title\\\":\\\"오늘 3경기\\\",\\\"subtitle\\\":\\\"남은 경기 2 · 18:30 시작\\\",\\\"route\\\":\\\"/schedule\\\",\\\"teamId\\\":\\\"SK\\\",\\\"fallbackLabel\\\":\\\"SSG 랜더스\\\"},{\\\"eyebrow\\\":\\\"순위 변화\\\",\\\"title\\\":\\\"2~5위 0.5G\\\",\\\"subtitle\\\":\\\"상위권 혼전 · LG 추격권\\\",\\\"route\\\":\\\"/standings\\\",\\\"teamId\\\":\\\"LG\\\",\\\"fallbackLabel\\\":\\\"LG 트윈스\\\"},{\\\"eyebrow\\\":\\\"기록 리더\\\",\\\"title\\\":\\\"타율 1위 .354\\\",\\\"subtitle\\\":\\\"빅터 레이예스 · 롯데\\\",\\\"route\\\":\\\"/records\\\",\\\"teamId\\\":\\\"LT\\\",\\\"fallbackLabel\\\":\\\"빅터 레이예스\\\"}],\\\"standingsPreview\\\":[{\\\"rank\\\":1,\\\"teamId\\\":\\\"HT\\\",\\\"teamName\\\":\\\"KIA 타이거즈\\\",\\\"wins\\\":30,\\\"losses\\\":15,\\\"draws\\\":3,\\\"pct\\\":\\\".667\\\",\\\"gb\\\":\\\"-\\\",\\\"streak\\\":\\\"W2\\\"},{\\\"rank\\\":2,\\\"teamId\\\":\\\"LG\\\",\\\"teamName\\\":\\\"LG 트윈스\\\",\\\"wins\\\":28,\\\"losses\\\":17,\\\"draws\\\":2,\\\"pct\\\":\\\".622\\\",\\\"gb\\\":\\\"2.0\\\",\\\"streak\\\":\\\"W4\\\"},{\\\"rank\\\":3,\\\"teamId\\\":\\\"SS\\\",\\\"teamName\\\":\\\"삼성 라이온즈\\\",\\\"wins\\\":24,\\\"losses\\\":21,\\\"draws\\\":1,\\\"pct\\\":\\\".533\\\",\\\"gb\\\":\\\"6.0\\\",\\\"streak\\\":\\\"2연승\\\"},{\\\"rank\\\":4,\\\"teamId\\\":\\\"SK\\\",\\\"teamName\\\":\\\"SSG 랜더스\\\",\\\"wins\\\":25,\\\"losses\\\":19,\\\"draws\\\":1,\\\"pct\\\":\\\".568\\\",\\\"gb\\\":\\\"5.0\\\",\\\"streak\\\":\\\"W1\\\"},{\\\"rank\\\":5,\\\"teamId\\\":\\\"OB\\\",\\\"teamName\\\":\\\"두산 베어스\\\",\\\"wins\\\":20,\\\"losses\\\":24,\\\"draws\\\":1,\\\"pct\\\":\\\".455\\\",\\\"gb\\\":\\\"9.5\\\",\\\"streak\\\":\\\"1승 1패\\\"},{\\\"rank\\\":6,\\\"teamId\\\":\\\"KT\\\",\\\"teamName\\\":\\\"KT 위즈\\\",\\\"wins\\\":22,\\\"losses\\\":22,\\\"draws\\\":2,\\\"pct\\\":\\\".500\\\",\\\"gb\\\":\\\"7.5\\\",\\\"streak\\\":\\\"L1\\\"},{\\\"rank\\\":7,\\\"teamId\\\":\\\"NC\\\",\\\"teamName\\\":\\\"NC 다이노스\\\",\\\"wins\\\":21,\\\"losses\\\":23,\\\"draws\\\":1,\\\"pct\\\":\\\".477\\\",\\\"gb\\\":\\\"8.5\\\",\\\"streak\\\":\\\"W1\\\"}]}}\"",
+      "flutter.api_cache:scoreboard_home:2026-06-19": "\"{\\\"cachedAt\\\":\\\"2026-06-19T17:17:22.872\\\",\\\"data\\\":{\\\"date\\\":\\\"2026-06-19\\\",\\\"games\\\":[{\\\"gameId\\\":\\\"20260619SSLG0\\\",\\\"status\\\":\\\"LIVE\\\",\\\"inning\\\":\\\"7회말\\\",\\\"statusLabel\\\":\\\"7회말\\\",\\\"stadium\\\":\\\"잠실\\\",\\\"startTime\\\":\\\"18:30\\\",\\\"away\\\":{\\\"teamId\\\":\\\"SS\\\",\\\"teamName\\\":\\\"삼성 라이온즈\\\",\\\"shortName\\\":\\\"삼성\\\",\\\"score\\\":3,\\\"scores\\\":[0,0,1,0,0,2,0,null,null],\\\"hits\\\":7,\\\"errors\\\":0,\\\"balls\\\":3},\\\"home\\\":{\\\"teamId\\\":\\\"LG\\\",\\\"teamName\\\":\\\"LG 트윈스\\\",\\\"shortName\\\":\\\"LG\\\",\\\"score\\\":2,\\\"scores\\\":[0,1,0,0,1,0,0,null,null],\\\"hits\\\":6,\\\"errors\\\":1,\\\"balls\\\":4}},{\\\"gameId\\\":\\\"20260619OBSK0\\\",\\\"status\\\":\\\"SCHEDULED\\\",\\\"inning\\\":\\\"\\\",\\\"statusLabel\\\":\\\"18:30\\\",\\\"stadium\\\":\\\"문학\\\",\\\"startTime\\\":\\\"18:30\\\",\\\"away\\\":{\\\"teamId\\\":\\\"OB\\\",\\\"teamName\\\":\\\"두산 베어스\\\",\\\"shortName\\\":\\\"두산\\\",\\\"score\\\":0,\\\"scores\\\":[null,null,null,null,null,null,null,null,null],\\\"hits\\\":0,\\\"errors\\\":0,\\\"balls\\\":0},\\\"home\\\":{\\\"teamId\\\":\\\"SK\\\",\\\"teamName\\\":\\\"SSG 랜더스\\\",\\\"shortName\\\":\\\"SSG\\\",\\\"score\\\":0,\\\"scores\\\":[null,null,null,null,null,null,null,null,null],\\\"hits\\\":0,\\\"errors\\\":0,\\\"balls\\\":0}},{\\\"gameId\\\":\\\"20260619KTNC0\\\",\\\"status\\\":\\\"SCHEDULED\\\",\\\"inning\\\":\\\"\\\",\\\"statusLabel\\\":\\\"18:30\\\",\\\"stadium\\\":\\\"수원\\\",\\\"startTime\\\":\\\"18:30\\\",\\\"away\\\":{\\\"teamId\\\":\\\"KT\\\",\\\"teamName\\\":\\\"KT 위즈\\\",\\\"shortName\\\":\\\"KT\\\",\\\"score\\\":0,\\\"scores\\\":[null,null,null,null,null,null,null,null,null],\\\"hits\\\":0,\\\"errors\\\":0,\\\"balls\\\":0},\\\"home\\\":{\\\"teamId\\\":\\\"NC\\\",\\\"teamName\\\":\\\"NC 다이노스\\\",\\\"shortName\\\":\\\"NC\\\",\\\"score\\\":0,\\\"scores\\\":[null,null,null,null,null,null,null,null,null],\\\"hits\\\":0,\\\"errors\\\":0,\\\"balls\\\":0}}]}}\""
+    }
+  },
+  "events": [
+    {
+      "console": "Injecting <script> tag. Using callback."
+    },
+    {
+      "console": "WARNING: Falling back to CPU-only rendering. Reason: webGLVersion is -1"
+    },
+    {
+      "url": "http://127.0.0.1:8011/api/scoreboard/home?date=2026-06-19",
+      "status": 204
+    },
+    {
+      "url": "http://127.0.0.1:8011/api/scoreboard/home?date=2026-06-19",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:8011/api/home?date=2026-06-19&myTeam=LG",
+      "status": 204
+    },
+    {
+      "url": "http://127.0.0.1:8011/api/home?date=2026-06-19&myTeam=LG",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:8011/api/home?date=2026-06-19&myTeam=LG",
+      "status": 204
+    },
+    {
+      "url": "http://127.0.0.1:8011/api/scoreboard/home?date=2026-06-19",
+      "status": 204
+    },
+    {
+      "url": "http://127.0.0.1:8011/api/home?date=2026-06-19&myTeam=LG",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:8011/api/scoreboard/home?date=2026-06-19",
+      "status": 200
+    }
+  ]
+}

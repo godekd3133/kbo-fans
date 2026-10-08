@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_metadata_text.dart';
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -2082,7 +2083,7 @@ class _LineupRow extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 2),
-              Text(
+              AppMetadataText(
                 detailParts.join(' · '),
                 style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
               ),

@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_metadata_text.dart';
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -1643,7 +1644,7 @@ class _AdaptiveScorebugParticipant extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          AppMetadataText(
             '$role · $team',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,

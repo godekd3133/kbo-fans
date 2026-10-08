@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-09-07T07:39:57.710679+00:00",
+  "url": "https://3-39-79-1.sslip.io/api/health",
+  "status": 200,
+  "success": true,
+  "data": {
+    "status": "ok"
+  },
+  "seconds": 1.63,
+  "scope": "Existing production API connectivity only. Local backend changes are not deployed."
+}

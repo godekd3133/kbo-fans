@@ -79,161 +79,157 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
       }
     }
 
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: AppPageHeader(
+            eyebrow: '$effectiveSeason 시즌 · ${_selectedGroup.label} 지표',
+            title: '리그 리더보드',
+
+            onBack: goBack,
+            trailing: baseballMetricGuideFor(_selectedMetric.key) == null
+                ? null
+                : IconButton(
+                    tooltip: '선택한 지표 이해하기',
+                    onPressed: () => showBaseballMetricGuide(
+                      context,
+                      metric: _selectedMetric.key,
+                    ),
+                    icon: const Icon(Icons.help_outline_rounded),
+                  ),
+          ),
+        ),
+        _LeaderboardVerticalRegion(
+          scrollable: useLargeText,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                _groupSegment(),
+                const SizedBox(height: 10),
+                _metricSelector(useLargeText: useLargeText),
+                const SizedBox(height: 12),
+                if (useLargeText)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _selectedMetric.title,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _sourceBadge(_selectedMetric),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _selectedMetric.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _sourceBadge(_selectedMetric),
+                    ],
+                  ),
+                if (_selectedMetric.disclosure != null) ...[
+                  const SizedBox(height: 10),
+                  _metricDisclosure(_selectedMetric.disclosure!),
+                ],
+                if (baseballMetricGuideFor(_selectedMetric.key)
+                    case final guide?)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      key: const ValueKey('leaderboard-metric-guide'),
+                      onPressed: () => showBaseballMetricGuide(
+                        context,
+                        metric: _selectedMetric.key,
+                      ),
+                      icon: const Icon(Icons.info_outline_rounded, size: 16),
+                      label: Text(
+                        guide.formula,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      style: TextButton.styleFrom(
+                        alignment: Alignment.centerLeft,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                if (!_selectedMetric.supportedByOfficialSource)
+                  _LeaderboardVerticalRegion(
+                    scrollable: useLargeText,
+                    child: _unsupportedMetricCard(metric: _selectedMetric),
+                  )
+                else
+                  _LeaderboardVerticalRegion(
+                    scrollable: useLargeText,
+                    child: AppMotionSwitcher(
+                      child: KeyedSubtree(
+                        key: ValueKey('leaderboard-${_selectedMetric.key}'),
+                        child: asyncValue.when(
+                          loading: () => Center(
+                            child: CircularProgressIndicator(
+                              color: AppTheme.colorsOf(context).accent,
+                            ),
+                          ),
+                          error: (error, _) => Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  describeAsyncError(error),
+                                  style: TextStyle(
+                                    color: AppColors.textSupporting,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 14),
+                                OutlinedButton(
+                                  key: const ValueKey('leaderboard-retry'),
+                                  onPressed: () => ref.invalidate(
+                                    leaderboardProvider(leaderboardKey),
+                                  ),
+                                  child: const Text('다시 시도'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          data: (leaders) => _leaderList(
+                            leaders,
+                            season: effectiveSeason,
+                            useLargeText: useLargeText,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+
     return Scaffold(
       body: SafeArea(
         child: AppPageFrame(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: AppPageHeader(
-                  eyebrow: '$effectiveSeason 시즌 · ${_selectedGroup.label} 지표',
-                  title: '리그 리더보드',
-                  subtitle: '상위 선수의 핵심 지표를 빠르게 비교합니다.',
-                  onBack: goBack,
-                  trailing: baseballMetricGuideFor(_selectedMetric.key) == null
-                      ? null
-                      : IconButton(
-                          tooltip: '선택한 지표 이해하기',
-                          onPressed: () => showBaseballMetricGuide(
-                            context,
-                            metric: _selectedMetric.key,
-                          ),
-                          icon: const Icon(Icons.help_outline_rounded),
-                        ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 4),
-                      _groupSegment(),
-                      const SizedBox(height: 10),
-                      _metricSelector(useLargeText: useLargeText),
-                      const SizedBox(height: 12),
-                      if (useLargeText)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _selectedMetric.title,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            _sourceBadge(_selectedMetric),
-                          ],
-                        )
-                      else
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _selectedMetric.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            _sourceBadge(_selectedMetric),
-                          ],
-                        ),
-                      if (_selectedMetric.disclosure != null) ...[
-                        const SizedBox(height: 10),
-                        _metricDisclosure(_selectedMetric.disclosure!),
-                      ],
-                      if (baseballMetricGuideFor(_selectedMetric.key)
-                          case final guide?)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            key: const ValueKey('leaderboard-metric-guide'),
-                            onPressed: () => showBaseballMetricGuide(
-                              context,
-                              metric: _selectedMetric.key,
-                            ),
-                            icon: const Icon(
-                              Icons.info_outline_rounded,
-                              size: 16,
-                            ),
-                            label: Text(
-                              guide.formula,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            style: TextButton.styleFrom(
-                              alignment: Alignment.centerLeft,
-                            ),
-                          ),
-                        ),
-                      const SizedBox(height: 12),
-                      if (!_selectedMetric.supportedByOfficialSource)
-                        Expanded(
-                          child: _unsupportedMetricCard(
-                            metric: _selectedMetric,
-                          ),
-                        )
-                      else
-                        Expanded(
-                          child: AppMotionSwitcher(
-                            child: KeyedSubtree(
-                              key: ValueKey(
-                                'leaderboard-${_selectedMetric.key}',
-                              ),
-                              child: asyncValue.when(
-                                loading: () => Center(
-                                  child: CircularProgressIndicator(
-                                    color: AppTheme.colorsOf(context).accent,
-                                  ),
-                                ),
-                                error: (error, _) => Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        describeAsyncError(error),
-                                        style: TextStyle(
-                                          color: AppColors.textSupporting,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 14),
-                                      OutlinedButton(
-                                        key: const ValueKey(
-                                          'leaderboard-retry',
-                                        ),
-                                        onPressed: () => ref.invalidate(
-                                          leaderboardProvider(leaderboardKey),
-                                        ),
-                                        child: const Text('다시 시도'),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                data: (leaders) => _leaderList(
-                                  leaders,
-                                  season: effectiveSeason,
-                                  useLargeText: useLargeText,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+          child: useLargeText ? SingleChildScrollView(child: content) : content,
         ),
       ),
     );
@@ -416,6 +412,8 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
       );
     }
     return ListView.separated(
+      shrinkWrap: useLargeText,
+      physics: useLargeText ? const NeverScrollableScrollPhysics() : null,
       itemCount: leaders.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
@@ -685,4 +683,16 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
       ),
     );
   }
+}
+
+class _LeaderboardVerticalRegion extends StatelessWidget {
+  final bool scrollable;
+  final Widget child;
+  const _LeaderboardVerticalRegion({
+    required this.scrollable,
+    required this.child,
+  });
+  @override
+  Widget build(BuildContext context) =>
+      scrollable ? child : Expanded(child: child);
 }

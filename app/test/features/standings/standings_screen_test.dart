@@ -497,7 +497,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('standings empty response shows artwork empty state', (
+  testWidgets('standings empty response shows a clear season state', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -520,7 +520,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('순위 데이터가 아직 없습니다'), findsOneWidget);
+    expect(find.text('아직 순위가 없어요'), findsOneWidget);
     expect(find.text('다시 확인'), findsOneWidget);
     expect(find.text('연속'), findsNothing);
   });

@@ -1,0 +1,12 @@
+[request] GET http://127.0.0.1:7362/
+[request] GET http://127.0.0.1:7362/flutter_bootstrap.js
+[console:debug] Injecting <script> tag. Using callback.
+[request] GET https://www.gstatic.com/flutter-canvaskit/425cfb54d01a9472b3e81d9e76fd63a4a44cfbcb/chromium/canvaskit.js
+[request] GET http://127.0.0.1:7362/main.dart.js
+[request] GET http://127.0.0.1:7362/favicon.png
+[response] 404 http://127.0.0.1:7362/main.dart.js
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+[requestfailed] GET http://127.0.0.1:7362/main.dart.js net::ERR_ABORTED
+[console:error] Failed to load resource: the server responded with a status of 404 (File not found)
+
+BODY_LAST:

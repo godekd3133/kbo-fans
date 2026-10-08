@@ -1,3 +1,4 @@
+import '../../core/widgets/app_metadata_text.dart';
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -98,11 +99,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
             children: [
-              const AppPageHeader(
-                eyebrow: 'KBO Fans',
-                title: '설정',
-                subtitle: '마이팀과 경기 알림을 한 곳에서 관리합니다.',
-              ),
+              const AppPageHeader(title: '설정'),
               const SizedBox(height: 12),
 
               _MoreHeroCard(
@@ -141,7 +138,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Column(
                   children: [
                     _infoRow(
-                      'API 진단',
+                      '연결 상태 확인',
                       hasArrow: true,
                       onTap: () => context.push('/diagnostics'),
                     ),
@@ -451,8 +448,8 @@ class _MoreHeroCard extends StatelessWidget {
     final colors = AppTheme.colorsOf(context);
     final teamName = team?.name ?? '마이팀을 선택하세요';
     final teamSubtitle = team == null
-        ? '홈과 알림 기준을 맞추려면 팀을 먼저 선택하세요.'
-        : '홈과 알림 기준으로 사용 중입니다.';
+        ? '응원팀을 고르면 경기와 기록을 먼저 볼 수 있어요.'
+        : '이 팀의 경기와 소식을 먼저 보여드려요.';
 
     return Container(
       width: double.infinity,
@@ -515,7 +512,7 @@ class _MoreHeroCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
+                    AppMetadataText(
                       teamSubtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -805,7 +802,7 @@ class _PushNotificationSettingsCardState
               ],
               const SizedBox(height: 10),
               Text(
-                '여기서는 받을 알림을 선택합니다. 실제 수신은 알림 권한, 기기 등록, 서버 상태에 따라 달라질 수 있습니다.',
+                '선택한 알림을 받으려면 휴대폰에서도 알림을 허용해 주세요. 인터넷 연결이나 경기 정보 갱신 상황에 따라 늦게 도착할 수 있어요.',
                 key: const ValueKey('push_notification_delivery_notice'),
                 style: TextStyle(
                   fontSize: 12,

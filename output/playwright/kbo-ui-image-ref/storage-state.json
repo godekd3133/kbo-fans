@@ -1,0 +1,18 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://127.0.0.1:4187",
+      "localStorage": [
+        {
+          "name": "flutter.onboardingDone",
+          "value": "true"
+        },
+        {
+          "name": "flutter.myTeamId",
+          "value": "LG"
+        }
+      ]
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import '../../core/widgets/app_metadata_text.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -6,11 +7,10 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
-import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/kbo_time.dart';
-import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_design_system.dart';
+import '../../core/widgets/app_status_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
@@ -183,43 +183,14 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                     error: (e, _) => KeyedSubtree(
                       key: ValueKey('standings-error-$_selectedSeason'),
                       child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: AppArtworkCard(
-                            assetName: VisualAssets.dataRetry,
-                            height: 184,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                const Text(
-                                  '순위를 불러올 수 없습니다',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  describeAsyncError(e),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                    height: 1.35,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: TextButton(
-                                    onPressed: _refreshingStandings
-                                        ? null
-                                        : () => unawaited(_refreshStandings()),
-                                    child: const Text('다시 시도'),
-                                  ),
-                                ),
-                              ],
-                            ),
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(16),
+                          child: AppStatusCard(
+                            title: '순위를 불러오지 못했어요',
+                            description: describeAsyncError(e),
+                            onAction: _refreshingStandings
+                                ? null
+                                : () => unawaited(_refreshStandings()),
                           ),
                         ),
                       ),
@@ -255,7 +226,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                                   ),
                                   child: Align(
                                     alignment: Alignment.centerLeft,
-                                    child: Text(
+                                    child: AppMetadataText(
                                       '차: 1위와 경기 차 · 연속: 현재 연승/연패',
                                       key: const ValueKey(
                                         'standings-column-help',
@@ -292,7 +263,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
               Padding(
                 padding: const EdgeInsets.all(14),
                 child: Center(
-                  child: Text(
+                  child: AppMetadataText(
                     'KBO 순위 데이터 · 화면 확인 ${DateFormat('yyyy.MM.dd HH:mm').format(kboCivilDateTime())}',
                     style: TextStyle(
                       fontSize: 11,
@@ -574,7 +545,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
             sliver: SliverToBoxAdapter(
-              child: Text(
+              child: AppMetadataText(
                 '차: 1위와 경기 차 · 연속: 현재 연승/연패',
                 key: const ValueKey('standings-column-help'),
                 style: TextStyle(
@@ -601,7 +572,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                     color: AppColors.cardSub,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Text(
+                  child: AppMetadataText(
                     '순위 · 팀 기록',
                     style: TextStyle(
                       fontSize: 13,
@@ -873,44 +844,17 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
   Widget _buildEmptyState() {
     return Align(
       alignment: Alignment.topCenter,
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        child: AppArtworkCard(
-          assetName: VisualAssets.standingsRace,
-          height: 196,
-          alignment: Alignment.centerRight,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '순위 데이터가 아직 없습니다',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '$_selectedSeason 시즌 순위가 들어오면 이 화면에서 바로 정리됩니다.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  height: 1.35,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton.icon(
-                  onPressed: _refreshingStandings
-                      ? null
-                      : () => unawaited(_refreshStandings()),
-                  icon: _refreshingStandings
-                      ? _standingsRefreshIcon(context)
-                      : const Icon(Icons.refresh_rounded, size: 16),
-                  label: Text(_refreshingStandings ? '확인 중' : '다시 확인'),
-                ),
-              ),
-            ],
-          ),
+        child: AppStatusCard(
+          icon: Icons.leaderboard_outlined,
+          title: '아직 순위가 없어요',
+          description:
+              '$_selectedSeason 시즌 순위가 집계되면 여기서 확인할 수 있어요. 다른 시즌도 위에서 선택할 수 있어요.',
+          actionLabel: _refreshingStandings ? '확인 중' : '다시 확인',
+          onAction: _refreshingStandings
+              ? null
+              : () => unawaited(_refreshStandings()),
         ),
       ),
     );

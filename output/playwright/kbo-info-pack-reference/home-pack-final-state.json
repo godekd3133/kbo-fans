@@ -1,0 +1,36 @@
+{
+  "evalResult": {
+    "href": "http://127.0.0.1:4188/#/home?qa=pack-final",
+    "text": "",
+    "storage": {
+      "flutter.onboardingDone": "true",
+      "flutter.myTeam": "\"LG\"",
+      "flutter.appSettings": "{}"
+    }
+  },
+  "events": [
+    {
+      "type": "console",
+      "args": "Injecting <script> tag. Using callback."
+    },
+    {
+      "type": "console",
+      "args": "WARNING: Falling back to CPU-only rendering. Reason: webGLVersion is -1"
+    },
+    {
+      "type": "failed",
+      "errorText": "net::ERR_CONNECTION_REFUSED",
+      "requestId": "93656.21"
+    },
+    {
+      "type": "log",
+      "level": "error",
+      "text": "Failed to load resource: net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "type": "failed",
+      "errorText": "net::ERR_CONNECTION_REFUSED",
+      "requestId": "C0728CCF0025D44E4983556DDB7CE344"
+    }
+  ]
+}

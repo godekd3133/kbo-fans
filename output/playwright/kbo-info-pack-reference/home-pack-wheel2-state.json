@@ -1,0 +1,40 @@
+{
+  "state": {
+    "href": "http://127.0.0.1:4188/?v=pack3#/home?qa=wheel2",
+    "storage": {
+      "flutter.onboardingDone": "true",
+      "flutter.myTeam": "\"LG\"",
+      "flutter.live_activity.followed_game_id": "\"20260619SSLG0\""
+    }
+  },
+  "events": [
+    {
+      "console": "Injecting <script> tag. Using callback."
+    },
+    {
+      "console": "WARNING: Falling back to CPU-only rendering. Reason: webGLVersion is -1"
+    },
+    {
+      "console": "Injecting <script> tag. Using callback."
+    },
+    {
+      "console": "WARNING: Falling back to CPU-only rendering. Reason: webGLVersion is -1"
+    },
+    {
+      "url": "http://127.0.0.1:8011/api/scoreboard/home?date=2026-06-19",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:8011/api/home?date=2026-06-19&myTeam=LG",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:8011/api/scoreboard/home?date=2026-06-19",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:8011/api/home?date=2026-06-19&myTeam=LG",
+      "status": 200
+    }
+  ]
+}

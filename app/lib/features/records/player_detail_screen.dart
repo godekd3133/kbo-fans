@@ -1,3 +1,4 @@
+import '../../core/widgets/app_metadata_text.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -209,7 +210,7 @@ class _PlayerDetailScreenState extends ConsumerState<PlayerDetailScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
+                        AppMetadataText(
                           '${team?.name ?? player.teamId} · ${player.roleLabel}',
                           style: TextStyle(
                             fontSize: 13,
