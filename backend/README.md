@@ -136,15 +136,11 @@ Provision ALB / ECS / EFS / IAM as one CloudFormation stack:
 ./scripts/aws-push-demo-deploy.sh
 ```
 
-Install the USD 10 actual/forecast AWS cost guard before leaving paid runtime
-services on:
-
-```bash
-./scripts/aws-cost-guard-deploy.sh --apply --invoke-now
-```
-
-Use `docs/AWS_COST_GUARD_RUNBOOK.md` for strict emergency mode and fixed-cost
-resource cleanup.
+The previous USD 10 Cost Explorer-based recurring cost guard is disabled/deleted
+under the current repository policy because scheduled Cost Explorer queries
+created avoidable charges. Prefer manual AWS resource audits and native AWS
+Budgets alerts. Do not reinstall the recurring guard without explicit Director
+approval of that tradeoff. `docs/AWS_COST_GUARD_RUNBOOK.md` is legacy reference.
 
 Manual stage commands:
 

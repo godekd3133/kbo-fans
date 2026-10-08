@@ -3,6 +3,10 @@
 KBO Fans는 KBO 프로야구 팬을 위한 모바일 앱입니다.  
 iOS와 Android를 대상으로 하며, 오늘 경기 스코어보드와 마이팀 중심 경험을 빠르게 보여주는 것을 목표로 합니다.
 
+## Documentation
+
+처음 참여하는 개발자와 운영자는 [GitHub Wiki](https://github.com/godekd3133/kbo-fans/wiki)에서 프로젝트 개요, 실행, 아키텍처, API, 데이터·캐시, 푸시·위젯, 운영·배포 안내를 확인할 수 있습니다. Wiki 게시 원본은 [`docs/wiki/`](docs/wiki/Home.md)에 보관합니다. 상세 명세와 운영 runbook은 기존 `docs/` 문서를 기준으로 합니다.
+
 ## Overview
 
 - App: Flutter + Dart
@@ -78,14 +82,14 @@ kbo_fans/
 - Low-cost backend runbook: `docs/LIGHTSAIL_BACKEND_RUNBOOK.md`
 - Legacy AWS cost guard runbook: `docs/AWS_COST_GUARD_RUNBOOK.md`
 
-문서 간 충돌 시 최신 결정은 `CLAUDE.md`, `docs/WORKLOG.md`, 실제 코드 기준으로 판단합니다.
+문서 정책은 `AGENTS.md`와 적용 명세·스킬을 따릅니다. 현재 동작은 체크아웃된 소스·생성 산출물·실제 런타임에서 확인하고, `CLAUDE.md`와 `docs/WORKLOG.md`는 프로젝트 맥락과 결정 이력으로 사용합니다.
 
 ## Versioning
 
 - App version format: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Release tag format: `MAJOR.MINOR.PATCH`
 - Current release line: `0.1.x`
-- Current release candidate: `0.1.29+97`
+- Current source version: `0.1.35+103` (`app/pubspec.yaml`; store processing/installability is a separate checkpoint)
 - Preview suffixes are not used. Do not create `*-preview*` tags or prereleases unless this policy is explicitly changed.
 - Every release/version change must update `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, GitHub Release notes, and `docs/WORKLOG.md`.
 

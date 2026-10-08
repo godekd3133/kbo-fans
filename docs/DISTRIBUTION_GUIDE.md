@@ -13,7 +13,7 @@
 ## 현재 프로젝트 상태 요약
 
 - 앱: Flutter + Dart
-- 백엔드: legacy/reference FastAPI 코드가 남아 있지만 기본 런타임 의존성은 아님
+- 백엔드: FastAPI가 화면 API 데이터·스냅샷·푸시·Live Activity 동기화를 담당하는 활성 런타임 구성요소
 - 웹 실행: 가능 (`./scripts/codex-run-web.sh`, backend API mode)
 - 웹 정적 프리뷰: 가능 (`./scripts/codex-run-web-static.sh`, backend API mode)
 - iOS 실행: Xcode / iOS platform support 상태에 영향 받음

@@ -10288,3 +10288,12 @@ kbo_fans/
 - 검증: `cd app && fvm flutter test test/services/live_activity_service_test.dart test/services/widget_sync_service_test.dart`
 - 검증: `cd app && fvm flutter analyze lib/services/live_activity_service.dart lib/services/widget_sync_service.dart lib/features/home/home_screen.dart lib/features/game_detail/game_detail_screen.dart test/services/live_activity_service_test.dart`
 - 검증: XcodeBuildMCP `build_sim` Runner Debug / iPhone 17 simulator / `CODE_SIGNING_ALLOWED=NO` 통과
+
+
+## 2026-10-08: GitHub Wiki 문서화
+
+- 사용자 요청에 따라 GitHub Wiki를 활성화하고 Home 첫 페이지를 생성했다. `docs/wiki/`에 12개 본문 페이지와 sidebar/footer 원본을 추가하고 별도 Wiki Git 저장소에 같은 원본을 게시한다.
+- 프로젝트 개요, 실행, 화면·UX, 앱/백엔드 아키텍처, 데이터·캐시, API, 푸시·위젯, Lightsail/ECS 운영, 배포·버전, 검증·문제 해결, 문서 관리 진입점을 한국어로 정리했다. API route/schema, provider/config, navigation, scheduler/config, CI와 운영 명세를 교차 확인했다.
+- 영향 범위: app/backend 런타임·infra·release 설정 변경 없음. 기존 앱·백엔드 미커밋 작업은 보존한다. README에 Wiki 링크를 추가하고 소스 버전 표기 및 정책/현재 동작 기준을 정렬했다. backend README의 오래된 Cost Explorer 반복 guard 설치 안내와 배포 문서의 backend 비활성 설명을 기존 AGENTS 정책에 맞췄다.
+- 검증: Wiki 내부 링크·저장소 source 링크 대상·script 경로·Markdown fence와 `git diff --check` 통과. docs-only 변경으로 Flutter/backend 테스트·운영 API·실기기·서명·TestFlight 검증은 실행하지 않았다. Wiki 게시 후 clone readback으로 원본 일치와 GitHub 렌더링을 확인한다.
+- 적용 스킬: `.claude/skills/kbo-doc-sync/SKILL.md`, `.claude/skills/kbo-release-flow/SKILL.md`. 앱 기능 변경이나 테스터 release가 없어 버전/tag/앱 내 업데이트 소식은 변경하지 않는다.
