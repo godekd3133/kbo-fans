@@ -24,8 +24,6 @@ KBO 프로야구 팬이 앱을 열자마자 내 팀과 오늘 경기 상황을 �
 
 저장소의 `AGENTS.md`는 작업 규칙, `docs/APP_SPEC.md`는 화면·API 상세 명세입니다. Wiki는 이를 연결하는 요약 안내서이며, 오래된 작업 기록을 현재 운영 상태로 간주하지 않습니다. 진행 중인 미커밋 UI 작업은 이 Wiki 게시에 포함하지 않습니다.
 
-## 주요 링크
-
 ## 상세 문서와 소스
 
 - [저장소 README](https://github.com/godekd3133/kbo-fans/blob/main/README.md)
