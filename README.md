@@ -95,6 +95,14 @@ kbo_fans/
 
 자세한 정책은 `docs/VERSIONING.md` 를 기준으로 합니다.
 
+## 운영 웹 접속
+
+- 웹 앱: [KBO Fans](https://3-39-79-1.sslip.io/)
+- 운영 API: `https://3-39-79-1.sslip.io/api`
+- 현재 웹/iOS 배포 소스는 `0.1.36` tag SHA `8ee2780b`입니다. 기존 Lightsail/Caddy에서 웹 정적 파일과 `/api` backend 요청을 함께 제공합니다.
+- 웹 재배포는 clean release worktree에서 production API mode로 `fvm flutter build web --release`를 만든 뒤 `scripts/lightsail-web-deploy.sh --host ubuntu@3.39.79.1 --build-dir /absolute/path/app/build/web --source-sha <SHA>`를 사용합니다. 정확한 build flags와 rollback은 [Lightsail runbook](docs/LIGHTSAIL_BACKEND_RUNBOOK.md)을 따릅니다.
+- iOS TestFlight `0.1.36 (104)`는 `VALID`, 내부/외부 그룹 연결 완료, Beta App Review 대기입니다. 실제 외부 설치 가능 여부는 Apple 승인 상태와 별도입니다.
+
 ## Run The App
 
 Flutter SDK가 설치되어 있다는 전제입니다.

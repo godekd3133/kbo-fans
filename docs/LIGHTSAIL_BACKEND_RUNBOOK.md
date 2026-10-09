@@ -227,3 +227,27 @@ the instance to the 1 GB plan and keep the same static IP.
 
 Do not delete the old stack first; current TestFlight builds may still contain
 the old ALB URL.
+
+
+## Flutter 웹 함께 배포하기
+
+2026-10-09부터 `https://3-39-79-1.sslip.io/`는 Flutter 웹 앱을 제공합니다. `/api`, `/api/*`, `/docs`, `/redoc`, `/openapi.json`은 기존 backend로 전달하고 나머지는 정적 파일 또는 SPA index로 처리합니다. 다른 Caddy host block은 그대로 보존합니다.
+
+정확한 pushed SHA의 clean release worktree에서 다음을 실행합니다.
+
+```bash
+cd app
+fvm flutter build web --release \
+  --dart-define=APP_ENV=release \
+  --dart-define=USE_BACKEND_API=true \
+  --dart-define=API_BASE_URL=https://3-39-79-1.sslip.io/api
+cd ..
+./scripts/lightsail-web-deploy.sh \
+  --host ubuntu@3.39.79.1 \
+  --build-dir "$PWD/app/build/web" \
+  --source-sha "$(git rev-parse HEAD)"
+```
+
+`--dry-run`은 build bundle만 준비합니다. 실제 배포는 `/opt/kbo-fans/web/releases/<release-id>/`에 파일을 풀고 `web/current` symlink를 전환합니다. config를 먼저 검증하고 `/etc/caddy/Caddyfile.before-web-<release-id>`에 이전 설정을 보관합니다. Caddy reload 또는 즉시 health/readback 실패 시 설정과 symlink를 되돌립니다. 이전 release directory는 보존합니다. 수동 rollback은 이전 web release로 symlink를 전환하고 당시 Caddy backup을 복구한 뒤 `sudo systemctl reload caddy`를 실행합니다.
+
+배포 후 `deployment-sha.txt`, 웹 shell/JS bytes와 cache header, root/SPA 응답, `scripts/release-api-health-check.sh`를 확인합니다. 첫 배포 검증 결과는 `docs/DEPLOYMENT_2026-10-09.md`에 있습니다.

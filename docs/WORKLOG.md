@@ -2,6 +2,15 @@
 
 ---
 
+## 2026-10-09: 프론트(TestFlight·웹) 및 백엔드 배포 완료
+
+- 배포 입력 `8ee2780bc2689df767a73369da41f64878a16bdc`, tag `0.1.36`, app `0.1.36+104`. clean managed worktree에서 artifact 생성; 이후 병행 작업 변경은 제외했다.
+- Flutter analysis clean/657 tests, backend 759 tests 통과. Lightsail backend release `20261009075428`, API/worker active, external 7-endpoint health 및 push readiness/heartbeat 통과.
+- iOS Archive 및 automatic distribution export 성공, production APNs/signature/API URL 확인. TestFlight upload 성공, build `ca065a23-f687-447e-afbe-f548b0fead04` processing `VALID`. Internal Tester 자동 연결 및 External Testers 관계 readback 확인. 기존 승인 build 103 유지. Beta App Review `WAITING_FOR_REVIEW`; 외부 설치 승인/실기기 acceptance는 별도다.
+- 사용자 추가 선택으로 웹도 production API release build를 배포했다. `https://3-39-79-1.sslip.io/`, web release `20261009080955-8ee2780b`. Caddy의 API 및 기존 다른 host routing을 유지하고 root를 Flutter SPA로 제공한다. config 검증/backup 및 실패 rollback이 있는 `scripts/lightsail-web-deploy.sh` 추가.
+- 실제 운영 브라우저 onboarding skip→home→game→relay 확인, 안정된 home screenshot 저장. 웹 설정 적용 후 API gate 재통과.
+- 세부 증거·산출물·서명 오류 해결 및 Apple dSYM warning: `docs/DEPLOYMENT_2026-10-09.md`, `output/release-0.1.36/`.
+
 ## 2026-10-09: 프론트·백엔드 운영 배포 준비
 
 - 사용자 요청으로 현재 UX/위젯/알림 변경과 backend 홈 문구 변경을 0.1.36+104 배포 단위로 준비한다.
