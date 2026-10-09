@@ -1,4 +1,3 @@
-import '../../../core/widgets/app_metadata_text.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -57,25 +56,6 @@ List<ScoringInning> verifiedScoringInnings(Game game) {
   return result;
 }
 
-String gameReadingHeadline(Game game) {
-  if (game.status == GameStatus.scheduled) return '경기 전에 확인할 것';
-  if (game.status == GameStatus.cancelled) return '취소된 경기예요';
-  if (game.status == GameStatus.suspended) return '중단 이후 진행 여부를 확인해 주세요';
-  if (!game.hasVerifiedScore) return '공식 점수를 확인하고 있어요';
-  final difference = (game.away.score - game.home.score).abs();
-  if (difference == 0) {
-    return game.status == GameStatus.final_
-        ? '무승부로 마무리됐어요'
-        : '동점, 다음 한 점에 주목하세요';
-  }
-  final leader = game.away.score > game.home.score
-      ? game.away.shortName
-      : game.home.shortName;
-  return game.status == GameStatus.final_
-      ? '$leader, $difference점 차 승리'
-      : '$leader, $difference점 앞서고 있어요';
-}
-
 class GameReadingCard extends StatelessWidget {
   final Game game;
   final VoidCallback? onOpenRelay;
@@ -97,6 +77,12 @@ class GameReadingCard extends StatelessWidget {
         ? innings.sublist(innings.length - 5)
         : innings;
     final scheduled = game.status == GameStatus.scheduled;
+    final hasActions = scheduled
+        ? onOpenLineup != null
+        : (game.status == GameStatus.live ||
+                  game.status == GameStatus.final_) &&
+              (onOpenRelay != null || onOpenBoxscore != null);
+    if (latest.isEmpty && !hasActions) return const SizedBox.shrink();
     return Container(
       key: const ValueKey('game-reading-card'),
       width: double.infinity,
@@ -109,38 +95,9 @@ class GameReadingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '경기 한눈에',
-            style: TextStyle(
-              fontSize: 12,
-              color: colors.readableAccent(colors.accent),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            gameReadingHeadline(game),
-            style: const TextStyle(fontSize: 20, height: 1.3),
-          ),
-          const SizedBox(height: 8),
-          AppMetadataText(
-            scheduled
-                ? game.isPregameLineupOpen
-                      ? '라인업이 공개됐어요. 선발과 타순을 살펴보세요.'
-                      : '선발과 타순은 공식 발표 후 확인할 수 있어요.'
-                : game.status == GameStatus.cancelled ||
-                      game.status == GameStatus.suspended
-                ? '공식 경기 상태 기준으로 표시합니다.'
-                : '현재 제공된 점수 기준 · 원정 ${game.away.shortName} / 홈 ${game.home.shortName}',
-            style: TextStyle(
-              fontSize: 12,
-              height: 1.5,
-              color: colors.textSecondary,
-            ),
-          ),
           if (latest.isNotEmpty) ...[
-            const SizedBox(height: 16),
             Text(
-              innings.length > 5 ? '최근 5개 득점 이닝' : '득점 이닝 흐름',
+              innings.length > 5 ? '최근 5개 득점 이닝' : '득점 이닝',
               style: const TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 8),
@@ -173,20 +130,9 @@ class GameReadingCard extends StatelessWidget {
                   ],
                 ),
               ),
-            const SizedBox(height: 6),
-            Text(
-              '각 이닝까지의 누적 점수입니다. 진행 중인 이닝은 바뀔 수 있으며, 타석 순서는 문자중계에서 확인하세요.',
-              style: TextStyle(
-                fontSize: 11,
-                height: 1.4,
-                color: colors.textSecondary,
-              ),
-            ),
           ],
-          if (onOpenRelay != null ||
-              onOpenBoxscore != null ||
-              onOpenLineup != null) ...[
-            const SizedBox(height: 12),
+          if (hasActions) ...[
+            if (latest.isNotEmpty) const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 6,
@@ -207,7 +153,7 @@ class GameReadingCard extends StatelessWidget {
                   OutlinedButton.icon(
                     onPressed: onOpenRelay,
                     icon: const Icon(Icons.notes_rounded, size: 16),
-                    label: const Text('중계로 흐름 읽기'),
+                    label: const Text('문자중계'),
                   ),
                 if (onOpenBoxscore != null &&
                     (game.status == GameStatus.live ||
@@ -215,7 +161,7 @@ class GameReadingCard extends StatelessWidget {
                   OutlinedButton.icon(
                     onPressed: onOpenBoxscore,
                     icon: const Icon(Icons.bar_chart_rounded, size: 16),
-                    label: const Text('선수 기록 확인'),
+                    label: const Text('박스스코어'),
                   ),
               ],
             ),

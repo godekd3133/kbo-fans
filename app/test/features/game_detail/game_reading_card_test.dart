@@ -41,7 +41,6 @@ void main() {
       final result = verifiedScoringInnings(fixture());
       expect(result.map((entry) => entry.label), ['1회초', '2회말', '3회초']);
       expect(result.map((entry) => entry.score), ['1 : 0', '1 : 2', '3 : 2']);
-      expect(gameReadingHeadline(fixture()), '삼성, 1점 차 승리');
     },
   );
   test('missing, corrected and malformed innings never become a story', () {
@@ -71,9 +70,7 @@ void main() {
         awayScore: 0,
         homeScore: 0,
       );
-      expect(gameReadingHeadline(draw), '무승부로 마무리됐어요');
       expect(verifiedScoringInnings(draw), isEmpty);
-      expect(gameReadingHeadline(fixture(available: false)), '공식 점수를 확인하고 있어요');
     },
   );
   testWidgets(
@@ -106,10 +103,10 @@ void main() {
         ),
       );
       expect(tester.takeException(), isNull);
-      await tester.ensureVisible(find.text('중계로 흐름 읽기'));
-      await tester.tap(find.text('중계로 흐름 읽기'));
-      await tester.ensureVisible(find.text('선수 기록 확인'));
-      await tester.tap(find.text('선수 기록 확인'));
+      await tester.ensureVisible(find.text('문자중계'));
+      await tester.tap(find.text('문자중계'));
+      await tester.ensureVisible(find.text('박스스코어'));
+      await tester.tap(find.text('박스스코어'));
       expect(relay, 1);
       expect(boxscore, 1);
       expect(tester.takeException(), isNull);

@@ -905,7 +905,7 @@ class HomeService:
                     "type": "offday",
                     "eyebrow": "리그 체크",
                     "title": "오늘은 KBO 경기가 없습니다",
-                    "subtitle": "순위표와 리더보드로 다음 경기 흐름을 확인하세요.",
+                    "subtitle": "",
                     "route": "/schedule",
                     "gameId": None,
                     "teamIds": [],
@@ -1085,7 +1085,7 @@ class HomeService:
         subtitle = (
             f"{second.get('teamName')}와 {second_gap}G차"
             if second is not None and second_gap and second_gap != "-"
-            else "선두권 흐름 확인"
+            else "선두권"
         )
         second_gap_value = self._as_float(second_gap)
         title = (
@@ -1357,12 +1357,12 @@ class HomeService:
         scheduled_games: int,
     ) -> str:
         if total_games == 0:
-            return "경기가 없는 날도 리그 흐름은 이어집니다."
+            return "경기 없음"
         if live_games > 0:
-            return f"{live_games}경기 진행 중 · 강한 흐름부터 정리"
+            return f"{live_games}경기 진행 중"
         if final_games > 0:
-            return f"{final_games}경기 종료 · 기록과 흐름을 빠르게 확인"
-        return f"{scheduled_games}경기 예정 · 오늘 일정"
+            return f"{final_games}경기 종료"
+        return f"{scheduled_games}경기 예정"
 
     @staticmethod
     def _is_yesterday(value: str) -> bool:

@@ -70,6 +70,18 @@ class GameDayFocusCard extends StatelessWidget {
     final colors = AppTheme.colorsOf(context);
     final team = KboTeams.byId(myTeamId ?? '');
     final accent = colors.readableAccent(team?.primaryColor ?? colors.accent);
+    if (myTeamId == null || myTeamId!.isEmpty) {
+      return Align(
+        key: const ValueKey('home-game-day-focus'),
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          onPressed: onSelectTeam,
+          icon: const Icon(Icons.favorite_border_rounded, size: 18),
+          label: const Text('응원팀 선택'),
+          style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
+        ),
+      );
+    }
     final current = game;
     final next = nextGame?.status == 'SCHEDULED' ? nextGame : null;
     final title = myTeamId == null

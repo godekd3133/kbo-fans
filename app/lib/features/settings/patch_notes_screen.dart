@@ -55,7 +55,6 @@ class _PatchNotesScreenState extends State<PatchNotesScreen> {
                 child: AppPageHeader(
                   eyebrow: 'KBO Fans',
                   title: '업데이트 소식',
-                  subtitle: '최근에 바뀐 경기 확인과 기록 기능을 한눈에 봅니다.',
                   onBack: goBack,
                 ),
               ),

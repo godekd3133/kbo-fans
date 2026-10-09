@@ -140,7 +140,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => _shellTransitionPage(
               state,
               tabIndex: mainNavigationIndexForLocation(state.uri.path),
-              child: const StandingsScreen(),
+              child: StandingsScreen(
+                initialSeason: int.tryParse(
+                  state.uri.queryParameters['season'] ?? '',
+                ),
+                followsCurrentSeason: recordsRouteFollowsCurrentSeason(
+                  state.uri,
+                ),
+              ),
             ),
           ),
           GoRoute(

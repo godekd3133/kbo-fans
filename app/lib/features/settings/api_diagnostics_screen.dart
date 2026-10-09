@@ -1,4 +1,6 @@
+import '../../core/widgets/app_metadata_text.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -96,7 +98,8 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
       _measure('health', () async => client.get('/health')),
       _measure(
         'scoreboard',
-        () async => client.get('/scoreboard', queryParameters: {'date': today}),
+        () async =>
+            client.get('/scoreboard/home', queryParameters: {'date': today}),
       ),
       _measure(
         'schedule',
@@ -222,9 +225,7 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: AppPageHeader(
-                  eyebrow: '운영 도구',
-                  title: 'API 진단',
-                  subtitle: '화면 데이터와 푸시 연결 상태를 한 번에 확인합니다.',
+                  title: '연결 상태',
                   onBack: goBack,
                   trailing: IconButton(
                     tooltip: '다시 진단',
@@ -264,17 +265,6 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
                       key: const ValueKey('api-diagnostics-ready'),
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                       children: [
-                        AppMotionListItem(
-                          index: 0,
-                          child: Text(
-                            'health / scoreboard / schedule 상태를 한 번에 확인합니다.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
                         for (
                           int index = 0;
                           index < results.length;
@@ -369,8 +359,12 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
                               child: _DiagnosticCard(
                                 result: _DiagnosticResult(
                                   key: 'push',
-                                  ok: data['initialized'] == true,
-                                  muted: isLocalSkipped,
+                                  ok:
+                                      status == 'ready' &&
+                                      data['initialized'] == true &&
+                                      data['tokenReady'] == true &&
+                                      remotePushAvailable,
+                                  muted: isLocalSkipped || kIsWeb,
                                   elapsedMs: 0,
                                   detail:
                                       '${_pushDetailPrefix(status)} initialized=${data['initialized']} tokenReady=${data['tokenReady']}'
@@ -462,90 +456,117 @@ class _DiagnosticResult {
 
 class _DiagnosticCard extends StatelessWidget {
   final _DiagnosticResult result;
-
   const _DiagnosticCard({super.key, required this.result});
-
   @override
   Widget build(BuildContext context) {
+    final title = switch (result.key) {
+      'health' => '서버 응답',
+      'scoreboard' => '경기 조회',
+      'schedule' => '일정 조회',
+      'push' => '기기 알림 상태',
+      'env' => '실행 환경',
+      _ => result.key,
+    };
     final color = result.muted
         ? AppColors.textSecondary
         : result.ok
         ? AppColors.positive
         : AppColors.live;
-    final statusLabel = result.muted
-        ? '확인하지 않음'
+    final status = result.muted
+        ? '사용 안 함'
         : result.ok
-        ? '정상'
-        : '실패';
-    final semanticLabel = [
-      result.key,
-      statusLabel,
-      result.detail,
-      '${result.elapsedMs.toStringAsFixed(0)}밀리초',
-      ?result.note,
-    ].join(', ');
-    return Semantics(
-      key: ValueKey('api-diagnostics-semantics-${result.key}'),
-      container: true,
-      label: semanticLabel,
-      child: ExcludeSemantics(
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.divider),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    result.muted
-                        ? Icons.pause_circle_outline
-                        : result.ok
-                        ? Icons.check_circle_outline
-                        : Icons.error_outline,
-                    size: 18,
-                    color: color,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    result.key,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${result.elapsedMs.toStringAsFixed(0)}ms',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                result.detail,
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-              if (result.note != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  result.note!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSupporting,
-                  ),
+        ? (result.key == 'push' ? '기기 정보 확인' : '응답 확인')
+        : '확인 실패';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            key: ValueKey('api-diagnostics-semantics-${result.key}'),
+            label: '$title, $status',
+            container: true,
+            excludeSemantics: true,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Icon(
+                  result.muted
+                      ? Icons.pause_circle_outline
+                      : result.ok
+                      ? Icons.check_circle_outline
+                      : Icons.error_outline,
+                  size: 18,
+                  color: color,
                 ),
+                Text(title, style: const TextStyle(fontSize: 16)),
+                Text(status, style: TextStyle(fontSize: 13, color: color)),
               ],
+            ),
+          ),
+          if ((!result.ok && !result.muted && result.key != 'push') ||
+              (result.key == 'push' && result.detail.startsWith('푸시 상태'))) ...[
+            const SizedBox(height: 8),
+            Text(
+              result.detail,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.5,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+          ExpansionTile(
+            key: ValueKey('api-diagnostics-details-${result.key}'),
+            internalAddSemanticForOnTap: true,
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(bottom: 8),
+            title: const Text('상세 정보', style: TextStyle(fontSize: 13)),
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppMetadataText(
+                      result.detail,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    if (result.note != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        result.note!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 1.5,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    Text(
+                      '${result.elapsedMs.toStringAsFixed(0)}ms',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

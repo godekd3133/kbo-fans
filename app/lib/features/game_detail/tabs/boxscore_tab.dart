@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_metadata_text.dart';
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -79,7 +80,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       ),
       error: (_, _) => _buildUnavailableState(
         '박스스코어를 불러올 수 없습니다',
-        detail: '네트워크 상태를 확인하고 다시 시도해 주세요',
+        detail: '잠시 후 다시 시도해 주세요',
         onRetry: () => unawaited(_retryBoxscore()),
       ),
       data: (boxscore) {
@@ -89,7 +90,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
             !boxscore.officialAvailable && boxscore.liveContextAvailable;
         if ((!boxscore.officialAvailable && !isLiveContext) ||
             !selected.hasDisplayableRecords) {
-          return _buildUnavailableState('공식 박스스코어 업데이트 전입니다');
+          return _buildUnavailableState('현재 제공된 박스스코어가 없어요.');
         }
 
         final season = _seasonFromGameId(widget.gameId);
@@ -203,7 +204,6 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
         child: Container(
           key: const ValueKey('boxscore-unavailable-card'),
           width: double.infinity,
-          constraints: const BoxConstraints(minHeight: 178),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.card,
@@ -226,7 +226,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
               ),
               if (detail != null) ...[
                 const SizedBox(height: 6),
-                Text(
+                AppMetadataText(
                   detail,
                   style: TextStyle(
                     fontSize: 12,
@@ -345,12 +345,6 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       keyPitcherPlayer,
       season,
     );
-    final productionScore = keyBatter == null
-        ? 0
-        : _batterProductionScore(keyBatter);
-    final efficiencyScore = keyPitcher == null
-        ? 0
-        : _pitcherEfficiencyScore(keyPitcher);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,7 +440,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
               children: [
                 if (keyBatter != null)
                   _RecordHighlightRow(
-                    tag: keyBatter.liveContext ? '현재 타자' : '오늘의 활약 타자',
+                    tag: keyBatter.liveContext ? '현재 타자' : '주요 타자',
                     name: keyBatter.name,
                     role: keyBatter.liveContext
                         ? keyBatter.contextLabel ?? '현재 타자'
@@ -458,7 +452,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                         : '${keyBatter.atBats}타수 ${keyBatter.hits}안타  ${keyBatter.rbi}타점  ${keyBatter.runs}득점',
                     metricLabel: keyBatter.liveContext
                         ? _liveBatterMetricLabel(keyBatter)
-                        : '앱 기준 활약 지수 $productionScore',
+                        : '',
                     accent: accent,
                     badgeLabel: (keyBatterPlayer?.number ?? 0) > 0
                         ? '${keyBatterPlayer!.number}'
@@ -473,7 +467,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                   _RecordHighlightRow(
                     tag: keyPitcher.liveContext
                         ? (keyPitcher.decision == 'LIVE' ? '현재 투수' : '선발 투수')
-                        : '호투',
+                        : '주요 투수',
                     name: keyPitcher.name,
                     role: keyPitcher.liveContext
                         ? keyPitcher.contextLabel ?? '투수 정보'
@@ -485,7 +479,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                         : '${keyPitcher.innings}이닝  ${keyPitcher.hits}피안타  ${keyPitcher.earnedRuns}자책  ${keyPitcher.strikeouts}탈삼진',
                     metricLabel: keyPitcher.liveContext
                         ? (keyPitcher.decision ?? 'LIVE')
-                        : '앱 기준 투구 효율 +$efficiencyScore',
+                        : '',
                     accent: accent,
                     badgeLabel: (keyPitcherPlayer?.number ?? 0) > 0
                         ? '${keyPitcherPlayer!.number}'
@@ -733,18 +727,6 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       final bScore = (b.strikeouts * 2) - (b.walks * 2) - (b.earnedRuns * 3);
       return aScore >= bScore ? a : b;
     });
-  }
-
-  int _batterProductionScore(BatterRecord batter) {
-    return (batter.hits * 3) + (batter.rbi * 2) + batter.runs;
-  }
-
-  int _pitcherEfficiencyScore(PitcherRecord pitcher) {
-    final score =
-        (pitcher.strikeouts * 2) -
-        (pitcher.walks * 2) -
-        (pitcher.earnedRuns * 3);
-    return score < 0 ? 0 : score;
   }
 
   List<String> _batterAdvancedLabels(BatterRecord batter) {
@@ -1408,7 +1390,7 @@ class _RecordHighlightRow extends StatelessWidget {
             ),
             SizedBox(width: useNarrowLayout ? 8 : 12),
             Expanded(child: _buildDetails(useNarrowLayout: useNarrowLayout)),
-            if (!useNarrowLayout) ...[
+            if (!useNarrowLayout && metricLabel.isNotEmpty) ...[
               const SizedBox(width: 10),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 104),
@@ -1473,6 +1455,7 @@ class _RecordHighlightRow extends StatelessWidget {
         const SizedBox(height: 7),
         Text(
           summary,
+          key: ValueKey('record-highlight-summary-$name'),
           maxLines: useNarrowLayout ? null : 1,
           overflow: useNarrowLayout ? null : TextOverflow.ellipsis,
           style: TextStyle(
@@ -1492,7 +1475,7 @@ class _RecordHighlightRow extends StatelessWidget {
             ),
           ),
         ],
-        if (useNarrowLayout) ...[
+        if (useNarrowLayout && metricLabel.isNotEmpty) ...[
           const SizedBox(height: 6),
           Text(
             key: ValueKey('record-highlight-metric-$name'),
@@ -1923,7 +1906,7 @@ class _RecordCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: width,
-      child: Text(
+      child: AppMetadataText(
         value,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,

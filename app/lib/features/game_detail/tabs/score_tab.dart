@@ -107,7 +107,7 @@ class ScoreTab extends StatelessWidget {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 6),
-          Text(
+          AppMetadataText(
             description,
             textAlign: TextAlign.center,
             style: TextStyle(

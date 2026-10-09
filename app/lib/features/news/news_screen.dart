@@ -39,6 +39,7 @@ class NewsScreen extends ConsumerStatefulWidget {
 class _NewsScreenState extends ConsumerState<NewsScreen> {
   _NewsFilter _filter = _NewsFilter.all;
   bool _refreshing = false;
+  bool _showAll = false;
 
   @override
   Widget build(BuildContext context) {
@@ -85,8 +86,12 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
                       child: _NewsContent(
                         aggregate: aggregate,
                         filter: _filter,
-                        onFilterChanged: (filter) =>
-                            setState(() => _filter = filter),
+                        showAll: _showAll,
+                        onShowAll: () => setState(() => _showAll = true),
+                        onFilterChanged: (filter) => setState(() {
+                          _filter = filter;
+                          _showAll = false;
+                        }),
                       ),
                     ),
                   ),
@@ -135,10 +140,10 @@ class _NewsHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppPageHeader(
       eyebrow: '$displayDate 기준',
-      title: '데이터 브리핑',
+      title: '브리핑',
       trailing: IconButton(
         key: const ValueKey('news-refresh'),
-        tooltip: '데이터 브리핑 새로고침',
+        tooltip: '브리핑 새로고침',
         onPressed: onRefresh,
         icon: refreshing
             ? SizedBox(
@@ -262,11 +267,15 @@ class _FilterTab extends StatelessWidget {
 class _NewsContent extends StatelessWidget {
   final HomeAggregate aggregate;
   final _NewsFilter filter;
+  final bool showAll;
+  final VoidCallback onShowAll;
   final ValueChanged<_NewsFilter> onFilterChanged;
 
   const _NewsContent({
     required this.aggregate,
     required this.filter,
+    required this.showAll,
+    required this.onShowAll,
     required this.onFilterChanged,
   });
 
@@ -277,6 +286,10 @@ class _NewsContent extends StatelessWidget {
     final visibleItems = filter == _NewsFilter.all
         ? allItems.where((item) => !leadItems.contains(item)).toList()
         : allItems.where((item) => item.filter == filter).toList();
+
+    final displayedItems = showAll
+        ? visibleItems
+        : visibleItems.take(3).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -294,7 +307,7 @@ class _NewsContent extends StatelessWidget {
           const SizedBox(height: 18),
           _NewsSectionHeader(
             title: filter == _NewsFilter.all
-                ? '전체 데이터 흐름'
+                ? '다른 소식'
                 : _purposeForFilter(filter),
             count: visibleItems.length,
           ),
@@ -306,13 +319,25 @@ class _NewsContent extends StatelessWidget {
               onShowAll: () => onFilterChanged(_NewsFilter.all),
             )
           else
-            for (var index = 0; index < visibleItems.length; index++) ...[
+            for (var index = 0; index < displayedItems.length; index++) ...[
               AppMotionListItem(
                 index: index,
-                child: _NewsCard(item: visibleItems[index]),
+                child: _NewsCard(item: displayedItems[index]),
               ),
-              if (index != visibleItems.length - 1) const SizedBox(height: 10),
+              if (index != displayedItems.length - 1)
+                const SizedBox(height: 10),
             ],
+          if (!showAll && visibleItems.length > displayedItems.length) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                key: const ValueKey('briefing-show-more'),
+                onPressed: onShowAll,
+                child: const Text('소식 더 보기'),
+              ),
+            ),
+          ],
         ],
       ],
     );
@@ -329,7 +354,6 @@ String _purposeForFilter(_NewsFilter filter) => switch (filter) {
 
 class _BriefingDisclosure extends StatelessWidget {
   final DateTime? generatedAt;
-
   const _BriefingDisclosure({required this.generatedAt});
 
   @override
@@ -338,42 +362,49 @@ class _BriefingDisclosure extends StatelessWidget {
         ? null
         : kboCivilDateTime(generatedAt);
     final generatedLabel = generated == null
-        ? '생성 시각 미제공'
-        : '${generated.year}.${_twoDigits(generated.month)}.${_twoDigits(generated.day)} '
-              '${_twoDigits(generated.hour)}:${_twoDigits(generated.minute)} 생성 · 한국시간';
-
-    return Semantics(
-      label: 'KBO 경기, 순위, 기록 데이터를 앱이 자동 정리한 브리핑. 실제 뉴스 기사가 아님. $generatedLabel',
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.cardSub.withValues(alpha: 0.72),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.divider),
-        ),
-        child: ExcludeSemantics(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                Icons.info_outline_rounded,
-                size: 17,
-                color: AppColors.textSecondary,
+        ? '갱신 시각이 제공되지 않았어요.'
+        : '${generated.year}.${_twoDigits(generated.month)}.${_twoDigits(generated.day)} ${_twoDigits(generated.hour)}:${_twoDigits(generated.minute)} KST';
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        key: const ValueKey('briefing-source-info'),
+        icon: const Icon(Icons.info_outline_rounded, size: 16),
+        label: const Text('출처 안내'),
+        style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
+        onPressed: () => showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          showDragHandle: true,
+          builder: (context) => SafeArea(
+            top: false,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.8,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: AppMetadataText(
-                  'KBO 데이터로 앱이 자동 정리 · 실제 뉴스 기사 아님\n$generatedLabel',
-                  style: TextStyle(
-                    fontSize: 11,
-                    height: 1.35,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w700,
-                  ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('브리핑 정보', style: TextStyle(fontSize: 22)),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'KBO 경기, 순위, 기록을 정리한 내용입니다. 실제 뉴스 기사는 아니며, 예상 기록과 환산값에는 앱 계산 표시가 붙습니다.',
+                      style: TextStyle(fontSize: 14, height: 1.6),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      generatedLabel,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.colorsOf(context).textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -410,7 +441,7 @@ class _EditorialLead extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '먼저 볼 흐름',
+                      '주요 소식',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
@@ -446,6 +477,7 @@ class _LeadRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppPressable(
       onTap: () => _pushNewsRoute(context, item.route),
+      semanticHint: '${item.sourceLabel} 정보 보기',
       pressedScale: 0.985,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 7),
@@ -479,7 +511,7 @@ class _LeadRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  AppMetadataText(
                     item.title,
                     style: const TextStyle(
                       fontSize: 15,
@@ -501,14 +533,6 @@ class _LeadRow extends StatelessWidget {
                     spacing: 12,
                     runSpacing: 4,
                     children: [
-                      AppMetadataText(
-                        '근거 · ${item.sourceLabel}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSupporting,
-                          height: 1.35,
-                        ),
-                      ),
                       Text(
                         item.actionLabel,
                         style: TextStyle(
@@ -552,15 +576,6 @@ class _NewsSectionHeader extends StatelessWidget {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
           ),
         ),
-        Text(
-          '$count개',
-          style: TextStyle(
-            fontSize: 11,
-            color: AppColors.textSupporting,
-            fontWeight: FontWeight.w800,
-            fontFeatures: [FontFeature.tabularFigures()],
-          ),
-        ),
       ],
     );
   }
@@ -576,6 +591,7 @@ class _NewsCard extends StatelessWidget {
     final usesLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
     return AppPressable(
       onTap: () => _pushNewsRoute(context, item.route),
+      semanticHint: '${item.sourceLabel} 정보 보기',
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
@@ -602,18 +618,20 @@ class _NewsCard extends StatelessWidget {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    Text(
-                      item.label,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSupporting,
-                        fontWeight: FontWeight.w700,
+                    if (item.label.trim().isNotEmpty &&
+                        item.label.trim() != _labelForStoryKind(item.storyKind))
+                      Text(
+                        item.label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSupporting,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(
+                AppMetadataText(
                   item.title,
                   style: const TextStyle(
                     fontSize: 15,
@@ -633,15 +651,7 @@ class _NewsCard extends StatelessWidget {
                 const SizedBox(height: 9),
                 Row(
                   children: [
-                    Expanded(
-                      child: AppMetadataText(
-                        '근거 · ${item.sourceLabel}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSupporting,
-                        ),
-                      ),
-                    ),
+                    const Spacer(),
                     const SizedBox(width: 10),
                     Flexible(
                       child: Text(
@@ -798,8 +808,8 @@ class _NewsErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     return _StateCard(
       icon: Icons.wifi_off_rounded,
-      title: '데이터 브리핑을 불러올 수 없습니다',
-      body: '오늘 경기와 기록 흐름을 다시 확인해 주세요.',
+      title: '소식을 불러오지 못했어요',
+      body: '',
       actionLabel: '다시 확인',
       onAction: onRetry,
     );
@@ -819,12 +829,8 @@ class _NewsEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = hasAnyNews
-        ? '$filterLabel 데이터 흐름이 없습니다'
-        : '오늘 정리할 데이터 흐름이 없습니다';
-    final body = hasAnyNews
-        ? '다른 필터를 선택하거나 새로고침해 최신 흐름을 확인하세요.'
-        : '경기, 순위, 기록 데이터가 들어오면 이 탭에 짧은 카드로 정리됩니다.';
+    final title = hasAnyNews ? '$filterLabel 소식이 없어요' : '새 소식이 없어요';
+    const body = '';
     return _StateCard(
       icon: Icons.article_outlined,
       title: title,
@@ -887,15 +893,17 @@ class _StateCard extends StatelessWidget {
             title,
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 7),
-          Text(
-            body,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-              height: 1.35,
+          if (body.isNotEmpty) ...[
+            const SizedBox(height: 7),
+            AppMetadataText(
+              body,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                height: 1.35,
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 14),
           TextButton(onPressed: onAction, child: Text(actionLabel)),
         ],
@@ -905,9 +913,16 @@ class _StateCard extends StatelessWidget {
 }
 
 void _pushNewsRoute(BuildContext context, String route) {
+  final target = sanitizeAppRoute(route, fallback: null);
+  if (target == null) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('이 소식의 연결 정보를 찾을 수 없어요.')));
+    return;
+  }
   context.pushAppRoute(
-    route,
-    fallback: '/news',
+    target,
+    fallback: null,
     presentation: AppRoutePresentation.swipeBack,
   );
 }
@@ -1261,54 +1276,7 @@ double? _parseGamesBehind(String value) {
   return double.tryParse(normalized);
 }
 
-String _briefNewsTitle(HomeKboBriefItem item) {
-  if (item.type != 'standings') {
-    return item.title;
-  }
-  final originalTitle = item.title.trim();
-  if (_hasEditorialStandingPrefix(originalTitle)) {
-    return originalTitle;
-  }
-  final teamName = _teamNameFromStandingBriefTitle(item.title);
-  if (teamName == null) {
-    return item.title;
-  }
-  final gap = _gapFromText(item.subtitle);
-  if (gap != null && gap <= 2) {
-    return '선두가 위태로운 $teamName';
-  }
-  return '선두 지키는 $teamName';
-}
-
-bool _hasEditorialStandingPrefix(String title) {
-  return const [
-    '선두가 위태로운 ',
-    '선두 지키는 ',
-    '선두 굳히는 ',
-    '선두 추격하는 ',
-    '상위권 버티는 ',
-    '중위권 반등 노리는 ',
-    '하위권 탈출 급한 ',
-  ].any(title.startsWith);
-}
-
-String? _teamNameFromStandingBriefTitle(String title) {
-  var normalized = title.trim();
-  normalized = normalized.replaceFirst(RegExp(r'^[0-9]+위\s*'), '');
-  normalized = normalized.replaceFirst(RegExp(r'\s*[0-9]+위.*$'), '');
-  normalized = normalized.replaceAll('선두권 체크', '').replaceAll('유지', '').trim();
-  return normalized.isEmpty ? null : normalized;
-}
-
 String _twoDigits(int value) => value.toString().padLeft(2, '0');
-
-double? _gapFromText(String text) {
-  final match = RegExp(r'([0-9]+(?:\.[0-9]+)?)G차').firstMatch(text);
-  if (match == null) {
-    return null;
-  }
-  return double.tryParse(match.group(1)!);
-}
 
 List<_NewsCardData> _editorialLeadItems(
   List<_NewsCardData> items, {
@@ -1479,7 +1447,7 @@ class _NewsCardData {
     return _NewsCardData(
       filter: filter,
       label: item.eyebrow,
-      title: _briefNewsTitle(item),
+      title: item.title,
       subtitle: item.subtitle,
       sourceLabel: _sourceLabelForRoute(item.route, filter),
       actionLabel: _actionLabelForRoute(item.route),

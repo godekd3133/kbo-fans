@@ -89,7 +89,7 @@ kbo_fans/
 - App version format: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Release tag format: `MAJOR.MINOR.PATCH`
 - Current release line: `0.1.x`
-- Current source version: `0.1.35+103` (`app/pubspec.yaml`; store processing/installability is a separate checkpoint)
+- Current source version: `0.1.36+104` (`app/pubspec.yaml`; store processing/installability is a separate checkpoint)
 - Preview suffixes are not used. Do not create `*-preview*` tags or prereleases unless this policy is explicitly changed.
 - Every release/version change must update `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, GitHub Release notes, and `docs/WORKLOG.md`.
 
@@ -398,3 +398,9 @@ GitHub Actions 배포:
 ### 2026-10-08 사용자 흐름 개선 검증
 
 온보딩 하단 고정 동작, 마이팀 LIVE 점수 순서, 확대 글자의 홈 순위/리더보드, 오류·빈 상태 안내 개선 범위는 [사용자 흐름 개선 기록](docs/UX_IMPROVEMENT_2026-10-08.md)을 참조하세요. `scripts/kbo-reference-api.py --include-snapshots`는 화면 QA에 기존 repository snapshot을 명시적으로 사용할 수 있는 opt-in이며 운영 데이터 경로가 아닙니다. 현재 시즌의 최신성을 확인하려면 실제 FastAPI runtime을 별도로 검증해야 합니다.
+
+정보 밀도와 메타데이터 배치 후속 개선, 화면 QA 및 네이티브 위젯의 남은 검증 범위는 [추가 UX 개선 기록](docs/UX_REFINEMENT_2026-10-08.md)에 정리했습니다.
+
+로컬 `scripts/kbo-reference-api.py --include-snapshots`의 전체 순위 QA도 실제 API와 동일한 `/api/records/leaderboard?season=YYYY&metric=avg` query를 사용합니다. 저장된 fixture가 없는 지표는 운영 응답으로 간주하지 않습니다.
+
+현재 웹에서는 푸시 권한 요청과 알림 수신 설정을 제공하지 않으며, 설정 화면에서 휴대폰 앱 이용 안내를 표시합니다. 웹의 알림함 진입은 유지합니다.

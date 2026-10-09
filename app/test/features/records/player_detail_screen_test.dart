@@ -202,7 +202,7 @@ void main() {
         .refresh(instant: DateTime.utc(currentSeason, 12, 31, 15));
     await tester.pumpAndSettle();
     expect(requestedKeys, everyElement('69102|${currentSeason - 1}'));
-    expect(find.text('선수 프로필 · ${currentSeason - 1}'), findsOneWidget);
+    expect(find.text('${currentSeason - 1} 시즌'), findsOneWidget);
   });
 }
 

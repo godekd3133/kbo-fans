@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_metadata_text.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -79,7 +80,7 @@ class GameCard extends StatelessWidget {
                   ),
                   if (secondary != null) ...[
                     const SizedBox(height: 6),
-                    Text(
+                    AppMetadataText(
                       secondary,
                       style: TextStyle(
                         fontSize: 11,

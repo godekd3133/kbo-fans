@@ -1,3 +1,4 @@
+import '../../../core/widgets/app_metadata_text.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/team_data.dart';
@@ -374,7 +375,7 @@ class MyTeamGameCard extends StatelessWidget {
             style: TextStyle(fontSize: 10, color: AppColors.textSupporting),
           ),
           const SizedBox(height: 4),
-          Text(
+          AppMetadataText(
             value,
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
           ),

@@ -1,5 +1,7 @@
+import '../../helpers/metadata_finder.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:kbo_fans/core/widgets/app_metadata_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kbo_fans/core/router/app_router.dart';
@@ -148,7 +150,9 @@ void main() {
       find.text('${expectedDate.replaceAll('-', '.')} 기준'),
       findsOneWidget,
     );
-    expect(find.textContaining('2023.11.15 07:13 생성 · 한국시간'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('briefing-source-info')));
+    await tester.pumpAndSettle();
+    expect(find.text('2023.11.15 07:13 KST'), findsOneWidget);
   });
 
   testWidgets('브리핑은 KST 자정 rollover와 즉시 새로고침에 최신 날짜 key를 쓴다', (tester) async {
@@ -190,7 +194,7 @@ void main() {
     container
         .read(kboDateProvider.notifier)
         .refresh(instant: DateTime.utc(2026, 12, 31, 15));
-    await tester.tap(find.byTooltip('데이터 브리핑 새로고침'));
+    await tester.tap(find.byTooltip('브리핑 새로고침'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -312,15 +316,17 @@ void main() {
         '앱 계산 · 팀 56경기 기준 · 현재 20홈런',
         '한화 이글스 김태연의 시즌 타율 .301',
       ]) {
-        final text = tester.widget<Text>(find.text(label));
-        expect(text.maxLines, isNull);
-        expect(text.overflow, isNot(TextOverflow.ellipsis));
+        for (final part in metadataItems(label)) {
+          final text = tester.widget<Text>(find.text(part).first);
+          expect(text.maxLines, isNull);
+          expect(text.overflow, isNot(TextOverflow.ellipsis));
+        }
       }
       await tester.ensureVisible(find.text('기록').first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('기록').first);
       await tester.pumpAndSettle();
-      expect(find.text('먼저 볼 흐름'), findsNothing);
+      expect(find.text('주요 소식'), findsNothing);
       expect(find.text('LG와 삼성의 오늘 경기'), findsNothing);
       expect(find.text('한화 이글스 김태연의 시즌 타율 .301'), findsOneWidget);
       expect(find.text('김도영, 지금 페이스면 51홈런'), findsOneWidget);
@@ -348,13 +354,17 @@ void main() {
     }
     for (final label in [
       'LG와 삼성의 오늘 경기',
-      '선두가 위태로운 LG 트윈스',
+      'LG 트윈스 1위 유지',
       '김도영, 지금 페이스면 51홈런',
       '한화 이글스 김태연의 시즌 타율 .301',
     ]) {
       expect(find.text(label), findsOneWidget);
     }
-    expect(find.textContaining('생성 시각 미제공'), findsOneWidget);
+    expect(find.textContaining('생성 시각 미제공'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('briefing-source-info')));
+    await tester.pumpAndSettle();
+    expect(find.text('브리핑 정보'), findsOneWidget);
+    expect(find.text('갱신 시각이 제공되지 않았어요.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -422,8 +432,8 @@ void main() {
           : source == TicketSource.inferred
           ? '예상 오픈'
           : '오픈 · 확정 여부 미제공';
-      expect(find.text('인터파크 티켓 · 9월 1일 11:00 KST $suffix'), findsOneWidget);
-      expect(find.text('근거 · 예매 안내'), findsOneWidget);
+      expect(metadataText('인터파크 티켓 · 9월 1일 11:00 KST $suffix'), findsOneWidget);
+      expect(find.text('예매 안내'), findsOneWidget);
       expect(find.text('예매 오픈 임박'), findsNothing);
       expect(find.textContaining('T11:00:00+09:00'), findsNothing);
       for (final label in ['지금 볼 경기', '순위의 의미', '기록 이해']) {
@@ -438,6 +448,63 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('잘못된 소식 연결은 브리핑을 중복해서 열지 않고 현재 화면에서 안내한다', (tester) async {
+    final container = ProviderContainer(
+      overrides: [
+        homeAggregateProvider.overrideWith(
+          (ref, key) async => HomeAggregate(
+            date: key.split('|').first,
+            myTeam: null,
+            myTeamBrief: null,
+            standingsPreview: const [],
+            quickItems: const [],
+            kboBrief: HomeKboBrief(
+              title: '소식',
+              subtitle: '',
+              items: const [
+                HomeKboBriefItem(
+                  type: 'records',
+                  eyebrow: '기록',
+                  title: '2~5위 0.5G 혼전',
+                  subtitle: '',
+                  route: '/unsupported-news',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.read(onboardingDoneProvider.notifier).setValue(true);
+    final router = container.read(routerProvider);
+    router.go('/news');
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('선두 지키는 2~'), findsNothing);
+    final before = tester
+        .widgetList<Navigator>(find.byType(Navigator))
+        .map((n) => n.pages.length)
+        .toList();
+    await tester.tap(find.text('2~5위 0.5G 혼전').last);
+    await tester.pumpAndSettle();
+    expect(find.text('이 소식의 연결 정보를 찾을 수 없어요.'), findsOneWidget);
+    expect(router.routeInformationProvider.value.uri.path, '/news');
+    expect(
+      tester
+          .widgetList<Navigator>(find.byType(Navigator))
+          .map((n) => n.pages.length)
+          .toList(),
+      before,
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('news cards push shell screens with iOS swipe-back routes', (
     tester,
@@ -483,7 +550,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    await tester.tap(find.text('선두가 위태로운 LG 트윈스').last);
+    await tester.tap(find.text('LG 트윈스 1위 유지').last);
     await tester.pump();
 
     final shellNavigator = tester
@@ -535,9 +602,14 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('데이터 브리핑'), findsOneWidget);
-    expect(find.text('먼저 볼 흐름'), findsOneWidget);
-    expect(find.textContaining('실제 뉴스 기사 아님'), findsOneWidget);
+    expect(find.text('브리핑'), findsOneWidget);
+    expect(find.text('주요 소식'), findsOneWidget);
+    expect(find.textContaining('실제 뉴스 기사 아님'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('briefing-source-info')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('실제 뉴스 기사는 아니며'), findsOneWidget);
+    Navigator.of(tester.element(find.text('브리핑 정보'))).pop();
+    await tester.pumpAndSettle();
     expect(find.text('지금 KBO'), findsNothing);
     expect(find.text('2경기 진행 중'), findsNothing);
     expect(find.text('오늘의 3분 브리핑'), findsNothing);
@@ -635,12 +707,12 @@ void main() {
 
     expect(find.text('기록 이해'), findsOneWidget);
     expect(find.text('마이팀'), findsWidgets);
-    expect(find.text('LG 트윈스 승 · 롯데전 5:2'), findsOneWidget);
+    expect(metadataText('LG 트윈스 승 · 롯데전 5:2'), findsOneWidget);
     expect(find.text('선두 지키는 KIA 타이거즈'), findsWidgets);
     expect(find.text('오늘 3경기'), findsWidgets);
   });
 
-  testWidgets('expands standings into at least 25 visible latest news rows', (
+  testWidgets('standings facts are revealed only when requested', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -765,8 +837,9 @@ void main() {
 
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    await _showMoreBriefing(tester);
 
-    expect(find.text('27개'), findsOneWidget);
+    expect(find.text('27개'), findsNothing);
     expect(find.text('선두가 위태로운 LG 트윈스'), findsWidgets);
     expect(find.text('LG 트윈스 턱밑까지 쫓는 한화 이글스'), findsWidgets);
     expect(find.text('LG 트윈스, 지금 페이스면 88승'), findsWidgets);
@@ -834,19 +907,21 @@ void main() {
 
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    await _showMoreBriefing(tester);
 
     expect(find.text('두산-LG 합계 5실책'), findsWidgets);
     expect(find.text('홍창기 타율 0.351'), findsWidgets);
-    expect(find.text('두산 3개 · LG 2개'), findsWidgets);
+    expect(metadataText('두산 3개 · LG 2개'), findsWidgets);
     expect(find.text('최형우 2000루타 달성'), findsWidgets);
     expect(find.text('기록 보기'), findsWidgets);
 
     await tester.tap(find.text('기록').first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
+    await _showMoreBriefing(tester);
 
     expect(find.text('최형우 2000루타 달성'), findsOneWidget);
-    expect(find.text('먼저 볼 흐름'), findsNothing);
+    expect(find.text('주요 소식'), findsNothing);
   });
 
   testWidgets(
@@ -1018,6 +1093,7 @@ void main() {
 
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
+      await _showMoreBriefing(tester);
 
       expect(find.text('LG 3:2 KT'), findsWidgets);
       expect(find.text('LG 3 : 2 KT'), findsNothing);
@@ -1086,9 +1162,10 @@ void main() {
 
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    await _showMoreBriefing(tester);
 
     expect(find.text('김도영, 지금 페이스면 51홈런'), findsOneWidget);
-    expect(find.text('앱 계산 · KIA 타이거즈 56경기 기준 · 현재 20홈런'), findsOneWidget);
+    expect(metadataText('앱 계산 · KIA 타이거즈 56경기 기준 · 현재 20홈런'), findsOneWidget);
     expect(find.text('KIA 타이거즈, 지금 페이스면 90승'), findsWidgets);
     await tester.scrollUntilVisible(
       find.textContaining('3연패').first,
@@ -1129,7 +1206,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('오늘 정리할 데이터 흐름이 없습니다'), findsOneWidget);
+    expect(find.text('새 소식이 없어요'), findsOneWidget);
     expect(find.text('일정 보기'), findsOneWidget);
   });
 }
@@ -1181,3 +1258,14 @@ HomeAggregate _purposeBrief() => const HomeAggregate(
     ],
   ),
 );
+
+Future<void> _showMoreBriefing(WidgetTester tester) async {
+  final more = find.byKey(const ValueKey('briefing-show-more'));
+  if (more.evaluate().isNotEmpty) {
+    await tester.ensureVisible(more);
+    await tester.pumpAndSettle();
+    await tester.tap(more);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('briefing-show-more')), findsNothing);
+  }
+}

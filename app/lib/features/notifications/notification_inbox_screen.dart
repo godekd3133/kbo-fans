@@ -172,7 +172,14 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
     if (!entry.hasRoute) {
       return;
     }
-    context.pushAppRoute(entry.route, fallback: '/home');
+    final target = sanitizeAppRoute(entry.route, fallback: null);
+    if (target == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('이 알림의 연결 정보를 찾을 수 없어요.')));
+      return;
+    }
+    context.pushAppRoute(target, fallback: null);
   }
 
   Future<void> _markEntryRead(String entryId) async {
@@ -234,11 +241,18 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
                 const SizedBox(height: 14),
                 AppMotionSwitcher(child: _buildEntriesContent(visibleEntries)),
                 const SizedBox(height: 18),
-                _InboxPlaybookSection(
-                  settings: settings,
-                  isLoading: _settingsLoading,
-                  hasError: _settingsError != null,
-                  onRetry: () => unawaited(_loadSettings()),
+                ExpansionTile(
+                  key: const ValueKey('inbox-notification-options'),
+                  title: const Text('알림 종류'),
+                  tilePadding: EdgeInsets.zero,
+                  children: [
+                    _InboxPlaybookSection(
+                      settings: settings,
+                      isLoading: _settingsLoading,
+                      hasError: _settingsError != null,
+                      onRetry: () => unawaited(_loadSettings()),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -324,20 +338,11 @@ class _InboxHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppPageHeader(
-      eyebrow: '푸시 알림',
       title: '알림함',
-      subtitle: '경기와 브리프에서 놓친 신호를 한 곳에서 확인합니다.',
       onBack: onBack,
-      trailing: TextButton(
-        onPressed: onMarkAllRead,
-        child: Text(
-          unreadCount == null
-              ? '확인 불가'
-              : unreadCount == 0
-              ? '정리됨'
-              : '모두 읽음',
-        ),
-      ),
+      trailing: unreadCount != null && unreadCount! > 0
+          ? TextButton(onPressed: onMarkAllRead, child: const Text('모두 읽음'))
+          : null,
     );
   }
 }
@@ -348,7 +353,6 @@ class _InboxSummaryCard extends StatelessWidget {
   final int? unreadCount;
   final bool isLoading;
   final bool hasError;
-
   const _InboxSummaryCard({
     required this.totalCount,
     required this.visibleCount,
@@ -356,190 +360,40 @@ class _InboxSummaryCard extends StatelessWidget {
     required this.isLoading,
     required this.hasError,
   });
-
   @override
   Widget build(BuildContext context) {
-    final useLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
-    final hasCounts =
-        totalCount != null && visibleCount != null && unreadCount != null;
-    final summary = hasCounts
-        ? '최근 최대 50개 보관 · $totalCount개 중 $visibleCount개 표시'
-        : isLoading
-        ? '최근 알림을 최대 50개까지 불러오는 중입니다'
-        : hasError
-        ? '최근 최대 50개 보관 · 현재 표시 수 확인 불가'
-        : '최근 알림을 최대 50개까지 보관합니다';
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.accent.withValues(alpha: 0.12),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppColors.accent.withValues(alpha: 0.38),
-                  ),
-                ),
-                child: Icon(
-                  Icons.notifications_active_outlined,
-                  color: AppColors.accent,
-                  size: 22,
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 12,
+      runSpacing: 8,
+      children: [
+        if (unreadCount != null && unreadCount! > 0)
+          Text('안 읽은 알림 $unreadCount개', style: const TextStyle(fontSize: 14)),
+        TextButton.icon(
+          key: const ValueKey('inbox-storage-info'),
+          icon: const Icon(Icons.info_outline_rounded, size: 16),
+          label: const Text('보관 안내'),
+          style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
+          onPressed: () => showDialog<void>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('알림 보관'),
+              content: const SingleChildScrollView(
+                child: Text(
+                  '이 기기에서 받은 최근 알림을 최대 50개 보관합니다. 기기에서 수신하지 못한 알림은 목록에 나타나지 않을 수 있어요.',
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '최근 알림 보관함',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      summary,
-                      maxLines: useLargeText ? null : 2,
-                      overflow: useLargeText
-                          ? TextOverflow.visible
-                          : TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          if (useLargeText)
-            Column(
-              children: [
-                _SummaryMetric(
-                  label: '보관',
-                  value: totalCount?.toString() ?? '—',
-                  color: AppColors.textPrimary,
-                ),
-                const SizedBox(height: 8),
-                _SummaryMetric(
-                  label: '현재 표시',
-                  value: visibleCount?.toString() ?? '—',
-                  color: AppColors.accent,
-                ),
-                const SizedBox(height: 8),
-                _SummaryMetric(
-                  label: '안 읽음',
-                  value: unreadCount?.toString() ?? '—',
-                  color: AppColors.live,
-                ),
-              ],
-            )
-          else
-            Row(
-              children: [
-                Expanded(
-                  child: _SummaryMetric(
-                    label: '보관',
-                    value: totalCount?.toString() ?? '—',
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _SummaryMetric(
-                    label: '현재 표시',
-                    value: visibleCount?.toString() ?? '—',
-                    color: AppColors.accent,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _SummaryMetric(
-                    label: '안 읽음',
-                    value: unreadCount?.toString() ?? '—',
-                    color: AppColors.live,
-                  ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('닫기'),
                 ),
               ],
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SummaryMetric extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _SummaryMetric({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final useLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
-    return Container(
-      key: ValueKey('inbox-summary-metric-$label'),
-      constraints: const BoxConstraints(minHeight: 62),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.cardSub,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            maxLines: useLargeText ? null : 1,
-            overflow: useLargeText
-                ? TextOverflow.visible
-                : TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 10,
-              color: color,
-              fontWeight: FontWeight.w900,
-            ),
           ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            maxLines: useLargeText ? null : 1,
-            overflow: useLargeText
-                ? TextOverflow.visible
-                : TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -737,6 +591,7 @@ class _InboxEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.card,
@@ -761,18 +616,17 @@ class _InboxEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            filter == _InboxFilter.all ? '아직 받은 푸시가 없습니다' : '이 필터에 알림이 없습니다',
+            filter == _InboxFilter.all ? '아직 받은 알림이 없어요' : '이 항목에는 알림이 없어요',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 5),
-          Text(
-            '득점, 홈런, 타석, 야구 브리프처럼 앱 밖에서 온 신호가 이곳에 시간순으로 모입니다.',
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-              height: 1.4,
+          if (filter == _InboxFilter.all &&
+              GoRouter.maybeOf(context) != null) ...[
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => context.go('/settings'),
+              child: const Text('알림 설정'),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -835,7 +689,7 @@ class _InboxLoadErrorState extends StatelessWidget {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 5),
-          Text(
+          AppMetadataText(
             body,
             style: TextStyle(
               fontSize: 12,
@@ -955,7 +809,7 @@ class _InboxPlaybookSection extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                '받을 준비된 신호',
+                '현재 설정',
                 style: TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -1089,7 +943,7 @@ class _PlaybookMomentRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
+                AppMetadataText(
                   item.description,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1196,7 +1050,7 @@ List<_MomentInboxItem> _momentItems(PushNotificationSettings settings) {
     ),
     _MomentInboxItem(
       label: '이닝 교대',
-      description: '라이브 표면 갱신',
+      description: '이닝이 바뀔 때',
       delivery: settings.inningChangeDelivery,
       icon: Icons.repeat_rounded,
     ),

@@ -653,8 +653,8 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
           const SizedBox(height: 8),
           Text(
             metric == LeaderboardMetric.war
-                ? '현재 KBO 공식 소스 기준으로는 WAR 리더보드를 같은 방식으로 공개하지 않아 아직 연결하지 못했습니다.'
-                : '현재 이 지표는 사용할 수 없습니다.',
+                ? 'WAR 기록은 지원하지 않아요.'
+                : '이 지표는 제공하지 않아요.',
             style: TextStyle(
               fontSize: 13,
               color: AppColors.textSecondary,

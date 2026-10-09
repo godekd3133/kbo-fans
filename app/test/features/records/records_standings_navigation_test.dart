@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/config/app_config.dart';
+import 'package:kbo_fans/core/utils/kbo_time.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/data/models/records_overview.dart';
 import 'package:kbo_fans/data/models/schedule.dart';
@@ -15,6 +16,103 @@ import 'package:kbo_fans/features/standings/standings_screen.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   AppConfig.initialize();
+
+  for (final followsCurrent in [false, true]) {
+    testWidgets('순위와 기록 전환은 시즌과 현재 시즌 추적 $followsCurrent 를 유지한다', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final season = followsCurrent ? kboCurrentSeason() : 2024;
+      final recordsRequests = <int>[];
+      final standingsRequests = <int>[];
+      final router = GoRouter(
+        initialLocation:
+            '/records?season=$season${followsCurrent ? '&seasonMode=current' : ''}',
+        routes: [
+          GoRoute(
+            path: '/records',
+            builder: (context, state) => RecordsScreen(
+              initialSeason: int.tryParse(
+                state.uri.queryParameters['season'] ?? '',
+              ),
+              followsCurrentSeason:
+                  state.uri.queryParameters['seasonMode'] == 'current',
+            ),
+          ),
+          GoRoute(
+            path: '/standings',
+            builder: (context, state) => StandingsScreen(
+              initialSeason: int.tryParse(
+                state.uri.queryParameters['season'] ?? '',
+              ),
+              followsCurrentSeason:
+                  state.uri.queryParameters['seasonMode'] == 'current',
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            recordsOverviewProvider.overrideWith((ref, season) async {
+              recordsRequests.add(season);
+              return _emptyOverview(season);
+            }),
+            standingsProvider.overrideWith((ref, season) async {
+              standingsRequests.add(season);
+              return const [];
+            }),
+          ],
+          child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('records-area-tab-standings')),
+      );
+      await tester.pumpAndSettle();
+      expect(standingsRequests.last, season);
+      expect(
+        router.routeInformationProvider.value.uri.queryParameters['season'],
+        '$season',
+      );
+      expect(
+        router.routeInformationProvider.value.uri.queryParameters['seasonMode'],
+        followsCurrent ? 'current' : null,
+      );
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(StandingsScreen)),
+      );
+      container
+          .read(kboDateProvider.notifier)
+          .refresh(instant: DateTime.utc(kboCurrentSeason(), 12, 31, 15));
+      await tester.pumpAndSettle();
+      final expected = followsCurrent ? season + 1 : season;
+      expect(
+        tester
+            .widget<DropdownButton<int>>(find.byType(DropdownButton<int>))
+            .value,
+        expected,
+      );
+      await tester.tap(find.byKey(const ValueKey('records-area-tab-records')));
+      await tester.pumpAndSettle();
+      expect(recordsRequests.last, expected);
+      expect(
+        router.routeInformationProvider.value.uri.queryParameters['season'],
+        '$expected',
+      );
+      expect(
+        router.routeInformationProvider.value.uri.queryParameters['seasonMode'],
+        followsCurrent ? 'current' : null,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('모바일 기록 영역은 큰 글자에서도 순위표와 선수 기록을 오갈 수 있다', (tester) async {
     final semantics = tester.ensureSemantics();

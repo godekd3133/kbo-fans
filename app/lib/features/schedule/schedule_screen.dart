@@ -672,7 +672,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     if (previousDate == null ||
         nextDate == null ||
         _currentMonth.year != previousDate.year ||
-        _currentMonth.month != previousDate.month) {
+        _currentMonth.month != previousDate.month ||
+        _selectedDay != previousDate.day) {
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -784,21 +785,10 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     ScheduleDay? selectedSchedule,
     List<ScheduleDay> filteredDays,
   ) {
-    final isInitialLoading =
-        scheduleAsync.isLoading && scheduleAsync.asData == null;
-    if (isInitialLoading) {
-      return Column(
-        children: [
-          _buildControls(),
-          _buildCalendarPager(context),
-          Divider(color: AppColors.divider, height: 1),
-          Expanded(child: _buildGameListLoading()),
-        ],
-      );
-    }
-
     return RefreshIndicator(
       onRefresh: _refreshSchedule,
+      notificationPredicate: (notification) =>
+          !scheduleAsync.isLoading && notification.depth == 0,
       color: AppTheme.colorsOf(context).accent,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -2131,7 +2121,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           ),
           const SizedBox(height: 4),
           AppMetadataText(
-            '$season 시즌 · 남은 $gameCount경기 · 오늘 기준 가까운 순 · 홈/원정 무관',
+            '$season 시즌 · 남은 $gameCount경기',
             style: TextStyle(
               fontSize: 12,
               color: AppColors.textSecondary,

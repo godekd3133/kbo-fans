@@ -151,7 +151,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
 
   Widget _buildUnavailableState() {
     final message = switch (widget.gameStatus) {
-      GameStatus.live => '실시간 문자중계는 준비 중입니다',
+      GameStatus.live => '아직 문자중계가 제공되지 않았어요.',
       GameStatus.final_ => '이 경기의 문자중계 데이터가 아직 없습니다',
       GameStatus.cancelled => '취소된 경기는 문자중계를 제공하지 않습니다',
       GameStatus.suspended => '서스펜디드 경기는 재개 전까지 문자중계를 제공하지 않습니다',
@@ -222,12 +222,13 @@ class _RelayTabState extends ConsumerState<RelayTab> {
       controller: _scrollController,
       physics: AlwaysScrollableScrollPhysics(),
       slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: _RelayGameSummary(game: game),
+        if (atBat == null)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: _RelayGameSummary(game: game),
+            ),
           ),
-        ),
         if (isStale)
           SliverToBoxAdapter(
             child: Padding(
@@ -259,7 +260,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
           SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.only(top: 10),
-              child: _buildMomentFilterChips(moments),
+              child: _buildMomentFilterChips(inningFilteredMoments),
             ),
           ),
         if (_hasNewRelay)
@@ -480,7 +481,14 @@ class _RelayTabState extends ConsumerState<RelayTab> {
   }
 
   Widget _buildMomentFilterChips(List<_RelayMoment> moments) {
-    final filters = _RelayMomentFilter.values;
+    final filters = _RelayMomentFilter.values
+        .where(
+          (filter) =>
+              filter == _RelayMomentFilter.all ||
+              filter == _selectedMomentFilter ||
+              moments.any(filter.matches),
+        )
+        .toList();
     final colors = AppTheme.colorsOf(context);
     final useLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
     return SizedBox(
@@ -894,26 +902,10 @@ class _RelayGameSummary extends StatelessWidget {
                 ),
               ],
             ),
-          SizedBox(height: 12),
-          _RelayStatRow(
-            leftLabel: game.away.shortName,
-            leftValue: _teamStatSummary(game.away),
-            rightLabel: game.home.shortName,
-            rightValue: _teamStatSummary(game.home),
-          ),
-          SizedBox(height: 12),
-          _LineScoreStrip(away: game.away, home: game.home),
         ],
       ),
     );
   }
-}
-
-String _teamStatSummary(TeamScore team) {
-  if (!team.hasStats) {
-    return '안타 - · 실책 - · 사사구 -';
-  }
-  return '안타 ${team.hits} · 실책 ${team.errors} · 사사구 ${team.walks}';
 }
 
 class _RelayFallbackNotice extends StatelessWidget {
@@ -988,216 +980,6 @@ class _RelayStaleNotice extends StatelessWidget {
         '네트워크 갱신이 지연되어 마지막으로 저장된 문자중계를 표시하고 있습니다',
         style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
       ),
-    );
-  }
-}
-
-class _RelayStatRow extends StatelessWidget {
-  final String leftLabel;
-  final String leftValue;
-  final String rightLabel;
-  final String rightValue;
-
-  const _RelayStatRow({
-    required this.leftLabel,
-    required this.leftValue,
-    required this.rightLabel,
-    required this.rightValue,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _RelayStatCell(
-            label: leftLabel,
-            value: leftValue,
-            alignEnd: false,
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: _RelayStatCell(
-            label: rightLabel,
-            value: rightValue,
-            alignEnd: true,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RelayStatCell extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool alignEnd;
-
-  const _RelayStatCell({
-    required this.label,
-    required this.value,
-    required this.alignEnd,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: alignEnd
-          ? CrossAxisAlignment.end
-          : CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.textSupporting,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        SizedBox(height: 4),
-        Text(
-          value,
-          textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-          style: TextStyle(
-            fontSize: 13,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _LineScoreStrip extends StatelessWidget {
-  static final _totalLabels = ['R', 'H', 'E'];
-
-  final TeamScore away;
-  final TeamScore home;
-
-  const _LineScoreStrip({required this.away, required this.home});
-
-  @override
-  Widget build(BuildContext context) {
-    final inningCount = away.innings.length > home.innings.length
-        ? away.innings.length
-        : home.innings.length;
-    if (inningCount == 0) {
-      return SizedBox.shrink();
-    }
-
-    String scoreOf(List<int?> innings, int index) {
-      if (index >= innings.length) return '-';
-      return innings[index]?.toString() ?? '-';
-    }
-
-    List<String> totalsOf(TeamScore team) {
-      return [
-        team.displayScore,
-        team.hasStats ? team.hits.toString() : '-',
-        team.hasStats ? team.errors.toString() : '-',
-      ];
-    }
-
-    final headerLabels = [
-      for (var i = 0; i < inningCount; i++) '${i + 1}',
-      ..._totalLabels,
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              SizedBox(width: 40),
-              for (var i = 0; i < headerLabels.length; i++) ...[
-                if (i == inningCount) SizedBox(width: 4),
-                Padding(
-                  padding: EdgeInsets.only(right: 10),
-                  child: SizedBox(
-                    width: i >= inningCount ? 22 : 18,
-                    child: Text(
-                      headerLabels[i],
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSupporting,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          SizedBox(height: 6),
-          _LineScoreRow(
-            label: away.shortName,
-            totalStartIndex: inningCount,
-            scores: [
-              for (var i = 0; i < inningCount; i++) scoreOf(away.innings, i),
-              ...totalsOf(away),
-            ],
-          ),
-          SizedBox(height: 4),
-          _LineScoreRow(
-            label: home.shortName,
-            totalStartIndex: inningCount,
-            scores: [
-              for (var i = 0; i < inningCount; i++) scoreOf(home.innings, i),
-              ...totalsOf(home),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LineScoreRow extends StatelessWidget {
-  final String label;
-  final List<String> scores;
-  final int totalStartIndex;
-
-  const _LineScoreRow({
-    required this.label,
-    required this.scores,
-    required this.totalStartIndex,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 40,
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-          ),
-        ),
-        for (var i = 0; i < scores.length; i++) ...[
-          if (i == totalStartIndex) SizedBox(width: 4),
-          Padding(
-            padding: EdgeInsets.only(right: 10),
-            child: SizedBox(
-              width: i >= totalStartIndex ? 22 : 18,
-              child: Text(
-                scores[i],
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ],
     );
   }
 }
@@ -1655,7 +1437,7 @@ class _AdaptiveScorebugParticipant extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
+          AppMetadataText(
             primary,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
@@ -1666,7 +1448,7 @@ class _AdaptiveScorebugParticipant extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 3),
-          Text(
+          AppMetadataText(
             secondary,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
@@ -1716,7 +1498,7 @@ class _ScorebugSide extends StatelessWidget {
             ),
           ),
           SizedBox(height: 22),
-          Text(
+          AppMetadataText(
             primary,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -1728,7 +1510,7 @@ class _ScorebugSide extends StatelessWidget {
             ),
           ),
           SizedBox(height: 5),
-          Text(
+          AppMetadataText(
             secondary,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -1941,9 +1723,6 @@ class _CurrentAtBatHero extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCompact = constraints.maxWidth < 380;
-        final useAdaptiveLayout =
-            MediaQuery.sizeOf(context).width <= 320 ||
-            MediaQuery.textScalerOf(context).scale(1) >= 1.6;
 
         return Container(
           width: double.infinity,
@@ -1972,19 +1751,8 @@ class _CurrentAtBatHero extends StatelessWidget {
                     '현재 타석',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                   ),
-                  if (atBat.inningText.isNotEmpty)
-                    _RelayPill(
-                      label: atBat.inningText,
-                      color: AppColors.textPrimary,
-                      subtle: true,
-                    ),
                   if (baseStateLabel.isNotEmpty)
                     _BaseStateBadge(baseState: baseStateLabel),
-                  _CompactBsoSummary(
-                    balls: atBat.balls,
-                    strikes: atBat.strikes,
-                    outs: atBat.outs,
-                  ),
                 ],
               ),
               SizedBox(height: 12),
@@ -2063,80 +1831,7 @@ class _CurrentAtBatHero extends StatelessWidget {
                   ],
                 ),
               ],
-              SizedBox(height: 14),
-              if (useAdaptiveLayout)
-                Column(
-                  children: [
-                    _CountSummaryCard(
-                      label: '볼',
-                      shortLabel: 'B',
-                      filled: atBat.balls,
-                      total: 4,
-                      activeColor: AppColors.positive,
-                    ),
-                    SizedBox(height: 8),
-                    _CountSummaryCard(
-                      label: '스트라이크',
-                      shortLabel: 'S',
-                      filled: atBat.strikes,
-                      total: 3,
-                      activeColor: AppColors.ballYellow,
-                    ),
-                    SizedBox(height: 8),
-                    _CountSummaryCard(
-                      label: '아웃',
-                      shortLabel: 'O',
-                      filled: atBat.outs,
-                      total: 3,
-                      activeColor: AppColors.live,
-                    ),
-                  ],
-                )
-              else
-                Row(
-                  children: [
-                    Expanded(
-                      child: _CountSummaryCard(
-                        label: '볼',
-                        shortLabel: 'B',
-                        filled: atBat.balls,
-                        total: 4,
-                        activeColor: AppColors.positive,
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: _CountSummaryCard(
-                        label: '스트라이크',
-                        shortLabel: 'S',
-                        filled: atBat.strikes,
-                        total: 3,
-                        activeColor: AppColors.ballYellow,
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: _CountSummaryCard(
-                        label: '아웃',
-                        shortLabel: 'O',
-                        filled: atBat.outs,
-                        total: 3,
-                        activeColor: AppColors.live,
-                      ),
-                    ),
-                  ],
-                ),
-              SizedBox(height: 10),
-              Wrap(
-                spacing: 16,
-                runSpacing: 8,
-                children: [
-                  _CountMeter('B', atBat.balls, 4, AppColors.positive),
-                  _CountMeter('S', atBat.strikes, 3, AppColors.ballYellow),
-                  _CountMeter('O', atBat.outs, 3, AppColors.live),
-                ],
-              ),
-              if (latestSubstitution != null || latestPlay != null) ...[
+              if (latestSubstitution != null) ...[
                 SizedBox(height: 14),
                 Container(
                   width: double.infinity,
@@ -2148,26 +1843,15 @@ class _CurrentAtBatHero extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (latestSubstitution != null)
-                        _HeroSummaryLine(
-                          label: latestSubstitution.text.contains('대타')
-                              ? '최근 대타'
-                              : latestSubstitution.text.contains('대주자')
-                              ? '최근 대주자'
-                              : '최근 교체',
-                          value: latestSubstitution.text,
-                          accent: AppColors.accent,
-                        ),
-                      if (latestSubstitution != null && latestPlay != null)
-                        SizedBox(height: 8),
-                      if (latestPlay != null)
-                        _HeroSummaryLine(
-                          label: '직전 플레이',
-                          value: latestPlay.text,
-                          accent: latestPlay.isScoring
-                              ? AppColors.live
-                              : AppColors.textSecondary,
-                        ),
+                      _HeroSummaryLine(
+                        label: latestSubstitution.text.contains('대타')
+                            ? '최근 대타'
+                            : latestSubstitution.text.contains('대주자')
+                            ? '최근 대주자'
+                            : '최근 교체',
+                        value: latestSubstitution.text,
+                        accent: AppColors.accent,
+                      ),
                     ],
                   ),
                 ),
@@ -2364,14 +2048,14 @@ class _ParticipantCard extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 6),
-                Text(
+                AppMetadataText(
                   name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
                 SizedBox(height: 4),
-                Text(
+                AppMetadataText(
                   detail,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -2576,215 +2260,6 @@ class _HeroSummaryLine extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _CountMeter extends StatelessWidget {
-  final String label;
-  final int filled;
-  final int total;
-  final Color activeColor;
-
-  const _CountMeter(this.label, this.filled, this.total, this.activeColor);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: AppColors.textSupporting),
-        ),
-        SizedBox(width: 6),
-        for (int i = 0; i < total; i++)
-          Container(
-            width: 12,
-            height: 12,
-            margin: EdgeInsets.only(right: 4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: i < filled ? activeColor : Colors.transparent,
-              border: Border.all(
-                color: i < filled ? activeColor : AppColors.divider,
-                width: 1.4,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _CompactBsoSummary extends StatelessWidget {
-  final int balls;
-  final int strikes;
-  final int outs;
-
-  const _CompactBsoSummary({
-    required this.balls,
-    required this.strikes,
-    required this.outs,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Wrap(
-        spacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          _MiniCountBadge(label: 'B', value: balls, color: AppColors.positive),
-          _MiniCountBadge(
-            label: 'S',
-            value: strikes,
-            color: AppColors.ballYellow,
-          ),
-          _MiniCountBadge(label: 'O', value: outs, color: AppColors.live),
-        ],
-      ),
-    );
-  }
-}
-
-class _MiniCountBadge extends StatelessWidget {
-  final String label;
-  final int value;
-  final Color color;
-
-  const _MiniCountBadge({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return RichText(
-      text: TextSpan(
-        style: TextStyle(
-          fontSize: 11,
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w700,
-        ),
-        children: [
-          TextSpan(
-            text: label,
-            style: TextStyle(color: color),
-          ),
-          TextSpan(text: ' '),
-          TextSpan(
-            text: '$value',
-            style: TextStyle(color: AppColors.textPrimary),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CountSummaryCard extends StatelessWidget {
-  final String label;
-  final String shortLabel;
-  final int filled;
-  final int total;
-  final Color activeColor;
-
-  const _CountSummaryCard({
-    required this.label,
-    required this.shortLabel,
-    required this.filled,
-    required this.total,
-    required this.activeColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final useAdaptiveLayout =
-        MediaQuery.sizeOf(context).width <= 320 ||
-        MediaQuery.textScalerOf(context).scale(1) >= 1.6;
-    final headingChildren = [
-      Text(
-        label,
-        maxLines: useAdaptiveLayout ? 2 : 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: 11,
-          color: activeColor,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-      Text(
-        '$filled',
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w800,
-          color: AppColors.textPrimary,
-        ),
-      ),
-      Text(
-        shortLabel,
-        style: TextStyle(
-          fontSize: 11,
-          color: activeColor,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    ];
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.cardSub,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: activeColor.withValues(alpha: 0.22)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (useAdaptiveLayout)
-            Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: headingChildren,
-            )
-          else
-            Row(
-              children: [
-                Flexible(child: headingChildren[0]),
-                SizedBox(width: 4),
-                headingChildren[1],
-                headingChildren[2],
-              ],
-            ),
-          SizedBox(height: 8),
-          Row(
-            children: [
-              for (int i = 0; i < total; i++)
-                Expanded(
-                  child: Container(
-                    height: 8,
-                    margin: EdgeInsets.only(right: i == total - 1 ? 0 : 4),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(999),
-                      color: i < filled ? activeColor : AppColors.background,
-                      border: Border.all(
-                        color: i < filled ? activeColor : AppColors.divider,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
@@ -3280,7 +2755,7 @@ class _RelayResultBar extends StatelessWidget {
           ),
           SizedBox(width: 10),
           Expanded(
-            child: Text(
+            child: AppMetadataText(
               value,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
@@ -3347,7 +2822,7 @@ class _ScoringFactRow extends StatelessWidget {
         ),
         SizedBox(width: 10),
         Expanded(
-          child: Text(
+          child: AppMetadataText(
             value,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,

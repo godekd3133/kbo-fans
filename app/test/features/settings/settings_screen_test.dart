@@ -23,6 +23,46 @@ void main() {
     );
   });
 
+  testWidgets('푸시 미지원 환경은 권한·저장 조작과 데이터 로딩을 노출하지 않는다', (tester) async {
+    var requests = 0;
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: SettingsScreen(
+            remotePushAvailable: false,
+            pushSettingsLoader: () async {
+              requests++;
+              return const PushNotificationSettings.defaults();
+            },
+            pushPermissionStateLoader: () async {
+              requests++;
+              return false;
+            },
+            pushSettingsSaver: (_, _) async {
+              requests++;
+            },
+            pushPermissionRequester: (_) async {
+              requests++;
+              return true;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('push-settings-unavailable')),
+      findsOneWidget,
+    );
+    expect(find.text('푸시 알림은 휴대폰 앱에서 설정할 수 있어요.'), findsOneWidget);
+    expect(find.text('알림 허용하기'), findsNothing);
+    expect(find.text('결과 중심'), findsNothing);
+    expect(find.byKey(const ValueKey('push_toggle_hit')), findsNothing);
+    expect(requests, 0);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('설정 허브는 필수 액션만 보여주고 다른 탭 정보를 중복 노출하지 않는다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -671,6 +711,104 @@ void main() {
         isFalse,
       );
     }
+  });
+
+  for (final partiallySaved in [false, true]) {
+    testWidgets('알림 저장 실패는 실제 저장값을 읽고 토글을 맞춘다: $partiallySaved', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(390, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      var stored = const PushNotificationSettings.defaults();
+      var saves = 0;
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: SettingsScreen(
+              pushSettingsLoader: () async => stored,
+              pushPermissionStateLoader: () async => false,
+              pushSettingsSaver: (next, _) async {
+                saves++;
+                if (saves == 1) {
+                  if (partiallySaved) stored = next;
+                  throw StateError('storage failure');
+                }
+                stored = next;
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final toggle = find.byKey(const ValueKey('push_toggle_hit'));
+      await tester.ensureVisible(toggle);
+      await tester.pumpAndSettle();
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(find.text('저장하지 못했습니다'), findsOneWidget);
+      expect(
+        tester
+            .widget<Switch>(
+              find.descendant(of: toggle, matching: find.byType(Switch)),
+            )
+            .value,
+        stored.hit,
+      );
+      expect(stored.hit, !partiallySaved);
+      await tester.ensureVisible(toggle);
+      await tester.pumpAndSettle();
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(saves, 2);
+      expect(find.text('저장하지 못했습니다'), findsNothing);
+      expect(
+        tester
+            .widget<Switch>(
+              find.descendant(of: toggle, matching: find.byType(Switch)),
+            )
+            .value,
+        stored.hit,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('알림 저장 후 읽기까지 실패하면 추측한 토글 대신 복구 action을 제공한다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    var loads = 0;
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: SettingsScreen(
+            pushSettingsLoader: () async {
+              loads++;
+              if (loads == 2) throw StateError('readback failure');
+              return const PushNotificationSettings.defaults();
+            },
+            pushPermissionStateLoader: () async => false,
+            pushSettingsSaver: (_, _) async =>
+                throw StateError('write failure'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('push_toggle_hit')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('push_toggle_hit')));
+    await tester.pumpAndSettle();
+    expect(find.text('저장 상태 확인 필요'), findsOneWidget);
+    expect(find.byKey(const ValueKey('push_toggle_hit')), findsNothing);
+    await tester.ensureVisible(find.text('다시 시도'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('다시 시도'));
+    await tester.pumpAndSettle();
+    expect(loads, 3);
+    expect(find.byKey(const ValueKey('push_toggle_hit')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('푸시 알림은 항목별 토글 변경을 저장한다', (tester) async {

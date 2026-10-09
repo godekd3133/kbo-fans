@@ -1,13 +1,13 @@
 # Versioning And Release Policy
 
 > Created: 2026-05-20
-> Updated: 2026-09-25
+> Updated: 2026-10-09
 
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.35+103`
-- Current release tag: `0.1.35`
+- Flutter app version: `0.1.36+104`
+- Current release tag: `0.1.36`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -62,6 +62,8 @@ Every version or release change must update these surfaces in the same work unit
 - When the Director says "이어서 해", decide autonomously whether the current work deserves a new numeric version or should only amend/rewrite the current GitHub release notes. Prefer a new version when app behavior, API behavior, user-visible UI, or in-app update notes change.
 
 ## Numeric Release Map
+
+- `0.1.36`: 홈·문자중계·기록·순위·알림·설정의 중복 정보를 줄이고, 시즌/날짜 보존·실패 복구·알림 저장 및 위젯 가독성을 개선한 app build `0.1.36+104`.
 
 - `0.1.35`: 라이브 경기 상세의 병렬 prefetch·디그레이드·stale-revalidate·온디맨드 warm, Live Activity sync 경기별 격리·계측, 대형 응답 처리 경량화를 반영한 current app build `0.1.35+103`.
 

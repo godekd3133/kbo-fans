@@ -26,6 +26,139 @@ void main() {
     AppConfig.initialize();
   });
 
+  for (final followsToday in [false, true]) {
+    testWidgets('KST 자정 변경은 오늘 선택 $followsToday 일 때만 일정 날짜를 이동한다', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      final today = kboCivilDateTime();
+      final selectedDay = followsToday ? today.day : (today.day == 1 ? 2 : 1);
+      await tester.pumpWidget(
+        ProviderScope(
+          retry: (_, _) => null,
+          overrides: [scheduleProvider.overrideWith((_, _) async => const [])],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: const ScheduleScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      if (!followsToday) {
+        await tester.tap(
+          find.byKey(
+            ValueKey('schedule-date-${today.year}-${today.month}-$selectedDay'),
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(ScheduleScreen)),
+      );
+      final nextDay = DateTime(
+        today.year,
+        today.month,
+        today.day,
+      ).add(const Duration(days: 1));
+      container
+          .read(kboDateProvider.notifier)
+          .refresh(
+            instant: DateTime.utc(
+              nextDay.year,
+              nextDay.month,
+              nextDay.day,
+            ).subtract(const Duration(hours: 9)),
+          );
+      await tester.pumpAndSettle();
+      final expected = followsToday
+          ? nextDay
+          : DateTime(today.year, today.month, selectedDay);
+      expect(
+        tester
+            .getSemantics(
+              find.byKey(
+                ValueKey(
+                  'schedule-date-${expected.year}-${expected.month}-${expected.day}',
+                ),
+              ),
+            )
+            .flagsCollection
+            .isSelected
+            .toBoolOrNull(),
+        isTrue,
+      );
+      expect(tester.takeException(), isNull);
+      semantics.dispose();
+    });
+  }
+
+  testWidgets('지연된 다음 달 응답 전후 달력과 선택 월이 일치한다', (tester) async {
+    final now = kboCivilDateTime();
+    final next = DateTime(now.year, now.month + 1);
+    final targetMonth = '${next.year}-${next.month.toString().padLeft(2, '0')}';
+    final pending = Completer<List<ScheduleDay>>();
+    final semantics = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            scheduleProvider.overrideWith(
+              (_, month) => month == targetMonth
+                  ? pending.future
+                  : Future.value(const <ScheduleDay>[]),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: const ScheduleScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('다음 달'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 450));
+      await tester.pump();
+      final expectedDay = now.day.clamp(
+        1,
+        DateTime(next.year, next.month + 1, 0).day,
+      );
+      final selected = find.byKey(
+        ValueKey('schedule-date-${next.year}-${next.month}-$expectedDay'),
+      );
+      expect(
+        tester.getSemantics(selected).flagsCollection.isSelected.toBoolOrNull(),
+        isTrue,
+      );
+      pending.complete(const []);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getSemantics(selected).flagsCollection.isSelected.toBoolOrNull(),
+        isTrue,
+      );
+      await tester.tap(
+        find.byKey(ValueKey('schedule-date-${next.year}-${next.month}-1')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .getSemantics(
+              find.byKey(
+                ValueKey('schedule-date-${next.year}-${next.month}-1'),
+              ),
+            )
+            .flagsCollection
+            .isSelected
+            .toBoolOrNull(),
+        isTrue,
+      );
+      expect(tester.takeException(), isNull);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets('경기 없는 날은 로드된 일정에서 팀 조건에 맞는 다음 예정 경기로 이동한다', (tester) async {
     final now = kboCivilDateTime();
     final nextMonth = DateTime(now.year, now.month + 1);
@@ -244,7 +377,7 @@ void main() {
     );
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.byType(RefreshIndicator), findsNothing);
+    expect(find.byType(RefreshProgressIndicator), findsNothing);
   });
 
   testWidgets('월 데이터 실패 상태에서도 헤더 월 이동은 동작한다', (tester) async {

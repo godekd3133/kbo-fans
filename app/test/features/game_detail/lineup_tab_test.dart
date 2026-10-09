@@ -315,7 +315,7 @@ void main() {
 
     expect(find.text('라인업 응답이 지연되고 있습니다'), findsOneWidget);
     expect(
-      tester.widget<Text>(find.text('네트워크 상태를 확인하고 다시 시도해 주세요')).style?.color,
+      tester.widget<Text>(find.text('잠시 후 다시 시도해 주세요')).style?.color,
       AppTheme.darkColors.textSupporting,
     );
     expect(find.text('잠시 후 자동으로 갱신됩니다'), findsNothing);

@@ -1,9 +1,37 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 import 'package:kbo_fans/services/push_notification_service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  test('알림 설정 false 쓰기는 실패하고 readback은 낙관적 메모리 값을 버린다', () async {
+    SharedPreferences.setMockInitialValues({
+      'push_notifications.game_start': true,
+    });
+    final originalStore = SharedPreferencesStorePlatform.instance;
+    SharedPreferencesStorePlatform.instance = _RejectingNotificationStore();
+    try {
+      final service = PushNotificationService.instance;
+      await expectLater(
+        service.saveSettings(
+          const PushNotificationSettings.defaults().copyWith(gameStart: false),
+        ),
+        throwsStateError,
+      );
+      expect((await service.loadSettings()).gameStart, isFalse);
+      expect(
+        (await service.loadSettings(reloadFromStorage: true)).gameStart,
+        isTrue,
+      );
+    } finally {
+      SharedPreferencesStorePlatform.instance = originalStore;
+      SharedPreferences.setMockInitialValues({});
+    }
+  });
+
   test(
     'push registration convergence serializes overlapping topic writes',
     () async {
@@ -636,4 +664,12 @@ void main() {
 
     expect(route, '/game/20260612KTLG0?tab=lineup');
   });
+}
+
+class _RejectingNotificationStore extends InMemorySharedPreferencesStore {
+  _RejectingNotificationStore()
+    : super.withData({'flutter.push_notifications.game_start': true});
+  @override
+  Future<bool> setValue(String valueType, String key, Object value) async =>
+      false;
 }

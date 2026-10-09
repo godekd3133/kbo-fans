@@ -93,9 +93,8 @@ class _PlayerDetailScreenState extends ConsumerState<PlayerDetailScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: AppPageHeader(
-                  eyebrow: '기록실 · 선수 상세',
-                  title: '선수 프로필 · $effectiveSeason',
-                  subtitle: '대표 기록과 최근 경기 흐름을 확인합니다.',
+                  eyebrow: '$effectiveSeason 시즌',
+                  title: '선수 기록',
                   onBack: goBack,
                   trailing: IconButton(
                     tooltip: '기록 읽는 법',
@@ -411,7 +410,9 @@ class _PlayerDetailScreenState extends ConsumerState<PlayerDetailScreen> {
               style: TextStyle(fontSize: 12, color: AppColors.textSupporting),
             ),
           ),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
+          Expanded(
+            child: AppMetadataText(value, style: const TextStyle(fontSize: 13)),
+          ),
         ],
       ),
     );
@@ -460,7 +461,7 @@ class _PlayerDetailScreenState extends ConsumerState<PlayerDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 5),
-                  Text(
+                  AppMetadataText(
                     game.summary,
                     style: TextStyle(
                       fontSize: 12,

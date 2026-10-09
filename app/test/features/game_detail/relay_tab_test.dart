@@ -75,8 +75,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.byKey(const ValueKey('relay-fallback-notice')), findsOneWidget);
-    expect(find.text('두산'), findsWidgets);
-    expect(find.text('롯데'), findsWidgets);
+    expect(find.textContaining('두산'), findsWidgets);
+    expect(find.textContaining('롯데'), findsWidgets);
     expect(find.byType(CircularProgressIndicator), findsNothing);
 
     relayCompleter.complete(
@@ -368,7 +368,7 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets('문자중계 상단 스코어보드는 R/H/E 합계를 같이 보여준다', (tester) async {
+  testWidgets('문자중계 요약은 점수만 유지하고 별도 이닝표와 RHE를 반복하지 않는다', (tester) async {
     const game = Game(
       gameId: '20260612OBLT0',
       status: GameStatus.live,
@@ -432,12 +432,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('R'), findsOneWidget);
-    expect(find.text('H'), findsOneWidget);
-    expect(find.text('E'), findsOneWidget);
-    expect(find.text('12'), findsOneWidget);
-    expect(find.text('14'), findsOneWidget);
-    expect(find.text('13'), findsOneWidget);
+    expect(find.text('두산 12 : 8 롯데'), findsOneWidget);
+    expect(find.text('5회말'), findsOneWidget);
+    for (final repeated in ['R', 'H', 'E', '14', '13']) {
+      expect(find.text(repeated), findsNothing);
+    }
   });
 
   testWidgets('현재 타석 타자는 이름 라벨과 이미지 등번호를 분리한다', (tester) async {
@@ -873,6 +872,13 @@ void main() {
                   event: 'HIT',
                   text: '김성윤: 중전 안타',
                 ),
+                RelayItem(
+                  seqNo: 0,
+                  inning: 6,
+                  half: 'top',
+                  event: 'OUT',
+                  text: '이전 이닝 플라이 아웃',
+                ),
               ],
             );
           }),
@@ -945,6 +951,19 @@ void main() {
     expect(find.text('오스틴: 좌월 홈런'), findsOneWidget);
     expect(find.text('김성윤: 중전 안타'), findsNothing);
     expect(find.text('구자욱: 중견수 플라이 아웃'), findsNothing);
+    await tester.ensureVisible(find.text('6회초'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('6회초'));
+    await tester.pumpAndSettle();
+    expect(find.text('전체 1'), findsOneWidget);
+    expect(find.text('홈런 0'), findsOneWidget);
+    expect(find.text('안타 0'), findsNothing);
+    await tester.ensureVisible(find.text('전체 1'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('전체 1'));
+    await tester.pumpAndSettle();
+    expect(find.text('이전 이닝 플라이 아웃'), findsOneWidget);
+    expect(find.text('홈런 0'), findsNothing);
   });
 
   testWidgets('득점 필터는 타자와 홈인 주자를 함께 보여준다', (tester) async {

@@ -1,3 +1,4 @@
+import '../../helpers/metadata_finder.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -18,6 +19,71 @@ import 'package:kbo_fans/features/records/records_screen.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   AppConfig.initialize();
+
+  testWidgets('핵심 순위가 정상이고 세이브만 비었을 때 완료된 빈 결과를 표시한다', (tester) async {
+    final source = _overview(2024);
+    const leader = RecordLeader(
+      rank: 1,
+      playerId: '1',
+      playerType: 'hitter',
+      name: '김선수',
+      teamId: 'LG',
+      value: '0.300',
+    );
+    final empty = RecordsOverview(
+      season: 2024,
+      avgLeaders: const [leader],
+      hrLeaders: const [leader],
+      opsLeaders: const [leader],
+      opsPlusLeaders: const [],
+      eraLeaders: const [leader],
+      todayHitter: source.todayHitter,
+      todayPitcher: source.todayPitcher,
+      monthHitter: source.monthHitter,
+      monthPitcher: source.monthPitcher,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          recordsOverviewProvider.overrideWith((ref, season) async => empty),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const RecordsScreen(
+            initialSeason: 2024,
+            followsCurrentSeason: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('records-leaderboard-group-pitcher')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('records-leaderboard-group-pitcher')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('SV').first);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('이 시즌의 해당 기록이 없어요.'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('현재 리더보드 준비 중'), findsNothing);
+    expect(find.text('이 시즌의 해당 기록이 없어요.'), findsOneWidget);
+    expect(find.text('투수 SV 전체 보기'), findsNothing);
+    await tester.tap(find.text('ERA').first);
+    await tester.pumpAndSettle();
+    expect(find.text('이 시즌의 해당 기록이 없어요.'), findsNothing);
+    expect(find.text('투수 ERA 전체 보기'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('팀 기록실의 일반 선택은 경기 상태색과 분리된 액션 블루를 사용한다', (tester) async {
     await tester.pumpWidget(
@@ -261,7 +327,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('records-compare-players')));
     await tester.pumpAndSettle();
-    expect(find.text('2024 · LG 트윈스 · 야수'), findsOneWidget);
+    expect(metadataText('2024 · LG 트윈스 · 야수'), findsOneWidget);
     expect(find.byKey(const ValueKey('comparison-metric-AVG')), findsOneWidget);
     expect(find.byKey(const ValueKey('comparison-metric-ERA')), findsNothing);
     expect(requested, ['LG|2024']);
@@ -273,7 +339,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('records-compare-players')));
     await tester.pumpAndSettle();
-    expect(find.text('2023 · LG 트윈스 · 야수'), findsOneWidget);
+    expect(metadataText('2023 · LG 트윈스 · 야수'), findsOneWidget);
     expect(requested, ['LG|2024', 'LG|2023']);
     await tester.tap(find.byTooltip('선수 비교 닫기'));
     await tester.pumpAndSettle();
@@ -411,7 +477,7 @@ void main() {
       find.descendant(of: homeRuns, matching: find.text('10')),
       findsOneWidget,
     );
-    expect(find.text('차이 26 · 시즌 누적 기록'), findsOneWidget);
+    expect(metadataText('차이 26 · 시즌 누적 기록'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

@@ -96,9 +96,9 @@ class KboFansSlateWidgetProvider : HomeWidgetProvider() {
                 val todayCount = widgetData.getString("widget_today_count", "0") ?: "0"
                 val liveCount = widgetData.getString("widget_live_count", "0") ?: "0"
                 val countText = if (liveCount != "0") {
-                    "라이브 $liveCount · 전체 $todayCount"
+                    "LIVE ${liveCount}경기"
                 } else {
-                    "전체 $todayCount"
+                    "${todayCount}경기"
                 }
                 setTextViewText(R.id.slate_widget_count, countText)
                 setTextViewText(
@@ -122,24 +122,32 @@ class KboFansSlateWidgetProvider : HomeWidgetProvider() {
                     widgetData,
                     "widget_summary_line_1",
                     R.id.slate_widget_line_1,
+                    R.id.slate_widget_line_1_context,
+                    R.id.slate_widget_line_1_row,
                 )
                 WidgetText.bindSummaryLine(
                     this,
                     widgetData,
                     "widget_summary_line_2",
                     R.id.slate_widget_line_2,
+                    R.id.slate_widget_line_2_context,
+                    R.id.slate_widget_line_2_row,
                 )
                 WidgetText.bindSummaryLine(
                     this,
                     widgetData,
                     "widget_summary_line_3",
                     R.id.slate_widget_line_3,
+                    R.id.slate_widget_line_3_context,
+                    R.id.slate_widget_line_3_row,
                 )
                 WidgetText.bindSummaryLine(
                     this,
                     widgetData,
                     "widget_summary_line_4",
                     R.id.slate_widget_line_4,
+                    R.id.slate_widget_line_4_context,
+                    R.id.slate_widget_line_4_row,
                 )
             }
 
@@ -176,9 +184,15 @@ private object WidgetText {
         widgetData: SharedPreferences,
         key: String,
         viewId: Int,
+        contextViewId: Int,
+        rowViewId: Int,
     ) {
         val line = widgetData.getString(key, "") ?: ""
-        views.setTextViewText(viewId, line)
-        views.setViewVisibility(viewId, if (line.isNotEmpty()) View.VISIBLE else View.GONE)
+        val fields = line.split(Regex("\\s+[·•]\\s+"))
+            .map { it.trim() }.filter { it.isNotEmpty() }
+        views.setTextViewText(viewId, fields.firstOrNull() ?: "")
+        views.setTextViewText(contextViewId, fields.drop(1).joinToString(" "))
+        views.setViewVisibility(contextViewId, if (fields.size > 1) View.VISIBLE else View.GONE)
+        views.setViewVisibility(rowViewId, if (fields.isNotEmpty()) View.VISIBLE else View.GONE)
     }
 }

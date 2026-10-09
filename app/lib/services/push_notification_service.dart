@@ -950,8 +950,11 @@ class PushNotificationService {
     }
   }
 
-  Future<PushNotificationSettings> loadSettings() async {
+  Future<PushNotificationSettings> loadSettings({
+    bool reloadFromStorage = false,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
+    if (reloadFromStorage) await prefs.reload();
     final gameStartKey = '${_prefsPrefix}game_start';
     final scoringKey = '${_prefsPrefix}scoring';
     final hitKey = '${_prefsPrefix}hit';
@@ -1094,64 +1097,100 @@ class PushNotificationService {
     String? myTeam,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('${_prefsPrefix}game_start', settings.gameStart);
-    await prefs.setBool('${_prefsPrefix}scoring', settings.scoring);
-    await prefs.setBool('${_prefsPrefix}hit', settings.hit);
-    await prefs.setBool('${_prefsPrefix}homerun', settings.homerun);
-    await prefs.setBool('${_prefsPrefix}reversal', settings.reversal);
-    await prefs.setBool('${_prefsPrefix}game_end', settings.gameEnd);
-    await prefs.setBool('${_prefsPrefix}lineup_opened', settings.lineupOpened);
-    await prefs.setBool('${_prefsPrefix}inning_change', settings.inningChange);
-    await prefs.setBool('${_prefsPrefix}at_bat', settings.atBat);
-    await prefs.setBool('${_prefsPrefix}baseball_info', settings.baseballInfo);
-    await prefs.setBool('${_prefsPrefix}all_games', settings.allGames);
-    await prefs.setString(
-      _summaryDetailLevelKey,
-      settings.summaryDetailLevel.storageValue,
+    Future<void> persist(Future<bool> write) async {
+      if (!await write) throw StateError('Notification settings write failed');
+    }
+
+    await persist(
+      prefs.setBool('${_prefsPrefix}game_start', settings.gameStart),
     );
-    await prefs.setString(
-      _liveDetailLevelKey,
-      settings.liveDetailLevel.storageValue,
+    await persist(prefs.setBool('${_prefsPrefix}scoring', settings.scoring));
+    await persist(prefs.setBool('${_prefsPrefix}hit', settings.hit));
+    await persist(prefs.setBool('${_prefsPrefix}homerun', settings.homerun));
+    await persist(prefs.setBool('${_prefsPrefix}reversal', settings.reversal));
+    await persist(prefs.setBool('${_prefsPrefix}game_end', settings.gameEnd));
+    await persist(
+      prefs.setBool('${_prefsPrefix}lineup_opened', settings.lineupOpened),
     );
-    await prefs.setString(
-      '${_prefsPrefix}game_start$_deliverySuffix',
-      settings.gameStartDelivery.storageValue,
+    await persist(
+      prefs.setBool('${_prefsPrefix}inning_change', settings.inningChange),
     );
-    await prefs.setString(
-      '${_prefsPrefix}scoring$_deliverySuffix',
-      settings.scoringDelivery.storageValue,
+    await persist(prefs.setBool('${_prefsPrefix}at_bat', settings.atBat));
+    await persist(
+      prefs.setBool('${_prefsPrefix}baseball_info', settings.baseballInfo),
     );
-    await prefs.setString(
-      '${_prefsPrefix}hit$_deliverySuffix',
-      settings.hitDelivery.storageValue,
+    await persist(prefs.setBool('${_prefsPrefix}all_games', settings.allGames));
+    await persist(
+      prefs.setString(
+        _summaryDetailLevelKey,
+        settings.summaryDetailLevel.storageValue,
+      ),
     );
-    await prefs.setString(
-      '${_prefsPrefix}homerun$_deliverySuffix',
-      settings.homerunDelivery.storageValue,
+    await persist(
+      prefs.setString(
+        _liveDetailLevelKey,
+        settings.liveDetailLevel.storageValue,
+      ),
     );
-    await prefs.setString(
-      '${_prefsPrefix}reversal$_deliverySuffix',
-      settings.reversalDelivery.storageValue,
+    await persist(
+      prefs.setString(
+        '${_prefsPrefix}game_start$_deliverySuffix',
+        settings.gameStartDelivery.storageValue,
+      ),
     );
-    await prefs.setString(
-      '${_prefsPrefix}game_end$_deliverySuffix',
-      settings.gameEndDelivery.storageValue,
+    await persist(
+      prefs.setString(
+        '${_prefsPrefix}scoring$_deliverySuffix',
+        settings.scoringDelivery.storageValue,
+      ),
     );
-    await prefs.setString(
-      '${_prefsPrefix}lineup_opened$_deliverySuffix',
-      settings.lineupOpenedDelivery.storageValue,
+    await persist(
+      prefs.setString(
+        '${_prefsPrefix}hit$_deliverySuffix',
+        settings.hitDelivery.storageValue,
+      ),
     );
-    await prefs.setString(
-      '${_prefsPrefix}inning_change$_deliverySuffix',
-      settings.inningChangeDelivery.storageValue,
+    await persist(
+      prefs.setString(
+        '${_prefsPrefix}homerun$_deliverySuffix',
+        settings.homerunDelivery.storageValue,
+      ),
     );
-    await prefs.setString(
-      '${_prefsPrefix}at_bat$_deliverySuffix',
-      settings.atBatDelivery.storageValue,
+    await persist(
+      prefs.setString(
+        '${_prefsPrefix}reversal$_deliverySuffix',
+        settings.reversalDelivery.storageValue,
+      ),
     );
-    await prefs.setString(
-      '${_prefsPrefix}baseball_info$_deliverySuffix',
-      settings.baseballInfoDelivery.storageValue,
+    await persist(
+      prefs.setString(
+        '${_prefsPrefix}game_end$_deliverySuffix',
+        settings.gameEndDelivery.storageValue,
+      ),
+    );
+    await persist(
+      prefs.setString(
+        '${_prefsPrefix}lineup_opened$_deliverySuffix',
+        settings.lineupOpenedDelivery.storageValue,
+      ),
+    );
+    await persist(
+      prefs.setString(
+        '${_prefsPrefix}inning_change$_deliverySuffix',
+        settings.inningChangeDelivery.storageValue,
+      ),
+    );
+    await persist(
+      prefs.setString(
+        '${_prefsPrefix}at_bat$_deliverySuffix',
+        settings.atBatDelivery.storageValue,
+      ),
+    );
+    await persist(
+      prefs.setString(
+        '${_prefsPrefix}baseball_info$_deliverySuffix',
+        settings.baseballInfoDelivery.storageValue,
+      ),
     );
     await syncRegistration(myTeam: myTeam);
   }

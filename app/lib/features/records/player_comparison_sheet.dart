@@ -354,7 +354,7 @@ class _PlayerComparisonSheetState extends State<PlayerComparisonSheet> {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(name, style: const TextStyle(fontSize: 13)),
-      Text(
+      AppMetadataText(
         value,
         style: const TextStyle(
           fontSize: 26,

@@ -4,7 +4,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
@@ -22,7 +21,14 @@ import '../records/records_area_switcher.dart';
 const _largeTextStandingsScale = 1.4;
 
 class StandingsScreen extends ConsumerStatefulWidget {
-  const StandingsScreen({super.key});
+  final int? initialSeason;
+  final bool followsCurrentSeason;
+
+  const StandingsScreen({
+    super.key,
+    this.initialSeason,
+    this.followsCurrentSeason = true,
+  });
 
   @override
   ConsumerState<StandingsScreen> createState() => _StandingsScreenState();
@@ -39,7 +45,9 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
     super.initState();
     _currentSeason =
         kboSeasonFromDateKey(ref.read(kboDateProvider)) ?? kboCurrentSeason();
-    _selectedSeason = _currentSeason;
+    _selectedSeason =
+        widget.initialSeason?.clamp(2001, _currentSeason) ?? _currentSeason;
+    _followsCurrentSeason = widget.followsCurrentSeason;
     ref.listenManual<String>(kboDateProvider, (_, nextDate) {
       final nextSeason = kboSeasonFromDateKey(nextDate);
       if (!mounted || nextSeason == null || nextSeason == _currentSeason) {
@@ -53,6 +61,25 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
       });
     });
   }
+
+  @override
+  void didUpdateWidget(covariant StandingsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialSeason != widget.initialSeason ||
+        oldWidget.followsCurrentSeason != widget.followsCurrentSeason) {
+      _selectedSeason =
+          widget.initialSeason?.clamp(2001, _currentSeason) ?? _currentSeason;
+      _followsCurrentSeason = widget.followsCurrentSeason;
+    }
+  }
+
+  String _recordsLocation() => Uri(
+    path: '/records',
+    queryParameters: {
+      'season': '$_selectedSeason',
+      if (_followsCurrentSeason) 'seasonMode': 'current',
+    },
+  ).toString();
 
   Future<void> _refreshStandings() async {
     if (_refreshingStandings) {
@@ -111,7 +138,6 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                           AppPageHeader(
                             eyebrow: 'KBO $_selectedSeason 시즌',
                             title: useCompactTitle ? 'KBO 순위' : '정규시즌 순위표',
-                            subtitle: '10개 구단의 현재 순위와 게임차',
                           ),
                           const SizedBox(height: 4),
                           Row(
@@ -136,7 +162,6 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                             child: AppPageHeader(
                               eyebrow: 'KBO $_selectedSeason 시즌',
                               title: useCompactTitle ? 'KBO 순위' : '정규시즌 순위표',
-                              subtitle: '10개 구단의 현재 순위와 게임차',
                             ),
                           ),
                           _seasonDropdown(),
@@ -162,7 +187,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                         ? null
                         : (section) {
                             if (section == RecordsAreaSection.records) {
-                              context.go('/records');
+                              context.go(_recordsLocation());
                             }
                           },
                   ),
@@ -206,40 +231,6 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                           : Column(
                               children: [
                                 Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    0,
-                                    16,
-                                    10,
-                                  ),
-                                  child: _StandingsPulseRail(
-                                    standings: standings,
-                                    myTeamId: myTeamId,
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    18,
-                                    0,
-                                    18,
-                                    2,
-                                  ),
-                                  child: Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: AppMetadataText(
-                                      '차: 1위와 경기 차 · 연속: 현재 연승/연패',
-                                      key: const ValueKey(
-                                        'standings-column-help',
-                                      ),
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: AppColors.textSupporting,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Padding(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
                                   ),
@@ -256,18 +247,6 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                                 ),
                               ],
                             ),
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Center(
-                  child: AppMetadataText(
-                    'KBO 순위 데이터 · 화면 확인 ${DateFormat('yyyy.MM.dd HH:mm').format(kboCivilDateTime())}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSupporting,
                     ),
                   ),
                 ),
@@ -534,30 +513,6 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-            sliver: SliverToBoxAdapter(
-              child: _StandingsPulseRail(
-                standings: standings,
-                myTeamId: myTeamId,
-              ),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
-            sliver: SliverToBoxAdapter(
-              child: AppMetadataText(
-                '차: 1위와 경기 차 · 연속: 현재 연승/연패',
-                key: const ValueKey('standings-column-help'),
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AppColors.textSupporting,
-                  fontWeight: FontWeight.w700,
-                  height: 1.4,
-                ),
-              ),
-            ),
-          ),
-          SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
             sliver: SliverToBoxAdapter(
               child: Semantics(
@@ -776,7 +731,12 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
           ),
           SizedBox(
             width: useNarrowColumns ? 34 : 42,
-            child: Center(child: Text('차', style: style)),
+            child: Center(
+              child: Tooltip(
+                message: '1위와의 경기 차',
+                child: Text('승차', style: style),
+              ),
+            ),
           ),
           SizedBox(
             width: useNarrowColumns ? 42 : 50,
@@ -857,208 +817,6 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
               : () => unawaited(_refreshStandings()),
         ),
       ),
-    );
-  }
-}
-
-class _StandingsPulseRail extends StatelessWidget {
-  final List<TeamStanding> standings;
-  final String? myTeamId;
-
-  const _StandingsPulseRail({required this.standings, required this.myTeamId});
-
-  @override
-  Widget build(BuildContext context) {
-    final topRaceLabel = _topRaceLabel(standings);
-    final myTeam = myTeamId == null
-        ? null
-        : standings.where((item) => item.teamId == myTeamId).firstOrNull;
-    final streakLeader = _streakLeader(standings);
-    final streakLabel = streakLeader?.streakLabel ?? '-';
-    final isLosingStreak = streakLabel.contains('연패');
-    final useLargeText =
-        MediaQuery.textScalerOf(context).scale(1) >= _largeTextStandingsScale;
-    final pulseItems = <Widget>[
-      _StandingsPulseItem(
-        title: '1위 경쟁',
-        value: topRaceLabel,
-        icon: Icons.flag_rounded,
-        color: AppColors.accent,
-      ),
-      _StandingsPulseItem(
-        title: '마이팀',
-        value: myTeam == null ? '팀 선택 전' : '${myTeam.rank}위',
-        detail: myTeam == null
-            ? '설정에서 선택'
-            : '${myTeam.wins}-${myTeam.losses}-${myTeam.draws}',
-        icon: Icons.push_pin_rounded,
-        color: myTeam == null
-            ? AppColors.textSecondary
-            : AppTheme.colorsOf(context).readableAccent(
-                KboTeams.byId(myTeam.teamId)?.primaryColor ??
-                    AppTheme.colorsOf(context).accent,
-              ),
-      ),
-      _StandingsPulseItem(
-        title: '연속 흐름',
-        value: streakLabel,
-        detail: streakLeader?.teamName,
-        icon: isLosingStreak
-            ? Icons.trending_down_rounded
-            : Icons.trending_up_rounded,
-        color: isLosingStreak ? AppColors.live : AppColors.positive,
-      ),
-    ];
-
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: useLargeText
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  pulseItems[0],
-                  Divider(color: AppColors.divider, height: 24),
-                  pulseItems[1],
-                  Divider(color: AppColors.divider, height: 24),
-                  pulseItems[2],
-                ],
-              )
-            : Row(
-                children: [
-                  Expanded(child: pulseItems[0]),
-                  const _PulseDivider(),
-                  Expanded(child: pulseItems[1]),
-                  const _PulseDivider(),
-                  Expanded(child: pulseItems[2]),
-                ],
-              ),
-      ),
-    );
-  }
-
-  String _topRaceLabel(List<TeamStanding> standings) {
-    if (standings.isEmpty) {
-      return '-';
-    }
-    final withinTwoGames = standings.where((standing) {
-      final gap = double.tryParse(standing.gb.replaceAll('G', '').trim()) ?? 99;
-      return gap <= 2;
-    }).length;
-    return withinTwoGames <= 1 ? '단독 선두' : '$withinTwoGames팀';
-  }
-
-  TeamStanding? _streakLeader(List<TeamStanding> standings) {
-    TeamStanding? leader;
-    var longestStreak = 0;
-    for (final standing in standings) {
-      final match = RegExp(r'^(\d+)(연승|연패)$').firstMatch(standing.streakLabel);
-      final streak = match == null ? 0 : int.tryParse(match.group(1)!) ?? 0;
-      if (streak > longestStreak) {
-        longestStreak = streak;
-        leader = standing;
-      }
-    }
-    return leader;
-  }
-}
-
-class _StandingsPulseItem extends StatelessWidget {
-  final String title;
-  final String value;
-  final String? detail;
-  final IconData icon;
-  final Color color;
-
-  const _StandingsPulseItem({
-    required this.title,
-    required this.value,
-    this.detail,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final useLargeText =
-        MediaQuery.textScalerOf(context).scale(1) >= _largeTextStandingsScale;
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 74),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  title,
-                  maxLines: useLargeText ? null : 1,
-                  overflow: useLargeText
-                      ? TextOverflow.visible
-                      : TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            maxLines: useLargeText ? null : 1,
-            overflow: useLargeText
-                ? TextOverflow.visible
-                : TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: color == AppColors.textSecondary
-                  ? AppColors.textPrimary
-                  : color,
-            ),
-          ),
-          if (detail != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              detail!,
-              maxLines: useLargeText ? null : 1,
-              overflow: useLargeText
-                  ? TextOverflow.visible
-                  : TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11,
-                color: AppColors.textSupporting,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _PulseDivider extends StatelessWidget {
-  const _PulseDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 58,
-      margin: const EdgeInsets.symmetric(horizontal: 10),
-      color: AppColors.divider,
     );
   }
 }

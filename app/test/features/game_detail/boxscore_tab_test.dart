@@ -46,6 +46,32 @@ void main() {
       comparison: 'KT 우세',
     ),
   ]) {
+    for (final status in [GameStatus.live, GameStatus.final_]) {
+      testWidgets('빈 박스스코어는 $status 경기에서 미래 업데이트를 약속하지 않는다', (tester) async {
+        await _pumpBoxscoreTab(
+          tester,
+          gameStatus: status,
+          boxscore: const GameBoxscoreData(
+            gameId: '20260613KTLG0',
+            officialAvailable: false,
+            away: TeamBoxscoreData(teamId: 'KT', batters: [], pitchers: []),
+            home: TeamBoxscoreData(teamId: 'LG', batters: [], pitchers: []),
+          ),
+          players: const [],
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('현재 제공된 박스스코어가 없어요.'), findsOneWidget);
+        expect(find.textContaining('업데이트 전'), findsNothing);
+        expect(
+          tester
+              .getSize(find.byKey(const ValueKey('boxscore-unavailable-card')))
+              .height,
+          lessThan(150),
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
+
     testWidgets('팀 비교는 ${fixture.name}를 구분한다', (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
@@ -170,7 +196,7 @@ void main() {
     expect(find.textContaining('마지막으로 저장된 박스스코어'), findsOneWidget);
   });
 
-  testWidgets('박스스코어가 0값 투수 placeholder만 있으면 업데이트 전 상태를 보여준다', (tester) async {
+  testWidgets('박스스코어가 0값 투수 placeholder만 있으면 기록 없음 상태를 보여준다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -238,7 +264,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('공식 박스스코어 업데이트 전입니다'), findsOneWidget);
+    expect(find.text('현재 제공된 박스스코어가 없어요.'), findsOneWidget);
     expect(find.text('타격 요약'), findsNothing);
     expect(find.text('선발투수'), findsNothing);
     expect(find.text('삼진 0'), findsNothing);
@@ -351,12 +377,12 @@ void main() {
     expect(find.text('SLG 1.500'), findsOneWidget);
     expect(find.text('투구 61'), findsOneWidget);
     expect(find.text('WHIP 1.20'), findsOneWidget);
-    expect(find.text('오늘의 활약 타자'), findsOneWidget);
-    expect(find.textContaining('앱 기준 활약 지수'), findsOneWidget);
-    expect(find.textContaining('앱 기준 투구 효율'), findsOneWidget);
+    expect(find.text('주요 타자'), findsOneWidget);
+    expect(find.textContaining('앱 기준 활약 지수'), findsNothing);
+    expect(find.textContaining('앱 기준 투구 효율'), findsNothing);
     expect(find.text('결승타'), findsNothing);
     expect(find.textContaining('생산 +'), findsNothing);
-    expect(find.textContaining('효율 +'), findsOneWidget);
+    expect(find.textContaining('효율 +'), findsNothing);
     expect(find.byType(CachedNetworkImage), findsWidgets);
   });
 
@@ -383,7 +409,7 @@ void main() {
   });
 
   for (final width in <double>[320, 390]) {
-    testWidgets('${width.toInt()}px 박스스코어 활약 행은 선수명과 앱 계산 지표를 세로로 보존한다', (
+    testWidgets('${width.toInt()}px 박스스코어 주요 선수는 이름과 공식 기록을 세로로 보존한다', (
       tester,
     ) async {
       tester.view.physicalSize = Size(width, 844);
@@ -404,13 +430,13 @@ void main() {
         const ValueKey('record-highlight-name-노시환'),
       );
       final batterMetric = find.byKey(
-        const ValueKey('record-highlight-metric-노시환'),
+        const ValueKey('record-highlight-summary-노시환'),
       );
       final pitcherName = find.byKey(
         const ValueKey('record-highlight-name-엄상백'),
       );
       final pitcherMetric = find.byKey(
-        const ValueKey('record-highlight-metric-엄상백'),
+        const ValueKey('record-highlight-summary-엄상백'),
       );
 
       expect(batterName, findsOneWidget);
@@ -434,7 +460,7 @@ void main() {
         tester.getTopLeft(pitcherMetric).dy,
         greaterThan(tester.getTopLeft(pitcherName).dy),
       );
-      expect(find.textContaining('앱 기준 투구 효율'), findsOneWidget);
+      expect(find.textContaining('앱 기준 투구 효율'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   }
@@ -479,7 +505,7 @@ void main() {
         for (final name in [batterName, '대한민국프로야구최장투수이름']) {
           for (final prefix in [
             'record-highlight-name-',
-            'record-highlight-metric-',
+            'record-highlight-summary-',
           ]) {
             final paragraph = tester.renderObject<RenderParagraph>(
               find.byKey(ValueKey('$prefix$name')),
@@ -618,7 +644,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('박스스코어를 불러올 수 없습니다'), findsOneWidget);
-    expect(find.text('네트워크 상태를 확인하고 다시 시도해 주세요'), findsOneWidget);
+    expect(find.text('잠시 후 다시 시도해 주세요'), findsOneWidget);
     expect(find.textContaining('DioException'), findsNothing);
     expect(find.textContaining('/internal/'), findsNothing);
     expect(find.textContaining('private backend detail'), findsNothing);
@@ -666,7 +692,7 @@ void main() {
     final card = find.byKey(const ValueKey('boxscore-unavailable-card'));
     expect(card, findsOneWidget);
     expect(find.text('박스스코어를 불러올 수 없습니다'), findsOneWidget);
-    expect(find.text('네트워크 상태를 확인하고 다시 시도해 주세요'), findsOneWidget);
+    expect(find.text('잠시 후 다시 시도해 주세요'), findsOneWidget);
     expect(find.text('다시 시도'), findsOneWidget);
     expect(tester.getSize(card).height, greaterThan(178));
     expect(tester.takeException(), isNull);
@@ -710,7 +736,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('공식 박스스코어 업데이트 전입니다'), findsNothing);
+    expect(find.text('현재 제공된 박스스코어가 없어요.'), findsNothing);
     expect(find.text('실시간 기록 추적'), findsOneWidget);
     expect(find.byKey(const ValueKey('boxscore-live-status')), findsOneWidget);
     expect(find.text('LIVE 추적'), findsOneWidget);

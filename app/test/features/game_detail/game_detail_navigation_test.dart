@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
+import 'package:kbo_fans/data/api/api_client.dart';
 import 'package:kbo_fans/data/models/boxscore.dart';
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/highlight_info.dart';
@@ -434,6 +435,80 @@ void main() {
     expect(find.text('경기를 불러올 수 없습니다'), findsNothing);
   });
 
+  for (final status in [404, 503]) {
+    testWidgets('경기 HTTP $status 오류는 정확한 안내와 재시도·홈 복구를 제공한다', (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 2.4;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      var requests = 0;
+      final router = GoRouter(
+        initialLocation: '/game/missing',
+        routes: [
+          GoRoute(
+            path: '/home',
+            builder: (_, _) => const Scaffold(body: Text('홈')),
+          ),
+          GoRoute(
+            path: '/game/:gameId',
+            builder: (_, state) =>
+                GameDetailScreen(gameId: state.pathParameters['gameId']!),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            gameProvider.overrideWith((ref, id) async {
+              requests++;
+              if (requests > 1) return null;
+              final options = RequestOptions(path: '/game/$id');
+              throw DioException(
+                requestOptions: options,
+                type: DioExceptionType.badResponse,
+                response: Response(requestOptions: options, statusCode: status),
+              );
+            }),
+          ],
+          child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text(status == 404 ? '경기를 찾을 수 없습니다' : '경기를 불러올 수 없습니다'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          status == 404
+              ? '다른 경기를 선택해 주세요.'
+              : describeAsyncError(
+                  DioException(
+                    requestOptions: RequestOptions(),
+                    type: DioExceptionType.badResponse,
+                  ),
+                ),
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('네트워크 연결'), findsNothing);
+      await tester.ensureVisible(find.text('다시 시도'));
+      await tester.tap(find.text('다시 시도'));
+      await tester.pumpAndSettle();
+      expect(requests, 2);
+      expect(find.text('이 경기의 정보가 제공되지 않았어요.'), findsOneWidget);
+      await tester.ensureVisible(find.text('홈으로'));
+      await tester.tap(find.text('홈으로'));
+      await tester.pumpAndSettle();
+      expect(router.routeInformationProvider.value.uri.path, '/home');
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('존재하지 않는 경기 콜드 딥링크는 홈으로 복구한다', (tester) async {
     SharedPreferences.setMockInitialValues({});
     const missingGameId = 'missing-game';
@@ -590,7 +665,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    await tester.tap(find.text('박스스코어'));
+    await tester.tap(
+      find.descendant(of: find.byType(TabBar), matching: find.text('박스스코어')),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
     final firstBoxscoreCallCount = repository.boxscoreCallCount;
@@ -600,7 +677,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    await tester.tap(find.text('박스스코어'));
+    await tester.tap(
+      find.descendant(of: find.byType(TabBar), matching: find.text('박스스코어')),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 

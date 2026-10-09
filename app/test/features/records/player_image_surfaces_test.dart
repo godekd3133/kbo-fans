@@ -1,3 +1,4 @@
+import '../../helpers/metadata_finder.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -290,7 +291,7 @@ void main() {
     expect(find.text('최근 5경기'), findsOneWidget);
     expect(find.text('06.28'), findsOneWidget);
     expect(find.text('vs 두산'), findsAtLeastNWidgets(1));
-    expect(find.text('AVG 0.500 · H 2 · HR 1 · RBI 1'), findsOneWidget);
+    expect(metadataText('AVG 0.500 · H 2 · HR 1 · RBI 1'), findsOneWidget);
     expect(find.text('06.24'), findsOneWidget);
     expect(find.text('06.23'), findsNothing);
   });
@@ -323,7 +324,7 @@ void main() {
     expect(find.text('폰세'), findsOneWidget);
   });
 
-  testWidgets('기록실 첫 화면은 투수 리더를 별도 마운드 체크로 보여준다', (tester) async {
+  testWidgets('기록실 투수 지표는 중복 패널 없이 리더보드에서 전환한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -366,37 +367,29 @@ void main() {
       findsOneWidget,
     );
 
-    final panel = find.byKey(const ValueKey('records-pitching-leader-panel'));
-    expect(panel, findsOneWidget);
     expect(
-      find.descendant(of: panel, matching: find.text('마운드 체크')),
-      findsOneWidget,
+      find.byKey(const ValueKey('records-pitching-leader-panel')),
+      findsNothing,
     );
-    expect(
-      find.descendant(of: panel, matching: find.text('평균자책 ERA')),
-      findsOneWidget,
+    final pitcher = find.byKey(
+      const ValueKey('records-leaderboard-group-pitcher'),
     );
-    expect(
-      find.descendant(of: panel, matching: find.text('다승 W')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: panel, matching: find.text('세이브 SV')),
-      findsOneWidget,
-    );
-    final moundIcon = tester.widget<Icon>(
-      find.descendant(
-        of: panel,
-        matching: find.byIcon(Icons.sports_baseball_rounded),
-      ),
-    );
-    expect(moundIcon.color, AppTheme.darkColors.accent);
-    expect(
-      find.descendant(of: panel, matching: find.text('탈삼진 SO')),
-      findsOneWidget,
-    );
+    await tester.ensureVisible(pitcher);
+    await tester.tap(pitcher);
+    await tester.pumpAndSettle();
+    final hub = find.byKey(const ValueKey('records-leaderboard-hub'));
+    for (final metric in ['ERA', 'W', 'SV', 'SO']) {
+      final tab = find.descendant(of: hub, matching: find.text(metric));
+      await tester.ensureVisible(tab);
+      await tester.tap(tab);
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(of: hub, matching: find.text('투수 $metric 전체 보기')),
+        findsOneWidget,
+      );
+    }
     expect(find.textContaining('wRC+'), findsNothing);
-    expect(find.text('폰세'), findsWidgets);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('기록실 지표 가로 rail은 잘린 카드가 있을 때 스크롤바를 노출한다', (tester) async {

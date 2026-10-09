@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../constants/team_data.dart';
 import '../theme/app_theme.dart';
 import 'app_motion.dart';
+import 'app_metadata_text.dart';
 import 'kbo_team_logo_image.dart';
 
 /// Shared visual primitives for the KBO Fans product surface.
@@ -164,7 +165,7 @@ class AppPageHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (eyebrow != null && eyebrow!.isNotEmpty) ...[
-          Text(
+          AppMetadataText(
             eyebrow!,
             style: TextStyle(
               color: colors.textSecondary,
@@ -175,7 +176,7 @@ class AppPageHeader extends StatelessWidget {
           ),
           const SizedBox(height: 4),
         ],
-        Text(
+        AppMetadataText(
           title,
           maxLines: null,
           style: TextStyle(
@@ -317,7 +318,7 @@ class AppTeamIdentity extends StatelessWidget {
           ? CrossAxisAlignment.end
           : CrossAxisAlignment.start,
       children: [
-        Text(
+        AppMetadataText(
           title,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,

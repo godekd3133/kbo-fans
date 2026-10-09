@@ -183,7 +183,7 @@ struct KboFansWidgetEntryView: View {
         scoreText(entry.score, size: 27)
         TeamLogoView(teamId: entry.homeTeamId, fallback: "H", size: 24)
       }
-      Text(statusOrSubtitle)
+      KboMetadataText(statusOrSubtitle)
         .font(.system(size: 14, weight: .bold, design: .rounded))
         .foregroundStyle(statusColor)
         .lineLimit(1)
@@ -203,7 +203,7 @@ struct KboFansWidgetEntryView: View {
           scoreText(entry.score, size: 30)
           TeamLogoView(teamId: entry.homeTeamId, fallback: "H", size: 26)
         }
-        Text(statusOrSubtitle)
+        KboMetadataText(statusOrSubtitle)
           .font(.system(size: 13, weight: .bold, design: .rounded))
           .foregroundStyle(statusColor)
           .lineLimit(1)
@@ -233,7 +233,7 @@ struct KboFansWidgetEntryView: View {
             .monospacedDigit()
             .lineLimit(1)
             .minimumScaleFactor(0.62)
-          Text(entry.secondaryStatus)
+          KboMetadataText(entry.secondaryStatus)
             .font(.system(size: 12, weight: .semibold, design: .rounded))
             .foregroundStyle(kboTextSecondary)
             .lineLimit(1)
@@ -253,7 +253,7 @@ struct KboFansWidgetEntryView: View {
           Text(entry.summaryTitle)
             .font(.system(size: 20, weight: .black, design: .rounded))
             .foregroundStyle(.white)
-          Text(entry.liveCount > 0 ? "라이브 \(entry.liveCount) · 전체 \(entry.todayCount)" : "전체 \(entry.todayCount)")
+          Text(entry.liveCount > 0 ? "LIVE \(entry.liveCount)경기" : "\(entry.todayCount)경기")
             .font(.system(size: 12, weight: .semibold, design: .rounded))
             .foregroundStyle(kboTextSecondary)
         }
@@ -269,7 +269,7 @@ struct KboFansWidgetEntryView: View {
             .foregroundStyle(.white)
             .lineLimit(1)
             .minimumScaleFactor(0.66)
-          Text(statusOrSubtitle)
+          KboMetadataText(statusOrSubtitle)
             .font(.system(size: 12, weight: .semibold, design: .rounded))
             .foregroundStyle(kboTextSecondary)
             .lineLimit(1)
@@ -321,7 +321,7 @@ struct KboFansWidgetEntryView: View {
         .font(.system(size: 13, weight: .bold, design: .rounded))
         .lineLimit(1)
         .minimumScaleFactor(0.62)
-      Text("\(entry.score.isEmpty ? entry.contextLabel : entry.score) · \(statusOrSubtitle)")
+      KboMetadataText("\(entry.score.isEmpty ? entry.contextLabel : entry.score) · \(statusOrSubtitle)")
         .font(.system(size: 11, weight: .semibold, design: .rounded))
         .lineLimit(1)
         .minimumScaleFactor(0.58)
@@ -368,7 +368,7 @@ struct KboFansWidgetEntryView: View {
   }
 
   private var accessoryLine: String {
-    let score = entry.score.isEmpty ? "" : "\(entry.score) · "
+    let score = entry.score.isEmpty ? "" : "\(entry.score) "
     return "\(entry.title) \(score)\(statusOrSubtitle)"
   }
 
@@ -391,7 +391,7 @@ struct KboFansWidgetEntryView: View {
             .font(.system(size: 10, weight: .black, design: .rounded))
             .foregroundStyle(kboTextSecondary)
             .frame(width: 14)
-          Text(line)
+          KboMetadataText(line)
             .font(.system(size: 12.5, weight: .semibold, design: .rounded))
             .foregroundStyle(index == 0 ? .white : kboTextSecondary)
             .lineLimit(1)
@@ -539,7 +539,7 @@ struct KboFansLiveActivityView: View {
         }
 
         if !bottomSituationText.isEmpty {
-          Text(bottomSituationText)
+          KboMetadataText(bottomSituationText)
             .font(.system(size: 14, weight: .semibold, design: .rounded))
             .foregroundStyle(.white.opacity(0.9))
             .lineLimit(2)
@@ -790,7 +790,7 @@ private struct MatchupPlayerChip: View {
       .frame(maxWidth: .infinity, alignment: alignment)
 
       if !detail.isEmpty {
-        Text(detail)
+        KboMetadataText(detail)
           .font(.system(size: 10.5, weight: .medium, design: .rounded))
           .foregroundStyle(.white.opacity(0.72))
           .monospacedDigit()
@@ -1219,7 +1219,7 @@ struct KboFansLiveActivityWidget: Widget {
             }
 
             if hasMatchupContext(context.state) {
-              Text(dynamicIslandMatchupText(context.state))
+              KboMetadataText(dynamicIslandMatchupText(context.state))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.white.opacity(0.9))
                 .lineLimit(2)
@@ -1235,7 +1235,7 @@ struct KboFansLiveActivityWidget: Widget {
             }
 
             if !dynamicIslandSituationText(context.state).isEmpty {
-              Text(dynamicIslandSituationText(context.state))
+              KboMetadataText(dynamicIslandSituationText(context.state))
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(kboTextSecondary)
                 .lineLimit(2)
@@ -1457,5 +1457,39 @@ struct KboFansWidgetBundle: WidgetBundle {
     if #available(iOS 16.1, *) {
       KboFansLiveActivityWidget()
     }
+  }
+}
+
+/// Legacy payload strings remain compatible; visual fields are laid out separately.
+private struct KboMetadataText: View {
+  let value: String
+  init(_ value: String) { self.value = value }
+  private var items: [String] {
+    value.components(separatedBy: " · ").flatMap { $0.components(separatedBy: " • ") }
+      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+  }
+  var body: some View {
+    Group {
+      if items.count <= 1 {
+        Text(items.first ?? "")
+      } else if #available(iOSApplicationExtension 16.0, *) {
+        ViewThatFits(in: .horizontal) {
+          HStack(spacing: 8) {
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+              Text(item).fixedSize(horizontal: true, vertical: false)
+            }
+          }
+          VStack(alignment: .leading, spacing: 2) {
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in Text(item) }
+          }
+        }
+      } else {
+        VStack(alignment: .leading, spacing: 2) {
+          ForEach(Array(items.enumerated()), id: \.offset) { _, item in Text(item) }
+        }
+      }
+    }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(items.joined(separator: ", "))
   }
 }

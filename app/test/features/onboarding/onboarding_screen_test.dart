@@ -22,14 +22,9 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
-    for (final label in ['오늘 경기', '다음 일정', '팀 기록']) {
-      final text = tester.widget<Text>(find.text(label));
-      expect(text.style?.fontSize, greaterThanOrEqualTo(10));
-      expect(
-        find.ancestor(of: find.text(label), matching: find.byType(FittedBox)),
-        findsNothing,
-      );
-    }
+    expect(find.text('오늘 경기'), findsNothing);
+    expect(find.text('다음 일정'), findsNothing);
+    expect(find.text('LG'), findsOneWidget);
   });
 
   testWidgets('200% 글자 크기 온보딩은 레이아웃 overflow 없이 표시된다', (tester) async {
@@ -42,7 +37,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('280px·240% 글자 크기에서 개인화 미리보기는 온전히 흐른다', (tester) async {
+  testWidgets('280px 240% 글자에서도 선택한 구단을 온전히 읽을 수 있다', (tester) async {
     final semantics = tester.ensureSemantics();
     try {
       await _pumpOnboarding(
@@ -52,18 +47,17 @@ void main() {
       );
 
       expect(tester.takeException(), isNull);
-      final titleRects = [
-        tester.getRect(find.text('오늘 경기')),
-        tester.getRect(find.text('다음 일정')),
-        tester.getRect(find.text('팀 기록')),
-      ];
-      expect(titleRects[1].top, greaterThan(titleRects[0].bottom));
-      expect(titleRects[2].top, greaterThan(titleRects[1].bottom));
-      for (final label in ['오늘 경기', '다음 일정', '팀 기록']) {
-        expect(tester.widget<Text>(find.text(label)).maxLines, isNull);
-      }
-      final benefitSemantics = tester.getSemantics(find.text('오늘 경기'));
-      expect(benefitSemantics.label, contains('오늘 경기'));
+      await tester.ensureVisible(find.text('LG'));
+      expect(tester.widget<Text>(find.text('LG')).maxLines, isNull);
+      expect(
+        tester
+            .getSemantics(find.text('LG'))
+            .getSemanticsData()
+            .flagsCollection
+            .isButton,
+        isTrue,
+      );
+      expect(find.text('팀 기록'), findsNothing);
     } finally {
       semantics.dispose();
     }

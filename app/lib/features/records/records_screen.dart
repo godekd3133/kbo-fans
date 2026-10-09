@@ -255,7 +255,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                               ? null
                               : (section) {
                                   if (section == RecordsAreaSection.standings) {
-                                    context.go('/standings');
+                                    context.go(
+                                      _recordsChildLocation('/standings'),
+                                    );
                                   }
                                 },
                         ),
@@ -286,29 +288,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                             const SizedBox(height: 8),
                             _metricSpotlightRail(overview),
                             const SizedBox(height: 8),
-                            _recordsSectionHeader(
-                              title: '리그 리더보드',
-                              subtitle: '지표의 뜻과 함께 리그 선두를 살펴보세요.',
-                              actionLabel: '전체 보기',
-                              onActionTap: () => context.push(
-                                _recordsChildLocation(
-                                  '/records/leaderboard/${_selectedPreviewMetric.key}',
-                                ),
-                              ),
-                            ),
+                            _recordsSectionHeader(title: '리그 리더보드'),
                             const SizedBox(height: 6),
                             _metricHub(overview),
-                            if (_pitcherMetricSnapshots(
-                              overview,
-                            ).isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              _pitcherLeaderPanel(overview),
-                            ],
                             const SizedBox(height: 18),
-                            _recordsSectionHeader(
-                              title: '팀 기록실',
-                              subtitle: '팀을 고르면 선수 기록과 비교로 이어집니다.',
-                            ),
+                            _recordsSectionHeader(title: '팀 기록실'),
                             const SizedBox(height: 12),
                           ],
                         ),
@@ -1047,7 +1031,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           style: TextStyle(fontSize: 12, color: AppColors.textSupporting),
         ),
         const SizedBox(height: 6),
-        Text(
+        AppMetadataText(
           value,
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
         ),
@@ -1528,13 +1512,13 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           style: TextStyle(fontSize: 12, color: AppColors.textSupporting),
         ),
         const SizedBox(height: 8),
-        Text(
+        AppMetadataText(
           value,
           style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
         ),
         if (detail.isNotEmpty) ...[
           const SizedBox(height: 6),
-          Text(
+          AppMetadataText(
             detail,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -1603,14 +1587,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    SizedBox(height: 1),
-                    Text(
-                      '타자와 투수 대표를 먼저 보고 지표별 순위로 이어가세요.',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -1682,7 +1658,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   Widget _todayFeaturedPlayerCell(FeaturedPlayerCard card) {
     final isLight = Theme.of(context).brightness == Brightness.light;
     final team = card.teamId == null ? null : KboTeams.byId(card.teamId!);
-    final name = (card.name ?? '').trim().isEmpty ? '준비 중' : card.name!.trim();
+    final name = (card.name ?? '').trim().isEmpty
+        ? '선수명 없음'
+        : card.name!.trim();
     final summary = (card.headline ?? card.summary ?? '').trim();
 
     return Container(
@@ -1878,7 +1856,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   Widget _metricSpotlightRail(RecordsOverview overview) {
-    final snapshots = _metricSnapshots(overview);
+    final snapshots = _metricSnapshots(
+      overview,
+    ).where((snapshot) => snapshot.topLeader != null).toList();
+    if (snapshots.isEmpty) return const SizedBox.shrink();
     final useLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
     if (useLargeText) {
       return Column(
@@ -2009,7 +1990,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 if (leader != null) const SizedBox(width: 7),
                 Expanded(
                   child: Text(
-                    leader?.name ?? '준비 중',
+                    leader?.name ?? '기록 없음',
                     maxLines: useLargeText ? null : 1,
                     overflow: useLargeText
                         ? TextOverflow.visible
@@ -2023,18 +2004,13 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               ],
             ),
             SizedBox(height: useLargeText ? 8 : 3),
-            AppMetadataText(
-              leader == null
-                  ? snapshot.metric.isAppCalculated
-                        ? '앱 계산 · 데이터 준비 중'
-                        : '공식 소스 확인 중'
-                  : '${snapshot.metric.isAppCalculated ? '앱 계산 · ' : ''}${team?.shortName ?? leader.teamId} · ${_leaderGapText(snapshot.metric, snapshot.leaders)}',
-              maxLines: useLargeText ? null : 1,
-              overflow: useLargeText
-                  ? TextOverflow.visible
-                  : TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
-            ),
+            if (leader != null)
+              Text(
+                snapshot.metric.isAppCalculated
+                    ? '앱 계산'
+                    : team?.shortName ?? leader.teamId,
+                style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+              ),
             SizedBox(height: useLargeText ? 8 : 4),
             if (useLargeText)
               Text(
@@ -2062,193 +2038,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   ),
                 ),
               ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _pitcherLeaderPanel(RecordsOverview overview) {
-    final snapshots = _pitcherMetricSnapshots(overview);
-    if (snapshots.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    final accent = AppTheme.colorsOf(context).accent;
-    final featured = snapshots.first.topLeader;
-
-    return Container(
-      key: const ValueKey('records-pitching-leader-panel'),
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isLight
-            ? AppColors.card
-            : AppColors.card.withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  Icons.sports_baseball_rounded,
-                  size: 17,
-                  color: accent,
-                ),
-              ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '마운드 체크',
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '평균자책(ERA), 다승(W), 세이브(SV), 탈삼진(SO)을 함께 봅니다.',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (featured != null) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _leaderPhoto(featured, width: 44, height: 52),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        featured.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _pitchingLeaderSummary(
-                          snapshots.first.metric,
-                          featured,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-          const SizedBox(height: 10),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final cellWidth = constraints.maxWidth < 330
-                  ? constraints.maxWidth
-                  : (constraints.maxWidth - 8) / 2;
-              return Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final snapshot in snapshots)
-                    SizedBox(
-                      width: cellWidth,
-                      child: _pitcherMetricCell(snapshot),
-                    ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _pitcherMetricCell(_MetricSnapshot snapshot) {
-    final leader = snapshot.topLeader;
-    return AppPressable(
-      onTap: () => context.push(
-        _recordsChildLocation('/records/leaderboard/${snapshot.metric.key}'),
-      ),
-      pressedScale: 0.98,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 78),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: AppColors.background.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: snapshot.color.withValues(alpha: 0.28)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Text(
-                  snapshot.metric.explainedLabel,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: snapshot.color,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const Spacer(),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 16,
-                  color: AppColors.textSupporting,
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              leader?.name ?? '준비 중',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              leader == null
-                  ? '공식 소스 확인 중'
-                  : _pitchingLeaderSummary(snapshot.metric, leader),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
-            ),
           ],
         ),
       ),
@@ -2292,16 +2081,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
             child: _leaderboardGroupSegment(),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                _selectedPreviewGroup.description,
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-              ),
-            ),
           ),
           if (useLargeText)
             Padding(
@@ -2350,14 +2129,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               ),
             ),
           ),
-          if (!useLargeText) _leaderboardHeader(),
+          if (!useLargeText && leaders.isNotEmpty) _leaderboardHeader(),
           if (leaders.isEmpty)
             Padding(
               padding: EdgeInsets.fromLTRB(14, 18, 14, 18),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '현재 리더보드 준비 중',
+                  '이 시즌의 해당 기록이 없어요.',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSupporting,
@@ -2373,70 +2152,71 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 showDivider: index != leaders.length - 1,
                 useLargeText: useLargeText,
               ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-            child: AppPressable(
-              onTap: () => context.push(
-                _recordsChildLocation(
-                  '/records/leaderboard/${selected.metric.key}',
+          if (leaders.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: AppPressable(
+                onTap: () => context.push(
+                  _recordsChildLocation(
+                    '/records/leaderboard/${selected.metric.key}',
+                  ),
                 ),
-              ),
-              pressedScale: 0.98,
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 46),
-                padding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: useLargeText ? 10 : 0,
-                ),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.background.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.divider),
-                ),
-                child: useLargeText
-                    ? Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '${_selectedPreviewGroup.label} ${selected.metric.shortLabel} 전체 보기',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: selected.color,
-                              fontWeight: FontWeight.w900,
+                pressedScale: 0.98,
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 46),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: useLargeText ? 10 : 0,
+                  ),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.background.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.divider),
+                  ),
+                  child: useLargeText
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${_selectedPreviewGroup.label} ${selected.metric.shortLabel} 전체 보기',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: selected.color,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            size: 18,
-                            color: selected.color,
-                          ),
-                        ],
-                      )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '${_selectedPreviewGroup.label} ${selected.metric.shortLabel} 전체 보기',
-                            style: TextStyle(
-                              fontSize: 13,
+                            const SizedBox(height: 4),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              size: 18,
                               color: selected.color,
-                              fontWeight: FontWeight.w900,
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            size: 18,
-                            color: selected.color,
-                          ),
-                        ],
-                      ),
+                          ],
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '${_selectedPreviewGroup.label} ${selected.metric.shortLabel} 전체 보기',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: selected.color,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              size: 18,
+                              color: selected.color,
+                            ),
+                          ],
+                        ),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -2795,7 +2575,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _recordsSectionHeader({
     required String title,
-    required String subtitle,
+    String subtitle = '',
     String? actionLabel,
     VoidCallback? onActionTap,
   }) {
@@ -2813,11 +2593,15 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
+              if (subtitle.isNotEmpty) const SizedBox(height: 4),
+              if (subtitle.isNotEmpty)
+                AppMetadataText(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
             ],
           ),
         ),
@@ -2883,37 +2667,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         return a.rank.compareTo(b.rank);
       });
     return ordered.first;
-  }
-
-  String _briefMetricLabel(LeaderboardMetric metric) {
-    return switch (metric) {
-      LeaderboardMetric.avg => '타율 1위',
-      LeaderboardMetric.hr => '홈런 1위',
-      LeaderboardMetric.era => '평균자책(ERA) 1위',
-      LeaderboardMetric.wins => '다승 1위',
-      LeaderboardMetric.saves => '세이브 1위',
-      LeaderboardMetric.strikeouts => '탈삼진 1위',
-      LeaderboardMetric.ops => '출루·장타(OPS) 1위',
-      LeaderboardMetric.opsPlus => 'OPS 상대지수 1위',
-      LeaderboardMetric.war => 'WAR 1위',
-    };
-  }
-
-  String _pitchingLeaderSummary(LeaderboardMetric metric, RecordLeader leader) {
-    return '${_briefMetricLabel(metric)} · ${_pitchingMetricValue(metric, leader)}';
-  }
-
-  String _pitchingMetricValue(LeaderboardMetric metric, RecordLeader leader) {
-    if (metric == LeaderboardMetric.wins) {
-      return '${leader.value}승';
-    }
-    if (metric == LeaderboardMetric.saves) {
-      return '${leader.value}SV';
-    }
-    if (metric == LeaderboardMetric.strikeouts) {
-      return '${leader.value}K';
-    }
-    return leader.value;
   }
 
   List<_MetricSnapshot> _metricSnapshots(RecordsOverview overview) {
@@ -2990,46 +2743,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       for (final metric in group.metrics)
         if (snapshots[metric] != null) snapshots[metric]!,
     ];
-  }
-
-  List<_MetricSnapshot> _pitcherMetricSnapshots(RecordsOverview overview) {
-    return _metricSnapshotsForGroup(
-      overview,
-      LeaderboardPlayerGroup.pitcher,
-    ).where((snapshot) => snapshot.leaders.isNotEmpty).toList();
-  }
-
-  String _leaderGapText(LeaderboardMetric metric, List<RecordLeader> leaders) {
-    if (leaders.isEmpty) {
-      return '데이터 준비 중';
-    }
-    if (leaders.length < 2) {
-      return '단독 1위';
-    }
-
-    final first = double.tryParse(leaders[0].value);
-    final second = double.tryParse(leaders[1].value);
-    if (first == null || second == null) {
-      return '2위 ${leaders[1].value}';
-    }
-
-    if (metric == LeaderboardMetric.era) {
-      final diff = second - first;
-      return diff > 0 ? '2위보다 ${diff.toStringAsFixed(2)} 낮음' : '공동 선두권';
-    }
-
-    final diff = first - second;
-    if (diff <= 0) {
-      return '공동 선두권';
-    }
-    if (metric == LeaderboardMetric.hr ||
-        metric == LeaderboardMetric.opsPlus ||
-        metric == LeaderboardMetric.wins ||
-        metric == LeaderboardMetric.saves ||
-        metric == LeaderboardMetric.strikeouts) {
-      return '2위와 +${diff.round()}';
-    }
-    return '2위와 +${diff.toStringAsFixed(3)}';
   }
 }
 

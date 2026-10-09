@@ -2,6 +2,49 @@
 
 ---
 
+## 2026-10-09: 프론트·백엔드 운영 배포 준비
+
+- 사용자 요청으로 현재 UX/위젯/알림 변경과 backend 홈 문구 변경을 0.1.36+104 배포 단위로 준비한다.
+- 영향 표면: Flutter iOS Runner/Widget, FastAPI home producer 및 기존 Lightsail API/worker. 운영 API URL과 secret/env/Caddy 설정은 보존한다.
+- 배포 입력은 앱·backend·관련 문서 소스만 커밋한 pushed SHA의 clean isolated worktree로 만든다. QA artifacts, app/ios/build, reference fixture script는 배포 입력에서 제외한다.
+- 사전 확인: 기존 Lightsail API/worker active, backend 전체 759 tests passed, Flutter analysis clean. Flutter 전체 및 서명/업로드/VALID/외부 그룹/심사/운영 readback은 실제 결과를 후속 기록한다.
+
+## 2026-10-09: 미선택 홈과 연결 상태 추가 개선
+
+- 응원팀 skip 사용자의 홈에서 중복 선택/혜택/장식 brief를 제거하고 한 개의 선택 버튼과 경기 목록을 우선했다.
+- 연결 상태의 요약/상세를 분리하고 초기화만 된 상태를 기기 등록 확인으로 표시하지 않도록 보정했다. 오류/진행 중/retry는 유지하며 상세는 접근 가능하게 했다.
+- 진단 scoreboard GET은 actual 홈의 경량 endpoint와 맞췄다. producer/runtime singleton을 확인했고 backend contract와 push/infra/release는 변경하지 않았다.
+- 집중 홈/진단 62개 통과 이후 추가 readiness/a11y 검사까지 포함한 전체 Flutter 633개 통과, analysis clean, web API-mode build 성공. actual No-team 홈과 연결 상태 요약/상세를 확인했다. 전후 캡처의 viewport 차이는 분리해 기록했다.
+- 근거 및 전체 목표의 남은 범위: `docs/UX_FIRST_USE_TRUST_2026-10-09.md`.
+
+## 2026-10-09: 현재 환경에서 위젯·중계 개선 재검증
+
+- 소스/WIP는 보존된 반면 이전 /tmp 로그와 실행 handle은 없어 현재 상태를 다시 검증했다.
+- Flutter 전체 631 tests passed, analysis clean, iOS simulator widget extension build 성공, Android Kotlin compile 성공을 artifact 폴더에 직접 저장했다.
+- Android JDK 8 및 transient DNS 문제는 설치된 JDK 21의 command-only override와 공식 dependency 재확인으로 해결했다. 전역 환경/프로젝트 plugin은 변경하지 않았다.
+- 게임 링크로 처음 진입한 사용자 skip 후 원래 게임/relay 복귀, 득점 필터, 결과 preset/switch 변화를 실제 브라우저에서 확인했다. 저장 PNG의 잘못된 frame은 제외하고 파일 자체를 재확인했다.
+- 네이티브 실제 렌더·실기기 전달·closed-app sync와 남은 전 흐름 UX는 아직 별도 검증 대상으로 유지한다. 전체 목표 완료로 처리하지 않았다.
+- 근거: `docs/UX_WIDGET_RELAY_2026-10-08.md`, `artifacts/ux-native-relay-2026-10-08/current-verification.json`.
+
+## 2026-10-08: 위젯·중계·설정 정보 배치 루프
+
+- iOS widget/ActivityKit와 Android slate에서 구분 문자열을 렌더 경계의 독립 항목으로 배치했다. 기존 payload/storage key/토큰 등록/scheduler는 보존했다.
+- 현재 타석 위의 전체 이닝표와 중복 B/S/O 카드·badge·meter를 제거했다. 현재 상황 한 세트, 선수/주자/직전 플레이, 이닝/장면 필터를 유지한다. loading/fallback의 점수 요약도 유지한다.
+- 설정 프리셋의 반복 제목/선택 설명을 제거하고 실제 토글과 중요한 권한 안내를 남겼다.
+- 집중 Flutter 70 tests passed, analysis clean, iOS simulator extension compile BUILD SUCCEEDED. native 실화면/실기기/서버 전달은 별도 미검증이다. Android offline dependency 실패를 online으로 재확인한다.
+- 상세 packet: `docs/UX_WIDGET_RELAY_2026-10-08.md`. 캡처/로그: `artifacts/ux-native-relay-2026-10-08/`.
+
+## 2026-10-08: 정보 과노출과 구분 기호 추가 개선 루프
+
+- 사용자 추가 요구에 따라 기본 화면의 설명/중복 수치를 줄이고 기호로 묶은 메타데이터를 별도 항목으로 렌더한다. 이번 변경은 이전 UX 개선 위에 이어서 적용한다.
+- 브리핑 출처 정보/계산 기준을 요청한 상세로 옮기고 기본 소식 노출을 제한했다. 더 보기 및 필터 리셋을 유지한다. 알림함 보관 안내와 종류 상세는 기본 목록을 밀어내지 않도록 옮겼다.
+- 온보딩 선택 미리보기·혜택 나열, 기록실/순위/선수 상세의 중복 설명, 박스스코어 임의 지수 노출을 제거했다. 공식/예상/계산/조회 실패 구분은 유지한다.
+- backend 홈 subtitle은 경기 수와 상태 위주로 정리했다. current-day fanout 테스트의 달력 의존성을 고정했고 홈 테스트 44개가 통과했다. 조회·캐시·push·인프라·release 계약은 변경하지 않았다.
+- 확대 글자와 고정 카드의 reflow 문제를 검사에서 발견하고 실제 정보 우선순위/세로 배치로 보정했다.
+- 전체 목표는 유지하며 네이티브 위젯에 남은 구분 문자열과 실제 렌더/복귀 흐름을 다음 루프로 확인한다. 이번 Flutter 패킷만으로 목표 전체 완료를 선언하지 않는다.
+- Flutter 전체 631개 통과, 마지막 브리핑 22개/알림함 10개 재검증 통과, 분석 clean 및 웹 release build 성공. backend 홈 44개/Ruff 통과, local health HTTP 200. 저장된 최신 캡처를 직접 열어 검증했다.
+- 계획/증거/검증 경계: `docs/UX_REFINEMENT_2026-10-08.md`. 산출물: `artifacts/ux-refinement-2026-10-08/`.
+
 ## 2026-10-08: 사용자 흐름 개선 루프
 
 - 첫 진입·홈·상세 4탭·일정·기록/순위·브리핑·설정의 화면/동작을 현재 Flutter 코드와 새 API-mode 웹 빌드로 확인했다. 로컬 fixture 캡처를 운영 최신성 근거로 사용하지 않는다.
@@ -10297,3 +10340,95 @@ kbo_fans/
 - 영향 범위: app/backend 런타임·infra·release 설정 변경 없음. 기존 앱·백엔드 미커밋 작업은 보존한다. README에 Wiki 링크를 추가하고 소스 버전 표기 및 정책/현재 동작 기준을 정렬했다. backend README의 오래된 Cost Explorer 반복 guard 설치 안내와 배포 문서의 backend 비활성 설명을 기존 AGENTS 정책에 맞췄다.
 - 검증: Wiki 내부 링크·저장소 source 링크 대상·script 경로·Markdown fence와 `git diff --check` 통과. docs-only 변경으로 Flutter/backend 테스트·운영 API·실기기·서명·TestFlight 검증은 실행하지 않았다. Wiki 게시 후 독립 clone readback으로 14개 원본 일치를 확인했고 GitHub Home의 12개 페이지 목차·sidebar/footer와 시작하기 코드 block 렌더링을 확인했다.
 - 적용 스킬: `.claude/skills/kbo-doc-sync/SKILL.md`, `.claude/skills/kbo-release-flow/SKILL.md`. 앱 기능 변경이나 테스터 release가 없어 버전/tag/앱 내 업데이트 소식은 변경하지 않는다.
+
+## 2026-10-09: 완료된 빈 결과와 중계 필터 정리
+
+- 기록실·홈·라인업의 완료된 빈 응답을 ‘준비 중’과 구분하고 빈 기록 추천/표 헤더/전체 보기 버튼을 줄였다. 중계 필터 건수를 선택 이닝에 맞추고 비활성 0건 종류를 숨겼다.
+- 앱 consumer와 backend records overview producer 검증을 확인했다. all-core-empty snapshot은 기존 오류 처리를 유지하며, 핵심 순위가 정상이고 saves만 빈 QA 시나리오를 별도 reference API 포트에서 검증한다. 원본 snapshot·운영 cache·routing·infra·release 변경 없음.
+- 상세 분석·작업 기준·검증 경계는 `docs/UX_EMPTY_STATES_2026-10-09.md`, 실행 증거는 `artifacts/ux-empty-states-2026-10-09/`에 기록한다. 전체 제품 고도화 목표는 진행 중이다.
+
+- 이 루프 최종 검사: Flutter analyze 무결함, 전체 634 테스트 통과, 웹 build 성공. 부분 빈 데이터 실화면 확인. capture는 601x858이므로 390px 실화면 검증은 not-run으로 구분한다.
+
+## 2026-10-09: 기록실 중복 패널과 탐색 action 통합
+
+- 실제 화면에서 중복 투수 1위 패널과 지표 나열 설명을 확인했다. 마운드 체크 패널을 제거하고 기존 타자/투수 리더보드에서 탐색하도록 정리했다. 전체 보기는 선택 지표 결과 아래로 통합했다. backend 원자료/contract/cache·infra·release 변경 없음.
+- source 분석과 회귀 검증은 `docs/UX_RECORDS_FOCUS_2026-10-09.md`, 증거는 `artifacts/ux-records-focus-2026-10-09/`에 보존한다. 저장소 kbo-doc-sync 스킬 적용.
+
+- 기록실 루프 검증: analyze 무결함·관련 42 테스트 통과·웹 build 성공. 웹 ERA/SV 전환과 전체 보기 route의 season 유지·뒤로 복귀 후 SV/scroll 유지 확인. 전체 순위 fixture API 오류로 데이터 표시 성공은 미확인. 601x858 웹 capture이며 실기기 검증은 not-run.
+
+## 2026-10-09: 순위표·선수 기록 전환의 시즌 유지
+
+- 시즌 없는 전환 주소와 순위 화면의 URL 미적용이 과거 시즌을 현재로 초기화하는 원인이었다. 양방향 season/current-mode 전달과 순위 화면 init/didUpdate 처리를 추가했다. backend season 계약과 provider 요청을 유지하며 infra/release 변경 없음.
+- 이동·순위 테스트 14개와 analyze 통과. 과거 고정과 현재 KST 새해 추적을 양방향 provider 요청으로 확인했다. 상세는 `docs/UX_SEASON_NAVIGATION_2026-10-09.md`.
+
+- 웹 build 성공. 2025 선수 기록→순위표→선수 기록 URL과 dropdown 일치 확인. reference fixture로 season routing만 검증했으며 공식 과거 순위 정확성·실기기 증거로 사용하지 않는다.
+
+- 최종 전체 Flutter 테스트 636개 통과. analyze 무결함·웹 build 성공·diff whitespace 검사 통과. 전체 목표는 진행 중이다.
+
+## 2026-10-09: 순위표 중복 요약 제거
+
+- 표와 같은 수치를 반복하는 상단 summary와 no-team 빈 안내·상시 열 설명을 제거했다. 내 팀 행 강조와 실제 기록값은 유지하며 승차 열/tooltip으로 정리했다. backend/API/infra/release 변경 없음.
+- analyze 무결함·관련 14 테스트·웹 build 통과. 601x858 fixture 웹 화면에서 10팀 표시 확인. 저장 API blank 반환은 제외하고 정상 CDP capture를 확인했다. 실기기/공식 기록 정확성은 not-run. 상세 `docs/UX_STANDINGS_FOCUS_2026-10-09.md`.
+
+## 2026-10-09: 일정의 자정 선택 보존
+
+- 같은 달의 선택 날짜를 무조건 새 오늘로 바꾸던 `_syncKboDate` 조건을 확인했다. 이전 오늘 선택일 때만 날짜 변경을 따라가도록 수정했다. 다른 날짜 탐색을 유지하고 매치업의 반복 정렬/홈원정 설명을 줄였다. API/backend/cache/infra/release 변경 없음.
+- 상세 분석과 검증은 `docs/UX_SCHEDULE_CONTEXT_2026-10-09.md`, 증거는 `artifacts/ux-schedule-context-2026-10-09/`에 기록한다.
+
+- 웹에서 header 4월/calendar 10월/list 4월 불일치를 관측했다. loading Column과 완료 ListView 사이의 PageView 재부착이 원인이었다. 모든 상태를 같은 ListView 구조로 통합하고 loading 시 refresh gesture를 차단했다. 지연 월 응답 전후 선택 semantics 회귀 추가, 일정 29 테스트 통과.
+
+- 최종 analyze 무결함·일정 29 테스트·전체 Flutter 639 테스트·웹 build 통과. 최종 웹에서 10월→6월 이동 후 header JUN 2026·6월 9일 calendar selection·6월 9일 경기 목록 일치 확인. 601x858 reference snapshot capture이며 실제 자정 실기기/운영 API 검증은 not-run.
+
+## 2026-10-09: 상세 기록 없음·실패 문구 정리
+
+- 과거 종료 경기에도 ‘업데이트 전’이라고 표현하던 박스스코어 consumer 안내를 현재 기록 없음으로 정리했다. boxscore/lineup 오류의 확인되지 않은 네트워크 진단 문구를 줄이고 빈 카드 고정 minHeight를 제거했다. backend 계약·fallback·team/retry/navigation 유지.
+- analyze 무결함·관련 37 테스트 통과. 빈 상태의 새 실화면/실기기 검증은 not-run. 상세 `docs/UX_DETAIL_TRUST_2026-10-09.md`, 로그 `artifacts/ux-detail-trust-2026-10-09/`.
+
+## 2026-10-09: 반복 해설 제거와 전체 목표 증거 정리
+
+- 점수 탭의 자명한 결과 headline·일반 안내 제목을 제거하고 실제 득점 이닝과 문자중계/박스스코어 action을 유지했다. 업데이트 소식의 반복 subtitle·홈 빈 소식의 준비 중 문구도 정리했다. backend/API/infra/release 변경 없음.
+- Flutter 관련 68 tests·analyze·웹 build 통과, backend home 44 tests 통과. reference 경기 스코어 실화면 확인. 상세 `docs/UX_COPY_CONVERGENCE_2026-10-09.md`. 전체 범위·남은 독립 증거는 `docs/UX_GOAL_ACCEPTANCE_2026-10-09.md`에 정리했다.
+
+## 2026-10-09: 상세 오류 분류와 큰 글자 복구
+
+- backend 404/503 producer→Dio→상세 화면을 추적했다. 고정 네트워크 안내를 404/일시 실패 분류로 교체하고 null 준비/삭제 추측을 제거했다. Scroll/AppStatusCard로 큰 글자 복구 동선을 제공한다. 기존 경기 fallback·retry·back/home 유지.
+- HTTP404/503·320x568/240%·재요청 후 null·home route 복귀 테스트를 추가했다. 기존 boxscore tab 테스트의 동일 text ambiguity는 TabBar 범위로 수정했다. 상세 `docs/UX_DETAIL_RECOVERY_2026-10-09.md`.
+
+- 카드 폭 정렬 후 상세 32 tests passed·웹 build 통과. 최종 fixture404 안내/재시도 유지/홈 route 이동을 실제 웹에서 확인했다. 저장 capture 601x858, 실기기·운영 API not-run.
+
+## 2026-10-09: 브리핑의 잘못된 연결 처리
+
+- 현재 브리핑은 내부 기록/경기 route 기반임을 확인했다. invalid route fallback이 `/news`를 다시 push하는 원인을 수정했다. 현재 화면·page stack 유지와 짧은 안내를 제공한다. 빈 상태 body Text/간격도 제거했다. backend/infra/release 변경 없음.
+- 브리핑 23 tests·analyze 통과. malformed route snackbar/page-count·기존 swipe-back/filter/dedup/empty 검증 유지. 상세 `docs/UX_BRIEFING_LINK_2026-10-09.md`.
+
+- 실제 fixture에서 ‘2~5위 0.5G 혼전’을 team-name 정규식이 ‘2~’로 해석해 ‘선두 지키는 2~’로 바꾸는 오류를 확인했다. 자유 제목의 재해석 함수를 제거하고 HomeKboBriefItem의 title을 그대로 표시한다. range 제목 보존을 연결 실패 회귀 시나리오와 함께 검증했다. 최종 브리핑 23 tests passed.
+
+- 최종 analyze 무결함·브리핑 23 tests·웹 build 통과. 웹에서 원래 순위 범위 제목 표시와 news→standings→news 복귀 확인. invalid route는 widget 회귀 증거이며 실화면/실기기 검증은 not-run. capture 601x858 reference fixture로 운영 data freshness를 주장하지 않는다.
+
+## 2026-10-09: 알림 설정 저장 실패와 readback
+
+- optimistic UI와 SharedPreferences cache/write false 미확인이 실패한 설정을 저장된 것처럼 남기는 원인이었다. 기존 write bool 확인, 실패 후 platform reload, readback failure 복구 state, 카드 keepAlive를 추가했다. existing keys/delivery/registration/backend/infra/release 유지.
+- partial/no-write/readback failure 복구와 실제 false store/cache 분리를 포함한 설정/service 62 tests 통과. 상세 `docs/UX_NOTIFICATION_SAVE_2026-10-09.md`.
+
+- 최종 analyze 무결함·설정/service 62 tests·전체 Flutter 654 tests 통과. 실제 기기 저장 실패/서버 전달/이번 실패 state 실화면은 not-run.
+
+## 2026-10-09: 모바일 빌드·API 계약 확인
+
+- ios-device-run-action으로 Flutter/Xcode physical destination eligibility를 확인했다. 미러링은 사용 중으로 차단됐고 사용자도 사용 중이라고 답해 설치/실행하지 않았다. 독립적으로 iOS Debug no-codesign build 성공.
+- 운영 health/오늘 scoreboard 응답과 정확한 2025 saves query의 season/metric/30 rows/rank1 확인. 최초 수동 요청의 path 오류를 바로잡았다. Reference API의 leaderboard 주소도 actual app query 계약으로 수정하고 repository avg30 rows·invalid metric 차단·웹 표시에 성공했다. production contract·infra/release 변경 없음.
+- 상세 `docs/UX_NATIVE_RUNTIME_2026-10-09.md`. 실기기 실행·signed/upload/installability는 not-run.
+
+## 2026-10-09: 알림 연결 복구·390px 웹 검증
+
+- invalid notification route의 홈 fallback을 제거하고 목록을 유지하는 짧은 안내를 제공한다. read/정상 deep link 동작은 유지했다.
+- CDP emulation에서 논리 width390·visual width390·scale1과 fromSurface PNG를 확인했다. 기존 screenshot preview와 실제 저장 pixels를 구분한다. 빈 알림 카드 본문 폭 정렬을 추가했다. backend/infra/release 변경 없음.
+- 알림함 11 tests·analyze 통과. 상세 `docs/UX_INBOX_RECOVERY_2026-10-09.md`. 실기기 사용 중 조건은 유지한다.
+
+- 최종 알림함 11 tests·웹 build 통과. CDP fromSurface PNG390x844와 DOM logical width390/scale1 확인. empty card 본문 폭 정렬과 settings CTA 실제 route 이동 확인. override clear 완료. invalid route 실화면·실기기는 not-run.
+
+## 2026-10-09: 웹의 미지원 푸시 조작 제거
+
+- 웹 UI에 permission/toggle이 보이지만 service는 kIsWeb에서 비활성이라는 producer-consumer 불일치를 확인했다. 서비스와 동일한 capability 조건에서 supported card 또는 간결한 미지원 안내를 표시한다. 알림함과 native 저장/복구 유지.
+- 최초 AppConfig singleton 직접 읽기는 단독 화면 초기화 의존성을 만들었으므로 동일한 immutable USE_BACKEND_API 빌드 flag로 바꿨다. unsupported UI callback 0과 native 회귀를 검증한다. 상세 `docs/UX_PUSH_PLATFORM_2026-10-09.md`.
+
+- 최종 전체 Flutter 656 tests·analyze·웹 build 통과. unsupported callbacks 0과 supported 저장/권한/복구 기존 테스트 포함. 웹 PNG390x844에서 권한/preset/toggle 부재·간결한 안내·inbox 진입 유지 확인. 임시 emulation clear 완료. 초기 dependency 실패 로그는 initial-config-dependency-tests.log로 구분한다.

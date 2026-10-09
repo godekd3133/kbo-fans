@@ -299,14 +299,14 @@ class _LineupTabState extends ConsumerState<LineupTab> {
     if (_isTransientLineupLoadError(error)) {
       return _buildUnavailableState(
         '라인업 응답이 지연되고 있습니다',
-        detail: '네트워크 상태를 확인하고 다시 시도해 주세요',
+        detail: '잠시 후 다시 시도해 주세요',
         showRetry: true,
       );
     }
 
     return _buildUnavailableState(
       '라인업을 불러올 수 없습니다',
-      detail: '네트워크 상태를 확인하고 다시 시도해 주세요',
+      detail: '잠시 후 다시 시도해 주세요',
       showRetry: true,
     );
   }
@@ -354,7 +354,7 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                 ),
                 if (detail != null) ...[
                   const SizedBox(height: 8),
-                  Text(
+                  AppMetadataText(
                     detail,
                     style: TextStyle(
                       fontSize: 12,
@@ -1044,7 +1044,7 @@ class _MetricSideBar extends StatelessWidget {
           ? CrossAxisAlignment.end
           : CrossAxisAlignment.start,
       children: [
-        Text(
+        AppMetadataText(
           value,
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
@@ -1548,7 +1548,7 @@ class _LineupColumn extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 4),
                 child: _EmptyLabel(
                   label: isLive
-                      ? '실시간 불펜 집계 중'
+                      ? '현재 불펜 등판 정보가 없어요.'
                       : missingPitcherData
                       ? '박스스코어 투수 기록 없음'
                       : '아직 불펜 등판 없음',
@@ -1581,7 +1581,7 @@ class _LineupColumn extends StatelessWidget {
           ],
           if (displayedLineup.isEmpty) ...[
             const SizedBox(height: 12),
-            _EmptyLabel(label: isLive ? '실시간 타자 라인업 집계 중' : '타자 라인업 데이터 없음'),
+            _EmptyLabel(label: isLive ? '현재 타자 라인업 정보가 없어요.' : '타자 라인업 데이터 없음'),
           ],
           const SizedBox(height: 14),
           for (int index = 0; index < displayedLineup.length; index++) ...[
@@ -1984,7 +1984,7 @@ class _StarterRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
+                AppMetadataText(
                   detail,
                   style: TextStyle(
                     fontSize: 11,

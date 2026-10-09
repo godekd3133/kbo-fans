@@ -57,6 +57,10 @@ void main() {
       isTrue,
     );
 
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('api-diagnostics-push-retry')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('api-diagnostics-push-retry')));
     await tester.pump();
 
@@ -75,8 +79,79 @@ void main() {
     });
     await tester.pumpAndSettle();
 
+    expect(find.textContaining('ready initialized=true'), findsNothing);
+    final details = find.byKey(const ValueKey('api-diagnostics-details-push'));
+    await tester.ensureVisible(details);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: details, matching: find.text('상세 정보')),
+    );
+    await tester.pumpAndSettle();
     expect(find.textContaining('ready initialized=true'), findsOneWidget);
     expect(find.text('푸시 상태를 확인할 수 없습니다'), findsNothing);
+  });
+
+  testWidgets('초기화만 됐고 토큰이 없으면 알림 기기 등록을 확인된 것으로 표시하지 않는다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [apiClientProvider.overrideWithValue(_FakeApiClient())],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: ApiDiagnosticsScreen(
+              pushStateLoader: () async => {
+                ..._readyPushState,
+                'tokenReady': false,
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .getSemantics(
+              find.byKey(const ValueKey('api-diagnostics-semantics-push')),
+            )
+            .label,
+        '기기 알림 상태, 확인 실패',
+      );
+      expect(find.textContaining('initialized=true'), findsNothing);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets('토큰이 있어도 초기화 실패 상태를 확인된 기기 정보로 표시하지 않는다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [apiClientProvider.overrideWithValue(_FakeApiClient())],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: ApiDiagnosticsScreen(
+              pushStateLoader: () async => {
+                ..._readyPushState,
+                'status': 'failed',
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .getSemantics(
+              find.byKey(const ValueKey('api-diagnostics-semantics-push')),
+            )
+            .label,
+        '기기 알림 상태, 확인 실패',
+      );
+    } finally {
+      semantics.dispose();
+    }
   });
 
   testWidgets('진단 중 빠른 다시 진단 탭은 중복 요청을 만들지 않는다', (tester) async {
@@ -141,10 +216,19 @@ void main() {
             find.byKey(const ValueKey('api-diagnostics-semantics-health')),
           )
           .getSemanticsData();
-      expect(data.label, contains('health'));
-      expect(data.label, contains('정상'));
-      expect(data.label, contains('status=ok'));
-      expect(data.label, contains('밀리초'));
+      expect(data.label, '서버 응답, 응답 확인');
+      expect(find.text('status=ok'), findsNothing);
+      final details = find.byKey(
+        const ValueKey('api-diagnostics-details-health'),
+      );
+      final toggle = find.descendant(of: details, matching: find.text('상세 정보'));
+      expect(
+        tester.getSemantics(toggle).getSemanticsData().flagsCollection.isButton,
+        isTrue,
+      );
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(find.text('status=ok'), findsOneWidget);
     } finally {
       semantics.dispose();
     }
@@ -172,7 +256,7 @@ class _FakeApiClient extends ApiClient {
   }) async {
     return switch (path) {
       '/health' => const {'status': 'ok'},
-      '/scoreboard' => const {'games': <dynamic>[]},
+      '/scoreboard/home' => const {'games': <dynamic>[]},
       '/schedule' => const {'days': <dynamic>[]},
       _ => const <String, dynamic>{},
     };

@@ -1,7 +1,9 @@
+import '../../helpers/metadata_finder.dart';
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:kbo_fans/core/widgets/app_metadata_text.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,6 +30,27 @@ import 'package:shared_preferences_platform_interface/in_memory_shared_preferenc
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 void main() {
+  testWidgets('응원팀 미선택 홈은 내 팀 최근 경기의 로딩과 빈 안내를 표시하지 않는다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    _ensureAppConfigInitialized();
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        myTeamId: null,
+        child: MaterialApp.router(
+          theme: AppTheme.dark,
+          routerConfig: _homeInteractionRouter(),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('최근 5경기 집계 중입니다.'), findsNothing);
+    await tester.pumpAndSettle();
+    expect(find.text('최근 5경기'), findsNothing);
+    expect(find.text('표시할 최근 5경기가 없습니다'), findsNothing);
+    expect(find.text('응원팀 선택'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('공개된 라인업 CTA는 실제 라인업 탭으로 바로 연결한다', (tester) async {
     _ensureAppConfigInitialized();
     SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
@@ -127,7 +150,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    await tester.tap(find.text('마이팀 선택하기'));
+    expect(find.text('마이팀 선택하기'), findsNothing);
+    expect(find.text('예매 오픈 추적'), findsNothing);
+    expect(find.text('응원팀 선택'), findsOneWidget);
+    await tester.tap(find.text('응원팀 선택'));
     await tester.pumpAndSettle();
 
     expect(find.text('onboarding-edit-/home'), findsOneWidget);
@@ -163,7 +189,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    final subtitle = find.text('티켓링크 · 9월 6일 11:00 KST 오픈');
+    final subtitle = metadataText('티켓링크 · 9월 6일 11:00 KST 오픈');
     await tester.ensureVisible(subtitle);
     expect(subtitle, findsOneWidget);
     expect(find.textContaining('T11:00:00+09:00'), findsNothing);
@@ -803,7 +829,7 @@ void main() {
 
     await tester.pump();
 
-    expect(find.text('우리 팀의 기록을 준비하고 있어요.'), findsOneWidget);
+    expect(find.text('우리 팀의 기록을 준비하고 있어요.'), findsNothing);
     expect(find.text('일정 보기'), findsAtLeastNWidgets(1));
     expect(find.text('순위'), findsOneWidget);
     expect(aggregateCalls, 0);
@@ -1501,12 +1527,16 @@ void main() {
     expect(eraRect.width, greaterThanOrEqualTo(60));
     expect(avgRect.right, lessThanOrEqualTo(eraRect.left));
     for (final copy in ['LG 트윈스', '1위 · 51승 34패 2무', '경기 프리뷰', '팀 기록']) {
-      final paragraph = tester.renderObject<RenderParagraph>(find.text(copy));
-      expect(
-        paragraph.didExceedMaxLines,
-        isFalse,
-        reason: '$copy는 240% 크기에서도 전체가 보여야 한다',
-      );
+      for (final part in metadataItems(copy)) {
+        final paragraph = tester.renderObject<RenderParagraph>(
+          find.text(part).first,
+        );
+        expect(
+          paragraph.didExceedMaxLines,
+          isFalse,
+          reason: '$part는 240% 크기에서도 전체가 보여야 한다',
+        );
+      }
     }
     expect(tester.getSize(teamSummary).width, greaterThan(200));
     expect(find.byKey(const ValueKey('home-standings-row-LG')), findsOneWidget);
@@ -1599,8 +1629,8 @@ void main() {
       expect(find.text('팀 ERA'), findsOneWidget);
       expect(find.text('4.73'), findsOneWidget);
       expect(find.text('9위'), findsOneWidget);
-      expect(find.text('팀 홈런 1위'), findsOneWidget);
-      expect(find.text('불러오는 중'), findsWidgets);
+      expect(find.text('팀 홈런 1위'), findsNothing);
+      expect(find.text('집계 중'), findsNothing);
     },
   );
 
@@ -2266,7 +2296,7 @@ void main() {
 
     expect(find.text('두산-LG 합계 5실책'), findsOneWidget);
     expect(find.text('홍창기 타율 0.351'), findsOneWidget);
-    expect(find.text('두산 3개 · LG 2개'), findsOneWidget);
+    expect(metadataText('두산 3개 · LG 2개'), findsOneWidget);
     expect(find.text('실책'), findsWidgets);
     expect(find.text('타율'), findsWidgets);
   });
@@ -2369,8 +2399,8 @@ void main() {
     await tester.ensureVisible(find.text('지금 보면 좋은 정보'));
     await tester.pumpAndSettle();
 
-    expect(find.text('5위 · 두산 베어스'), findsOneWidget);
-    expect(find.text('38승 38패 2무 · 9.5G차'), findsOneWidget);
+    expect(metadataText('5위 · 두산 베어스'), findsOneWidget);
+    expect(metadataText('38승 38패 2무 · 9.5G차'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

@@ -1,3 +1,4 @@
+import '../../core/widgets/app_metadata_text.dart';
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -14,6 +15,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
+import '../../core/widgets/app_status_card.dart';
+import '../../data/api/api_client.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/models/game.dart';
@@ -191,7 +194,7 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
             ),
           );
         },
-        error: (_, _) => KeyedSubtree(
+        error: (error, _) => KeyedSubtree(
           key: ValueKey('game-detail-error-${widget.gameId}'),
           child: fallbackGame != null
               ? _GameDetailBody(
@@ -204,8 +207,12 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
                   onRefreshFailed: _handleRefreshFailed,
                 )
               : _GameDetailUnavailable(
-                  title: '경기를 불러올 수 없습니다',
-                  description: '네트워크 연결을 확인한 뒤 다시 시도해 주세요.',
+                  title: _isMissingGameError(error)
+                      ? '경기를 찾을 수 없습니다'
+                      : '경기를 불러올 수 없습니다',
+                  description: _isMissingGameError(error)
+                      ? '다른 경기를 선택해 주세요.'
+                      : describeAsyncError(error),
                   onRetry: () => unawaited(_retryGame()),
                 ),
         ),
@@ -219,7 +226,7 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
               key: ValueKey('game-detail-missing-${widget.gameId}'),
               child: _GameDetailUnavailable(
                 title: '경기를 찾을 수 없습니다',
-                description: '경기 정보가 아직 준비되지 않았거나 삭제되었을 수 있습니다.',
+                description: '이 경기의 정보가 제공되지 않았어요.',
                 onRetry: () => unawaited(_retryGame()),
               ),
             );
@@ -244,6 +251,10 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
     );
   }
 }
+
+bool _isMissingGameError(Object error) =>
+    (error is DioException && error.response?.statusCode == 404) ||
+    (error is ApiException && error.code == 'NOT_FOUND');
 
 class _GameDetailUnavailable extends StatelessWidget {
   final String title;
@@ -285,52 +296,17 @@ class _GameDetailUnavailable extends StatelessWidget {
           title: const Text('경기 상세'),
         ),
         body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.sports_baseball_outlined,
-                    size: 40,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    description,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      height: 1.5,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: onRetry,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('다시 시도'),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: () => context.go('/home'),
-                    icon: const Icon(Icons.home_outlined),
-                    label: const Text('홈으로'),
-                  ),
-                ],
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: SizedBox(
+              width: double.infinity,
+              child: AppStatusCard(
+                icon: Icons.info_outline,
+                title: title,
+                description: description,
+                onAction: onRetry,
+                secondaryLabel: '홈으로',
+                onSecondaryAction: () => context.go('/home'),
               ),
             ),
           ),
@@ -2228,7 +2204,7 @@ class _TicketInfoCard extends ConsumerWidget {
             ),
           ),
           Expanded(
-            child: Text(
+            child: AppMetadataText(
               value,
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),

@@ -1,3 +1,4 @@
+import '../../helpers/metadata_finder.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
@@ -44,7 +45,7 @@ void main() {
     );
     expect(find.byKey(const ValueKey('score-KT-inning-12')), findsOneWidget);
     expect(find.byKey(const ValueKey('score-LG-inning-12')), findsOneWidget);
-    expect(find.text('R 득점 · H 안타 · E 실책 · B 사사구'), findsOneWidget);
+    expect(metadataText('R 득점 · H 안타 · E 실책 · B 사사구'), findsOneWidget);
     expect(find.textContaining('이닝을 누르면'), findsNothing);
 
     final horizontalScroll = tester.widget<SingleChildScrollView>(
@@ -87,7 +88,7 @@ void main() {
       find.byKey(const ValueKey('score-scrollable-columns')),
       findsNothing,
     );
-    expect(find.text('R 득점 · H 안타 · E 실책 · B 사사구'), findsNothing);
+    expect(metadataText('R 득점 · H 안타 · E 실책 · B 사사구'), findsNothing);
   });
 
   testWidgets('취소 경기의 이닝 기록이 없으면 취소 안내를 표시한다', (tester) async {
@@ -124,9 +125,7 @@ void main() {
     );
   });
 
-  testWidgets('공식 점수가 미확정이면 합계와 접근성 안내에 0을 표시하지 않는다', (
-    tester,
-  ) async {
+  testWidgets('공식 점수가 미확정이면 합계와 접근성 안내에 0을 표시하지 않는다', (tester) async {
     const game = Game(
       gameId: 'unverified-score-game',
       status: GameStatus.live,

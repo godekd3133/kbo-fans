@@ -106,7 +106,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(requestedSeasons, contains(previousSeason));
-    expect(find.text('KT 위즈'), findsOneWidget);
+    expect(find.text('KT'), findsOneWidget);
     expect(find.text('2연패'), findsAtLeastNWidgets(1));
   });
 
@@ -144,8 +144,11 @@ void main() {
     await tester.pump();
 
     expect(find.text('연속'), findsOneWidget);
-    expect(find.text('1위 경쟁'), findsOneWidget);
-    expect(find.text('연속 흐름'), findsOneWidget);
+    expect(find.text('1위 경쟁'), findsNothing);
+    expect(find.text('팀 선택 전'), findsNothing);
+    expect(find.text('승차'), findsOneWidget);
+    expect(find.byKey(const ValueKey('standings-column-help')), findsNothing);
+    expect(find.text('연속 흐름'), findsNothing);
     expect(find.text('3연승'), findsAtLeastNWidgets(1));
   });
 
@@ -457,7 +460,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('280px 순위 헤더는 짧은 제목과 초보자 열 설명을 제공한다', (tester) async {
+  testWidgets('280px 순위 헤더는 짧은 제목과 필요할 때 여는 승차 설명을 제공한다', (tester) async {
     tester.view.physicalSize = const Size(280, 720);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -493,7 +496,9 @@ void main() {
     expect(find.text('KBO 순위'), findsOneWidget);
     expect(find.text('정규시즌 순위표'), findsNothing);
     expect(find.byTooltip('순위 새로고침'), findsOneWidget);
-    expect(find.text('차: 1위와 경기 차 · 연속: 현재 연승/연패'), findsOneWidget);
+    expect(find.text('승차'), findsOneWidget);
+    expect(find.byTooltip('1위와의 경기 차'), findsOneWidget);
+    expect(find.byKey(const ValueKey('standings-column-help')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

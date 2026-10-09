@@ -1,3 +1,4 @@
+import '../../helpers/metadata_finder.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -54,12 +55,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('알림함'), findsOneWidget);
-    expect(
-      tester.widget<Text>(find.text('푸시 알림')).style?.color,
-      AppTheme.darkColors.textSupporting,
-    );
+    expect(find.text('푸시 알림'), findsNothing);
     expect(find.text('득점 장면'), findsOneWidget);
-    expect(find.text('7회말 문보경 우전 적시타 · 현재 4:3'), findsOneWidget);
+    expect(metadataText('7회말 문보경 우전 적시타 · 현재 4:3'), findsOneWidget);
     expect(find.text('새 알림'), findsOneWidget);
     expect(
       tester.widget<Icon>(find.byIcon(Icons.chevron_right_rounded)).color,
@@ -103,7 +101,7 @@ void main() {
     await refresh;
     await tester.pumpAndSettle();
 
-    expect(find.text('아직 받은 푸시가 없습니다'), findsOneWidget);
+    expect(find.text('아직 받은 알림이 없어요'), findsOneWidget);
   });
 
   testWidgets(
@@ -141,9 +139,15 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('최근 알림 보관함'), findsOneWidget);
+        expect(find.text('최근 알림 보관함'), findsNothing);
+        expect(find.text('보관 안내'), findsOneWidget);
         expect(find.text('오늘 놓치지 않은 신호'), findsNothing);
-        expect(find.text('최근 최대 50개 보관 · 2개 중 2개 표시'), findsOneWidget);
+        expect(find.text('안 읽은 알림 1개'), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('inbox-storage-info')));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('최대 50개 보관'), findsOneWidget);
+        await tester.tap(find.text('닫기'));
+        await tester.pumpAndSettle();
 
         final allFilter = find.ancestor(
           of: find.text('전체'),
@@ -174,7 +178,7 @@ void main() {
         await tester.sendKeyEvent(LogicalKeyboardKey.enter);
         await tester.pumpAndSettle();
 
-        expect(find.text('최근 최대 50개 보관 · 2개 중 1개 표시'), findsOneWidget);
+        expect(find.text('안 읽은 알림 1개'), findsOneWidget);
         expect(find.text('읽은 브리프'), findsNothing);
         expect(
           tester
@@ -220,17 +224,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('최근 최대 50개 보관 · 1개 중 1개 표시'),
-      160,
-      scrollable: find.byType(Scrollable).first,
+    expect(find.text('안 읽은 알림 1개'), findsOneWidget);
+    expect(find.text('보관'), findsNothing);
+    expect(find.text('현재 표시'), findsNothing);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('inbox-storage-info'))).height,
+      greaterThanOrEqualTo(44),
     );
-    expect(find.text('최근 최대 50개 보관 · 1개 중 1개 표시'), findsOneWidget);
-    for (final label in const ['보관', '현재 표시', '안 읽음']) {
-      final metric = find.byKey(ValueKey('inbox-summary-metric-$label'));
-      expect(metric, findsOneWidget);
-      expect(tester.getSize(metric).height, greaterThanOrEqualTo(62));
-    }
     expect(tester.takeException(), isNull);
   });
 
@@ -249,8 +249,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('최근 최대 50개 보관 · 0개 중 0개 표시'), findsOneWidget);
-    expect(find.text('아직 받은 푸시가 없습니다'), findsOneWidget);
+    expect(find.text('안 읽은 알림 0개'), findsNothing);
+    expect(find.text('모두 읽음'), findsNothing);
+    expect(find.text('아직 받은 알림이 없어요'), findsOneWidget);
     expect(find.text('최근 알림을 불러오지 못했습니다'), findsNothing);
     expect(find.text('알림 설정을 확인할 수 없습니다. 알림 목록은 그대로 유지됩니다.'), findsNothing);
   });
@@ -286,12 +287,13 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await _openNotificationOptions(tester);
 
       expect(find.text('최근 알림을 불러오지 못했습니다'), findsOneWidget);
-      expect(find.text('아직 받은 푸시가 없습니다'), findsNothing);
+      expect(find.text('아직 받은 알림이 없어요'), findsNothing);
       expect(find.text('경기 시작'), findsOneWidget);
-      expect(find.text('최근 최대 50개 보관 · 현재 표시 수 확인 불가'), findsOneWidget);
-      expect(find.text('확인 불가'), findsOneWidget);
+      expect(find.text('보관 안내'), findsOneWidget);
+      expect(find.text('확인 불가'), findsNothing);
       expect(find.text('정리됨'), findsNothing);
 
       await tester.tap(find.text('알림 목록 다시 시도'));
@@ -300,7 +302,7 @@ void main() {
       expect(entryAttempts, 2);
       expect(find.text('복구된 알림'), findsOneWidget);
       expect(find.text('최근 알림을 불러오지 못했습니다'), findsNothing);
-      expect(find.text('최근 최대 50개 보관 · 1개 중 1개 표시'), findsOneWidget);
+      expect(find.text('안 읽은 알림 1개'), findsOneWidget);
     },
   );
 
@@ -334,9 +336,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await _openNotificationOptions(tester);
 
     expect(find.text('유지된 알림'), findsOneWidget);
-    expect(find.text('최근 최대 50개 보관 · 1개 중 1개 표시'), findsOneWidget);
+    expect(find.text('안 읽은 알림 1개'), findsOneWidget);
     expect(find.text('알림 설정을 확인할 수 없습니다. 알림 목록은 그대로 유지됩니다.'), findsOneWidget);
     expect(find.text('최근 알림을 불러오지 못했습니다'), findsNothing);
 
@@ -379,8 +382,54 @@ void main() {
     await tester.tap(find.text('모두 읽음'));
     await tester.pumpAndSettle();
 
-    expect(find.text('정리됨'), findsOneWidget);
+    expect(find.text('정리됨'), findsNothing);
+    expect(find.text('모두 읽음'), findsNothing);
     expect(find.text('새 알림'), findsNothing);
+  });
+
+  testWidgets('잘못된 알림 연결은 목록을 유지하고 읽음 처리와 안내를 제공한다', (tester) async {
+    var read = false;
+    final router = GoRouter(
+      initialLocation: '/notifications',
+      routes: [
+        GoRoute(
+          path: '/notifications',
+          builder: (_, _) => NotificationInboxScreen(
+            entriesLoader: () async => [
+              _entry(
+                id: 'broken',
+                title: '예전 경기 알림',
+                type: 'scoring',
+                read: false,
+                route: '/unsupported-notification',
+              ),
+            ],
+            settingsLoader: () async =>
+                const PushNotificationSettings.defaults(),
+            markRead: (_) async {
+              read = true;
+            },
+          ),
+        ),
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈 도착')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('예전 경기 알림'));
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, '/notifications');
+    expect(find.text('예전 경기 알림'), findsOneWidget);
+    expect(find.text('이 알림의 연결 정보를 찾을 수 없어요.'), findsOneWidget);
+    expect(read, isTrue);
+    expect(find.text('홈 도착'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('읽음 저장 실패가 알림 deep link 이동을 막지 않는다', (tester) async {
@@ -459,6 +508,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await _openNotificationOptions(tester);
 
     expect(find.text('알림함'), findsOneWidget);
     await tester.scrollUntilVisible(
@@ -495,4 +545,11 @@ NotificationInboxEntry _entry({
     receivedAt: DateTime(2026, 7, 23, 18),
     read: read,
   );
+}
+
+Future<void> _openNotificationOptions(WidgetTester tester) async {
+  final options = find.byKey(const ValueKey('inbox-notification-options'));
+  await tester.ensureVisible(options);
+  await tester.tap(find.text('알림 종류'));
+  await tester.pumpAndSettle();
 }

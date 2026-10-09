@@ -576,7 +576,12 @@ def test_current_home_late_section_failure_does_not_wait_for_first_section() -> 
     assert str(errors[0]) == "home records unavailable"
 
 
-def test_home_starts_previous_month_before_other_sections_finish() -> None:
+def test_home_starts_previous_month_before_other_sections_finish(monkeypatch) -> None:
+    # This checks current-day fanout, independent of the day the suite runs.
+    monkeypatch.setattr(
+        "kbo_fans_backend.services.home.current_kbo_date",
+        lambda: date_type(2026, 10, 1),
+    )
     schedule = _BlockingPreviousMonthScheduleService()
     standings = _BlockingHomeStandingsService()
     service = HomeService(

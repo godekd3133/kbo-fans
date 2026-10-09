@@ -1003,22 +1003,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           },
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                        child: _secondarySectionsEnabled
-                            ? _MyTeamBriefCard(
-                                myTeamId: myTeamId,
-                                brief: myTeamBrief,
-                                todayGame: myGame,
-                                teamStatsAsync: teamStatsAsync,
-                                teamPlayersAsync: teamPlayersAsync,
-                                onOpenGame: _openGameDetail,
-                              )
-                            : const _DeferredSectionCard(
-                                title: '마이팀 브리프',
-                                subtitle: '우리 팀의 기록을 준비하고 있어요.',
-                              ),
-                      ),
+                      if (myTeamId != null && myTeamId.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                          child: _secondarySectionsEnabled
+                              ? _MyTeamBriefCard(
+                                  myTeamId: myTeamId,
+                                  brief: myTeamBrief,
+                                  todayGame: myGame,
+                                  teamStatsAsync: teamStatsAsync,
+                                  teamPlayersAsync: teamPlayersAsync,
+                                  onOpenGame: _openGameDetail,
+                                )
+                              : const _DeferredSectionCard(
+                                  title: '마이팀 브리프',
+                                  subtitle: '우리 팀의 기록을 준비하고 있어요.',
+                                ),
+                        ),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
                         child: _StandingsSnapshotCard(
@@ -1030,18 +1031,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           hasError: aggregateAsync?.hasError ?? false,
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                        child: _RecentFlowReferenceCard(
-                          myTeamId: myTeamId,
-                          brief: myTeamBrief,
-                          standings: standingsPreview,
-                          isLoading:
-                              !_secondarySectionsEnabled ||
-                              (aggregateAsync?.isLoading ?? false),
-                          hasError: aggregateAsync?.hasError ?? false,
+                      if (myTeamId != null && myTeamId.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                          child: _RecentFlowReferenceCard(
+                            myTeamId: myTeamId,
+                            brief: myTeamBrief,
+                            standings: standingsPreview,
+                            isLoading:
+                                !_secondarySectionsEnabled ||
+                                (aggregateAsync?.isLoading ?? false),
+                            hasError: aggregateAsync?.hasError ?? false,
+                          ),
                         ),
-                      ),
                       if (_secondarySectionsEnabled &&
                           kboBrief != null &&
                           _displayableKboBriefItems(kboBrief).isNotEmpty)
@@ -2065,7 +2067,7 @@ class _DeferredSectionCard extends StatelessWidget {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          Text(
+          AppMetadataText(
             subtitle,
             style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
@@ -2095,51 +2097,7 @@ class _MyTeamBriefCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (myTeamId == null || myTeamId!.isEmpty) {
-      return _sectionCard(
-        accentColor: AppColors.accent,
-        backgroundAssetName: VisualAssets.myTeamBriefCommand,
-        backgroundAlignment: Alignment.centerRight,
-        backgroundOpacity: 0.28,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '마이팀 브리프',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '응원팀을 선택하면 오늘 경기, 최근 5경기, 순위를 홈에서 바로 보여줍니다.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: const [
-                _BenefitChip(label: '오늘 경기 우선'),
-                _BenefitChip(label: '예매 오픈 추적'),
-                _BenefitChip(label: '순위/최근 5경기'),
-              ],
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () =>
-                    context.go('/onboarding?mode=edit&redirect=/home'),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text('마이팀 선택하기'),
-              ),
-            ),
-          ],
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     final team = KboTeams.byId(myTeamId!);
@@ -2481,7 +2439,7 @@ class _MyTeamBriefCard extends StatelessWidget {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: centered ? Alignment.center : Alignment.centerLeft,
-            child: Text(
+            child: AppMetadataText(
               value,
               textAlign: centered ? TextAlign.center : TextAlign.start,
               maxLines: 1,
@@ -2491,7 +2449,7 @@ class _MyTeamBriefCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 1),
-        Text(
+        AppMetadataText(
           detail,
           textAlign: centered ? TextAlign.center : TextAlign.start,
           maxLines: 1,
@@ -2687,7 +2645,7 @@ class _BriefMetricSnapshot {
   static String _formatLabeledStat(String label, String raw) {
     final value = raw.trim();
     if (value.isEmpty || value == '-') {
-      return '집계 중';
+      return '기록 없음';
     }
     return '$label $value';
   }
@@ -2787,9 +2745,9 @@ class _TeamRecordBriefData {
         return const _TeamRecordBriefData(
           metrics: _BriefMetricSnapshot(
             avg: '-',
-            avgRank: '확인 필요',
+            avgRank: '',
             era: '-',
-            eraRank: '확인 필요',
+            eraRank: '',
           ),
           hasError: true,
         );
@@ -2930,6 +2888,14 @@ class _TeamRecordSpotlightRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (recordBrief.homeRunLeader == null && recordBrief.risingPlayer == null) {
+      return recordBrief.hasError
+          ? Text(
+              '팀 기록을 불러오지 못했어요',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            )
+          : const SizedBox.shrink();
+    }
     final placeholderTitle = recordBrief.isLoading
         ? '불러오는 중'
         : recordBrief.hasError
@@ -3019,7 +2985,7 @@ class _RecordSpotlightTile extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                Text(
+                AppMetadataText(
                   subtitle,
                   style: TextStyle(
                     fontSize: 10,
@@ -3071,7 +3037,7 @@ class _MyTeamBriefViewModel {
   }) {
     final opponentName = opponent?.name ?? '상대팀';
     final standingText = standing == null
-        ? '순위 집계 중'
+        ? '순위 없음'
         : '${standing.rank}위 · ${standing.wins}승 ${standing.losses}패';
 
     if (todayGame != null) {
@@ -4295,7 +4261,7 @@ class _RecentFlowTeamHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Text(
+        AppMetadataText(
           trailingText,
           textAlign: TextAlign.end,
           style: TextStyle(
@@ -4750,7 +4716,7 @@ class _ReferenceEmptyState extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
+                AppMetadataText(
                   subtitle,
                   style: TextStyle(
                     fontSize: 12,
@@ -4882,32 +4848,6 @@ class _TeamLogo extends StatelessWidget {
   }
 }
 
-class _BenefitChip extends StatelessWidget {
-  final String label;
-
-  const _BenefitChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: AppColors.cardSub,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
 class _KboBriefCard extends StatelessWidget {
   final HomeKboBrief brief;
 
@@ -4954,8 +4894,8 @@ class _KboBriefCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       insightItems.isEmpty
-                          ? '오늘 체크할 장면을 준비 중입니다'
-                          : '지금 볼 장면 ${insightItems.length}개',
+                          ? '아직 등록된 소식이 없어요.'
+                          : '소식 ${insightItems.length}개',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -5299,7 +5239,7 @@ class _KboInsightMiniCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 7),
-                  Text(
+                  AppMetadataText(
                     item.title,
                     style: const TextStyle(
                       fontSize: 15,
@@ -5737,7 +5677,7 @@ class _QuickContentListItem extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      AppMetadataText(
                         item.title,
                         style: const TextStyle(
                           fontSize: 16,
@@ -5973,7 +5913,7 @@ class _QuickContentListItem extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 7),
-            Text(
+            AppMetadataText(
               game.summary,
               style: TextStyle(
                 fontSize: 13,

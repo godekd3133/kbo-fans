@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -22,6 +23,8 @@ import '../../services/push_notification_service.dart';
 typedef PushNotificationSettingsLoader =
     Future<PushNotificationSettings> Function();
 typedef PushPermissionStateLoader = Future<bool> Function();
+typedef PushNotificationSettingsSaver =
+    Future<void> Function(PushNotificationSettings settings, String? myTeam);
 typedef PushPermissionRequester = Future<bool> Function(String? myTeam);
 
 enum _NotificationPreset { results, moments, custom }
@@ -39,13 +42,17 @@ const _notificationPresetMoments = {
 };
 
 class SettingsScreen extends ConsumerStatefulWidget {
+  final bool? remotePushAvailable;
   final PushNotificationSettingsLoader? pushSettingsLoader;
+  final PushNotificationSettingsSaver? pushSettingsSaver;
   final PushPermissionStateLoader? pushPermissionStateLoader;
   final PushPermissionRequester? pushPermissionRequester;
 
   const SettingsScreen({
     super.key,
+    this.remotePushAvailable,
     this.pushSettingsLoader,
+    this.pushSettingsSaver,
     this.pushPermissionStateLoader,
     this.pushPermissionRequester,
   });
@@ -113,12 +120,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _AppearanceSettingsCard(),
               const SizedBox(height: 16),
 
-              _PushNotificationSettingsCard(
-                team: team,
-                loadSettings: widget.pushSettingsLoader,
-                loadPermissionState: widget.pushPermissionStateLoader,
-                requestPermission: widget.pushPermissionRequester,
-              ),
+              if (widget.remotePushAvailable ??
+                  shouldUseRemotePushServices(
+                    isWeb: kIsWeb,
+                    useBackendApi: const bool.fromEnvironment(
+                      'USE_BACKEND_API',
+                      defaultValue: true,
+                    ),
+                  ))
+                _PushNotificationSettingsCard(
+                  team: team,
+                  loadSettings: widget.pushSettingsLoader,
+                  saveSettings: widget.pushSettingsSaver,
+                  loadPermissionState: widget.pushPermissionStateLoader,
+                  requestPermission: widget.pushPermissionRequester,
+                )
+              else
+                const _UnavailablePushSettingsCard(),
               const SizedBox(height: 16),
 
               const _NotificationInboxPreviewCard(),
@@ -336,16 +354,6 @@ class _AppearanceSettingsCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '휴대폰 설정을 따르거나 앱 화면을 직접 고정합니다.',
-                style: TextStyle(
-                  fontSize: 12,
-                  height: 1.25,
-                  color: colors.textSecondary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 10),
               if (usesStackedModeSelector)
                 Column(
                   children: [
@@ -550,15 +558,42 @@ class _MoreHeroCard extends StatelessWidget {
   }
 }
 
+class _UnavailablePushSettingsCard extends StatelessWidget {
+  const _UnavailablePushSettingsCard();
+
+  @override
+  Widget build(BuildContext context) => AppSurface(
+    key: const ValueKey('push-settings-unavailable'),
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('푸시 알림', style: TextStyle(fontSize: 16)),
+        const SizedBox(height: 8),
+        Text(
+          '푸시 알림은 휴대폰 앱에서 설정할 수 있어요.',
+          style: TextStyle(
+            fontSize: 13,
+            height: 1.45,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class _PushNotificationSettingsCard extends ConsumerStatefulWidget {
   final KboTeam? team;
   final PushNotificationSettingsLoader? loadSettings;
+  final PushNotificationSettingsSaver? saveSettings;
   final PushPermissionStateLoader? loadPermissionState;
   final PushPermissionRequester? requestPermission;
 
   const _PushNotificationSettingsCard({
     required this.team,
     required this.loadSettings,
+    required this.saveSettings,
     required this.loadPermissionState,
     required this.requestPermission,
   });
@@ -569,7 +604,8 @@ class _PushNotificationSettingsCard extends ConsumerStatefulWidget {
 }
 
 class _PushNotificationSettingsCardState
-    extends ConsumerState<_PushNotificationSettingsCard> {
+    extends ConsumerState<_PushNotificationSettingsCard>
+    with AutomaticKeepAliveClientMixin<_PushNotificationSettingsCard> {
   late Future<PushNotificationSettings> _settingsFuture;
   late Future<bool> _permissionStateFuture;
   PushNotificationSettings? _settings;
@@ -577,8 +613,12 @@ class _PushNotificationSettingsCardState
   bool _requestingPermission = false;
   String? _permissionError;
   bool _saving = false;
+  bool _settingsReadbackFailed = false;
   bool _customPresetSelected = false;
   String? _error;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -653,6 +693,7 @@ class _PushNotificationSettingsCardState
   void _retryLoadSettings() {
     setState(() {
       _settings = null;
+      _settingsReadbackFailed = false;
       _error = null;
       _settingsFuture = _loadSettings();
     });
@@ -665,15 +706,30 @@ class _PushNotificationSettingsCardState
       _error = null;
     });
     try {
-      await PushNotificationService.instance.saveSettings(
-        settings,
-        myTeam: ref.read(myTeamProvider),
-      );
-    } catch (error) {
-      if (!mounted) {
-        return;
+      final saver = widget.saveSettings;
+      if (saver != null) {
+        await saver(settings, ref.read(myTeamProvider));
+      } else {
+        await PushNotificationService.instance.saveSettings(
+          settings,
+          myTeam: ref.read(myTeamProvider),
+        );
       }
+    } catch (error) {
+      PushNotificationSettings? stored;
+      try {
+        stored =
+            await (widget.loadSettings?.call() ??
+                PushNotificationService.instance.loadSettings(
+                  reloadFromStorage: true,
+                ));
+      } catch (_) {
+        // Do not present either the draft or the prior snapshot as saved.
+      }
+      if (!mounted) return;
       setState(() {
+        _settings = stored;
+        _settingsReadbackFailed = stored == null;
         _error = '저장하지 못했습니다';
       });
     } finally {
@@ -728,11 +784,18 @@ class _PushNotificationSettingsCardState
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return FutureBuilder<PushNotificationSettings>(
       future: _settingsFuture,
       builder: (context, snapshot) {
         final colors = AppTheme.colorsOf(context);
         final settings = _settings ?? snapshot.data;
+        if (_settingsReadbackFailed) {
+          return _NotificationSettingsShell(
+            status: '저장 상태 확인 필요',
+            child: _NotificationLoadError(onRetry: _retryLoadSettings),
+          );
+        }
         if (settings == null) {
           if (snapshot.hasError) {
             return _NotificationSettingsShell(
@@ -923,24 +986,10 @@ class _NotificationPresetSelector extends StatelessWidget {
       _NotificationPreset.moments: '주요 순간',
       _NotificationPreset.custom: '직접 설정',
     };
-    final description = switch (selected) {
-      _NotificationPreset.results => '경기 종료와 취소 결과만 선택했어요.',
-      _NotificationPreset.moments => '라인업·시작·득점·홈런·역전·종료를 선택했어요.',
-      _NotificationPreset.custom => '아래에서 받을 알림을 하나씩 고르세요.',
-    };
     return Column(
       key: const ValueKey('push_notification_presets'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '내 관전 스타일에 맞게',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: colors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -968,16 +1017,6 @@ class _NotificationPresetSelector extends StatelessWidget {
                 materialTapTargetSize: MaterialTapTargetSize.padded,
               ),
           ],
-        ),
-        const SizedBox(height: 10),
-        Text(
-          description,
-          key: const ValueKey('push_notification_preset_description'),
-          style: TextStyle(
-            fontSize: 12,
-            height: 1.45,
-            color: colors.textSecondary,
-          ),
         ),
       ],
     );

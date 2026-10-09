@@ -1,3 +1,4 @@
+import '../../helpers/metadata_finder.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -338,7 +339,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(requestedKeys, contains('${currentSeason + 1}|avg'));
-    expect(find.text('${currentSeason + 1} 시즌 · 타자 지표'), findsOneWidget);
+    expect(metadataText('${currentSeason + 1} 시즌 · 타자 지표'), findsOneWidget);
   });
 }
 
